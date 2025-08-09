@@ -253,7 +253,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       {/* Custom Animations */}
       <style jsx global>{`
         @keyframes fade-in {
@@ -343,7 +343,7 @@ export default function HomePage() {
       {/* Navigation */}
       <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${
         isScrolled 
-          ? 'bg-background/95 backdrop-blur-md shadow-lg border-b border-border' 
+          ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200' 
           : 'bg-transparent'
       }`}>
         <div className="max-w-7xl mx-auto px-6">
@@ -372,7 +372,7 @@ export default function HomePage() {
                         ? 'text-purple-600 border-b-2 border-purple-600' 
                         : 'text-white border-b-2 border-white'
                       : isScrolled
-                        ? 'text-foreground hover:text-purple-600'
+                        ? 'text-gray-900 hover:text-purple-600'
                         : 'text-white/80 hover:text-white'
                   }`}
                 >
@@ -384,10 +384,10 @@ export default function HomePage() {
               <Button 
                 variant="outline" 
                 onClick={() => router.push('/auth')}
-                className={isScrolled 
+                className={`bg-transparent text-sm md:text-base px-3 md:px-4 py-1.5 md:py-2 rounded-lg ${isScrolled 
                   ? 'border-purple-600 text-purple-600 hover:bg-purple-50' 
-                  : 'border-white text-purple-600 hover:bg-purple-600 hover:text-white'
-                }
+                  : 'border-white text-white hover:bg-white hover:text-purple-600'
+                }`}
               >
                 Connexion
               </Button>
@@ -407,7 +407,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800"></div>
         
         {/* ONE BIG DRAMATIC CURVE */}
-        <div className="absolute bottom-0 left-0 w-full overflow-hidden">
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden z-20 pointer-events-none">
           <svg
             className="relative block w-full h-40 md:h-48 lg:h-56"
             viewBox="0 0 1200 400"
@@ -426,20 +426,20 @@ export default function HomePage() {
           </svg>
         </div>
         
-        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="absolute inset-0 bg-black/10 z-0"></div>
         <div className="relative max-w-7xl mx-auto px-6 py-12 z-10">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div className="text-white space-y-8">
               <Badge className="inline-flex bg-white/20 text-white border-white/30 backdrop-blur-sm shadow-lg">
                 🏥 Plateforme d'apprentissage médical de nouvelle génération
               </Badge>
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight animate-fade-in">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight animate-fade-in">
                 Med<span className="text-purple-300 bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">Q</span>
               </h1>
-              <p className="text-xl md:text-2xl lg:text-3xl text-purple-100 animate-slide-up font-medium">
+              <p className="text-base md:text-lg lg:text-xl text-purple-100 animate-slide-up font-medium">
                 La plateforme d'excellence pour les étudiants en médecine
               </p>
-              <p className="text-lg md:text-xl opacity-90 leading-relaxed animate-slide-up max-w-2xl" style={{ animationDelay: '0.2s' }}>
+              <p className="text-sm md:text-base opacity-90 leading-relaxed animate-slide-up max-w-2xl" style={{ animationDelay: '0.2s' }}>
                 Préparez-vous aux examens médicaux avec des milliers de questions, 
                 des cas cliniques authentiques et un suivi personnalisé de vos progrès. 
                 Rejoignez une communauté d'excellence médicale.
@@ -459,7 +459,7 @@ export default function HomePage() {
                   size="lg"
                   variant="outline"
                   onClick={() => scrollToSection('fonctionnalites')}
-                  className="border-2 border-white text-purple-600 hover:bg-white hover:text-purple-600 font-bold text-lg md:text-xl px-8 md:px-10 py-4 md:py-5 shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-xl backdrop-blur-sm"
+                  className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-purple-600 font-semibold text-sm md:text-base px-5 md:px-6 py-3 md:py-3.5 shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-xl backdrop-blur-sm"
                 >
                   <span className="flex items-center gap-3">
                     <Play className="w-5 h-5 md:w-6 md:h-6" />
@@ -467,25 +467,25 @@ export default function HomePage() {
                   </span>
                 </Button>
               </div>
-              <div className="flex items-center justify-between sm:justify-start sm:gap-12 animate-slide-up bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20" style={{ animationDelay: '0.6s' }}>
+              <div className="inline-flex w-auto self-start items-center justify-start sm:gap-4 animate-slide-up bg-white/10 backdrop-blur-md rounded-lg p-2 md:p-3 border border-white/20" style={{ animationDelay: '0.6s' }}>
                 <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-white">10K+</div>
-                  <div className="text-purple-200 text-sm md:text-base font-medium">Questions</div>
+                  <div className="text-lg md:text-xl font-bold text-white">10K+</div>
+                  <div className="text-purple-200 text-[10px] md:text-xs font-medium">Questions</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-white">500+</div>
-                  <div className="text-purple-200 text-sm md:text-base font-medium">Cas cliniques</div>
+                  <div className="text-lg md:text-xl font-bold text-white">500+</div>
+                  <div className="text-purple-200 text-[10px] md:text-xs font-medium">Cas cliniques</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-white">15+</div>
-                  <div className="text-purple-200 text-sm md:text-base font-medium">Spécialités</div>
+                  <div className="text-lg md:text-xl font-bold text-white">15+</div>
+                  <div className="text-purple-200 text-[10px] md:text-xs font-medium">Spécialités</div>
                 </div>
               </div>
             </div>
             <div className="flex justify-center lg:justify-end">
               <div className="relative animate-float">
-                {/* Main Device - Standard Size */}
-                <div className="w-80 h-96 md:w-96 md:h-[28rem] bg-white rounded-3xl shadow-2xl p-4 md:p-6 transform rotate-1 hover:rotate-0 transition-all duration-500 hover:shadow-3xl border border-gray-100">
+                {/* Main Device - Smaller */}
+                <div className="w-72 h-80 md:w-80 md:h-[24rem] bg-white rounded-3xl shadow-2xl p-4 md:p-6 transform rotate-1 hover:rotate-0 transition-all duration-500 hover:shadow-3xl border border-gray-100">
                   <div className="h-full bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 rounded-2xl p-3 md:p-4 flex flex-col relative overflow-hidden">
                     {/* Subtle background pattern */}
                     <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl"></div>
@@ -556,8 +556,8 @@ export default function HomePage() {
                   </div>
                 </div>
                 
-                {/* Mobile Device - Standard Size */}
-                <div className="absolute -right-6 md:-right-8 top-12 md:top-16 w-24 h-48 md:w-28 md:h-56 bg-white rounded-3xl shadow-2xl p-3 transform -rotate-12 hover:rotate-6 transition-all duration-500 border border-gray-100">
+                {/* Mobile Device - Smaller */}
+                <div className="absolute -right-6 md:-right-8 top-12 md:top-16 w-20 h-40 md:w-24 md:h-48 bg-white rounded-3xl shadow-2xl p-3 transform -rotate-12 hover:rotate-6 transition-all duration-500 border border-gray-100">
                   <div className="h-full bg-gradient-to-b from-purple-100 via-blue-100 to-indigo-100 rounded-2xl p-2 flex flex-col relative overflow-hidden">
                     {/* Mobile header */}
                     <div className="w-full h-0.5 bg-gray-400 rounded-full mb-2"></div>
@@ -585,8 +585,8 @@ export default function HomePage() {
                   </div>
                 </div>
                 
-                {/* Tablet Device - Standard Size */}
-                <div className="absolute -left-8 md:-left-12 top-20 md:top-24 w-36 h-24 md:w-40 md:h-28 bg-white rounded-2xl shadow-2xl p-3 transform rotate-12 hover:rotate-6 transition-all duration-500 border border-gray-100">
+                {/* Tablet Device - Smaller */}
+                <div className="absolute -left-8 md:-left-12 top-20 md:top-24 w-32 h-20 md:w-36 md:h-24 bg-white rounded-2xl shadow-2xl p-3 transform rotate-12 hover:rotate-6 transition-all duration-500 border border-gray-100">
                   <div className="h-full bg-gradient-to-r from-purple-100 via-blue-100 to-indigo-100 rounded-xl p-2 flex items-center justify-center relative overflow-hidden">
                     {/* Tablet content */}
                     <div className="text-center w-full">
@@ -619,10 +619,10 @@ export default function HomePage() {
       </section>
 
       {/* Characteristics Section */}
-      <section id="caracteristiques" className="content-section py-20 bg-background" style={{ margin: 0, padding: '5rem 0' }}>
+      <section id="caracteristiques" className="content-section py-20 bg-white" style={{ margin: 0, padding: '5rem 0' }}>
         <div className="max-w-7xl mx-auto px-6">
-                    <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
               Nos Caractéristiques
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -637,7 +637,7 @@ export default function HomePage() {
                   <div className="mx-auto w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                     {char.icon}
                   </div>
-                  <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">{char.title}</CardTitle>
+                  <CardTitle className="text-xl font-bold text-gray-900">{char.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="text-center">
                   <CardDescription className="text-gray-600 leading-relaxed">
@@ -651,10 +651,10 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section id="fonctionnalites" className="content-section py-20 bg-background" style={{ margin: 0, padding: '5rem 0' }}>
+      <section id="fonctionnalites" className="content-section py-20 bg-white" style={{ margin: 0, padding: '5rem 0' }}>
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
               Fonctionnalités Avancées
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
@@ -662,7 +662,6 @@ export default function HomePage() {
               dans vos études médicales et préparer votre future carrière.
             </p>
           </div>
-          
           <div className="grid lg:grid-cols-2 gap-12 mb-20">
             {features.map((feature, index) => (
               <div key={index} className="flex gap-6 group">
@@ -672,7 +671,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">{feature.title}</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">{feature.title}</h3>
                   <p className="text-gray-600 leading-relaxed">{feature.description}</p>
                 </div>
               </div>
@@ -681,7 +680,7 @@ export default function HomePage() {
 
           {/* Additional Features */}
           <div className="bg-white rounded-3xl p-8 lg:p-12 border border-gray-100">
-            <h3 className="text-3xl font-bold text-gray-900 dark:text-white text-center mb-12">
+            <h3 className="text-3xl font-bold text-gray-900 text-center mb-12">
               Fonctionnalités Supplémentaires
             </h3>
             <div className="grid md:grid-cols-3 gap-8">
@@ -690,7 +689,7 @@ export default function HomePage() {
                   <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                     {feature.icon}
                   </div>
-                  <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{feature.title}</h4>
+                  <h4 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h4>
                   <p className="text-gray-600">{feature.description}</p>
                 </div>
               ))}
@@ -700,10 +699,10 @@ export default function HomePage() {
       </section>
 
       {/* Testimonials */}
-      <section className="content-section py-20 bg-background" style={{ margin: 0, padding: '5rem 0' }}>
+      <section className="content-section py-20 bg-white" style={{ margin: 0, padding: '5rem 0' }}>
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
               Témoignages d'Étudiants
             </h2>
             <p className="text-xl text-gray-600">
@@ -717,14 +716,14 @@ export default function HomePage() {
                   <div className="flex items-center gap-4">
                     <div className="text-4xl">{testimonial.avatar}</div>
                     <div>
-                      <CardTitle className="text-lg text-gray-900 dark:text-white">{testimonial.name}</CardTitle>
+                      <CardTitle className="text-lg text-gray-900">{testimonial.name}</CardTitle>
                       <CardDescription className="text-purple-600">{testimonial.role}</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <Quote className="w-8 h-8 text-purple-400 mb-4" />
-                  <p className="text-muted-foreground italic leading-relaxed">"{testimonial.content}"</p>
+                  <p className="text-gray-600 italic leading-relaxed">"{testimonial.content}"</p>
                   <div className="flex gap-1 mt-4">
                     {[...Array(testimonial.rating)].map((_, i) => (
                       <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
@@ -738,7 +737,7 @@ export default function HomePage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="tarifs" className="content-section py-20 bg-background" style={{ margin: 0, padding: '5rem 0' }}>
+      <section id="tarifs" className="content-section py-20 bg-white" style={{ margin: 0, padding: '5rem 0' }}>
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
@@ -768,7 +767,7 @@ export default function HomePage() {
                     {plan.features.map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-center gap-3">
                         <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span className="text-sm text-muted-foreground">{feature}</span>
+                        <span className="text-sm text-gray-600">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -786,7 +785,7 @@ export default function HomePage() {
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="content-section py-20 bg-background" style={{ margin: 0, padding: '5rem 0' }}>
+      <section id="faq" className="content-section py-20 bg-white" style={{ margin: 0, padding: '5rem 0' }}>
         <div className="max-w-4xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
@@ -812,7 +811,7 @@ export default function HomePage() {
                 </button>
                 {openFAQ === index && (
                   <div className="px-6 pb-6 border-t border-gray-100 bg-purple-50">
-                    <p className="text-muted-foreground leading-relaxed pt-4">{item.answer}</p>
+                    <p className="text-gray-600 leading-relaxed pt-4">{item.answer}</p>
                   </div>
                 )}
               </Card>
@@ -905,4 +904,4 @@ export default function HomePage() {
       </footer>
     </div>
   );
-} 
+}
