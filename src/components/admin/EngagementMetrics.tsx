@@ -97,17 +97,17 @@ export function EngagementMetrics({
   return (
     <div className="space-y-8 animate-slide-up">
       {/* Main Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {metrics.map((metric, index) => (
           <Card key={index} className="group hover:shadow-xl transition-all duration-300 border-0 bg-card shadow-md">
             <CardHeader className="text-center pb-4">
-              <div className={`mx-auto w-18 h-18 bg-gradient-to-br ${metric.bgColor} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                <metric.icon className={`w-9 h-9 ${metric.color}`} />
+              <div className={`mx-auto w-14 h-14 sm:w-18 sm:h-18 bg-gradient-to-br ${metric.bgColor} rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                <metric.icon className={`w-7 h-7 sm:w-9 sm:h-9 ${metric.color}`} />
               </div>
-              <CardTitle className="text-lg font-bold text-foreground">{metric.title}</CardTitle>
+              <CardTitle className="text-base sm:text-lg font-bold text-foreground">{metric.title}</CardTitle>
             </CardHeader>
             <CardContent className="text-center">
-              <div className="text-3xl font-bold text-foreground mb-2">{metric.value}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-foreground mb-2">{metric.value}</div>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {metric.description}
               </p>
@@ -127,20 +127,20 @@ export function EngagementMetrics({
       {/* Weekly Activity */}
       <Card className="border-0 shadow-lg bg-card hover:shadow-xl transition-all duration-300">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-foreground mb-2">{t('admin.weeklyActivity')}</CardTitle>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
+          <CardTitle className="text-xl sm:text-2xl font-bold text-foreground mb-2">{t('admin.weeklyActivity')}</CardTitle>
+          <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
             {t('admin.weeklyActivityDesc')}
           </p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
             {weeklyStats.map((stat, index) => (
               <div key={index} className="text-center group">
-                <div className={`inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br ${stat.bgColor} rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                  <stat.icon className={`h-8 w-8 ${stat.color}`} />
+                <div className={`inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br ${stat.bgColor} rounded-2xl mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                  <stat.icon className={`h-7 w-7 sm:h-8 sm:w-8 ${stat.color}`} />
                 </div>
-                <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
+                <div className="text-xl sm:text-2xl font-bold text-foreground">{stat.value}</div>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -148,4 +148,4 @@ export function EngagementMetrics({
       </Card>
     </div>
   );
-} 
+}

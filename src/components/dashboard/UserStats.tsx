@@ -59,7 +59,7 @@ export function UserStats({
 
   if (isLoading) {
     return (
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 xs:grid-cols-2 lg:grid-cols-4">
         {stats.map((_, index) => (
           <Card key={index} className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
@@ -76,21 +76,21 @@ export function UserStats({
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:gap-6 grid-cols-1 xs:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         return (
           <Card key={index} className={`border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg ${stat.shadowColor} hover:shadow-xl transition-all duration-300 group`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+              <CardTitle className="text-[13px] sm:text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                 {stat.title}
               </CardTitle>
-              <div className={`p-3 rounded-xl ${stat.bgColor} group-hover:scale-110 transition-all duration-300 shadow-lg`}>
-                <Icon className={`h-5 w-5 ${stat.color}`} />
+              <div className={`p-2.5 sm:p-3 rounded-xl ${stat.bgColor} group-hover:scale-110 transition-all duration-300 shadow-lg`}>
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5 ${stat.color}" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent group-hover:from-purple-600 group-hover:to-purple-800 dark:group-hover:from-purple-400 dark:group-hover:to-purple-600 transition-all duration-300">
+              <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent group-hover:from-purple-600 group-hover:to-purple-800 dark:group-hover:from-purple-400 dark:group-hover:to-purple-600 transition-all duration-300">
                 {stat.value}
               </div>
             </CardContent>
@@ -99,4 +99,4 @@ export function UserStats({
       })}
     </div>
   );
-} 
+}

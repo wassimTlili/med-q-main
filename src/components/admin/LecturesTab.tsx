@@ -86,31 +86,31 @@ export function LecturesTab() {
   };
   
   return (
-    <div className="space-y-8 animate-fade-in">
-      <div className="flex flex-col md:flex-row md:items-end gap-6 justify-between">
-        <div className="flex-1 space-y-2">
-            <h3 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">{t('admin.manageLectures')}</h3>
-            <p className="text-sm text-muted-foreground">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in">
+      <div className="flex flex-col md:flex-row md:items-end gap-4 sm:gap-6 justify-between">
+        <div className="flex-1 space-y-1 sm:space-y-2">
+            <h3 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">{t('admin.manageLectures')}</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {searchQuery ? 
                 `Showing ${filteredLectures.length} of ${lectures.length} lectures` : 
                 `${lectures.length} lectures total`}
             </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
-          <div className="relative group">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center w-full sm:w-auto">
+          <div className="relative group flex-1 sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search lectures..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10 w-full sm:w-72 rounded-xl bg-background/60 backdrop-blur border border-border/60 focus-visible:ring-purple-500"
+              className="pl-9 sm:pl-10 pr-9 sm:pr-10 w-full sm:w-72 h-10 sm:h-11 rounded-xl bg-background/60 backdrop-blur border border-border/60 focus-visible:ring-purple-500"
             />
             {searchQuery && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={clearSearch}
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted rounded-full"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted rounded-full"
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -118,7 +118,7 @@ export function LecturesTab() {
           </div>
           <Button 
             onClick={() => setIsCreateDialogOpen(true)}
-            className="rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md hover:shadow-lg transition-all"
+            className="h-10 sm:h-11 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md hover:shadow-lg transition-all"
           >
             <PlusCircle className="h-4 w-4 mr-2" />
             {t('admin.addLecture')}
@@ -126,25 +126,25 @@ export function LecturesTab() {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {isLoading ? (
           Array(6).fill(0).map((_, i) => (
-            <div key={i} className="relative overflow-hidden rounded-xl border border-border/60 bg-background/40 backdrop-blur p-5 animate-pulse">
+            <div key={i} className="relative overflow-hidden rounded-xl border border-border/60 bg-background/40 backdrop-blur p-4 sm:p-5 animate-pulse">
               <div className="absolute inset-0 bg-gradient-to-br from-muted/30 to-transparent" />
-              <div className="relative space-y-4">
+              <div className="relative space-y-3 sm:space-y-4">
                 <div className="h-5 w-3/4 bg-muted rounded" />
                 <div className="h-3 w-full bg-muted rounded" />
                 <div className="h-3 w-5/6 bg-muted rounded" />
-                <div className="h-9 w-32 bg-muted rounded" />
+                <div className="h-8 sm:h-9 w-28 bg-muted rounded" />
               </div>
             </div>
           ))
         ) : filteredLectures.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed p-12 text-center bg-background/40 backdrop-blur">
+          <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed p-8 sm:p-12 text-center bg-background/40 backdrop-blur">
             {searchQuery ? (
               <>
-                <h3 className="text-lg font-semibold mb-2">No lectures found</h3>
-                <p className="text-muted-foreground mb-4 max-w-md">
+                <h3 className="text-base sm:text-lg font-semibold mb-2">No lectures found</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-4 max-w-md">
                   No lectures match "{searchQuery}". Try a different search term.
                 </p>
                 <Button
@@ -158,8 +158,8 @@ export function LecturesTab() {
               </>
             ) : (
               <>
-                <h3 className="text-lg font-semibold mb-2">{t('admin.noLecturesAvailable')}</h3>
-                <p className="text-muted-foreground max-w-md">
+                <h3 className="text-base sm:text-lg font-semibold mb-2">{t('admin.noLecturesAvailable')}</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground max-w-md">
                   {t('admin.addLecture')}
                 </p>
               </>

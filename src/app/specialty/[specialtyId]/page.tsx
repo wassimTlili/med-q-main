@@ -81,7 +81,7 @@ export default function SpecialtyPageRoute() {
     <ProtectedRoute>
       <AppLayout>
         <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-blue-50/50 dark:from-purple-950/20 dark:via-gray-900 dark:to-blue-950/20">
-          <div className="container mx-auto px-4 py-8 space-y-8">
+          <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
             {specialty && (
               <SpecialtyActions 
                 specialty={specialty}
@@ -128,4 +128,4 @@ export default function SpecialtyPageRoute() {
       </AppLayout>
     </ProtectedRoute>
   );
-} 
+}

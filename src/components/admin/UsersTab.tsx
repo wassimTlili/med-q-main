@@ -163,15 +163,15 @@ export function UsersTab() {
 
   if (isLoading && users.length === 0) {
     return (
-      <div className="space-y-8 animate-fade-in">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="h-10 w-64 bg-muted/50 rounded-xl animate-pulse" />
-          <div className="h-10 w-48 bg-muted/50 rounded-xl animate-pulse" />
-          <div className="h-10 w-32 bg-muted/50 rounded-xl animate-pulse" />
+      <div className="space-y-6 sm:space-y-8 animate-fade-in">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="h-9 sm:h-10 w-48 sm:w-64 bg-muted/50 rounded-xl animate-pulse" />
+          <div className="h-9 sm:h-10 w-40 sm:w-48 bg-muted/50 rounded-xl animate-pulse" />
+          <div className="h-9 sm:h-10 w-28 sm:w-32 bg-muted/50 rounded-xl animate-pulse" />
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-32 rounded-xl border border-border/60 bg-background/40 backdrop-blur animate-pulse" />
+            <div key={i} className="h-28 sm:h-32 rounded-xl border border-border/60 bg-background/40 backdrop-blur animate-pulse" />
           ))}
         </div>
       </div>
@@ -179,17 +179,17 @@ export function UsersTab() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* Search and Filters */}
       <Card className="rounded-2xl border border-border/60 bg-background/60 backdrop-blur shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+        <CardHeader className="pb-2 sm:pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold tracking-tight">
             <User className="h-5 w-5 text-purple-600" />
             <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">{t('admin.manageUsers')}</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="flex flex-col lg:flex-row gap-4 lg:items-end">
+          <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:items-end">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -198,7 +198,7 @@ export function UsersTab() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="pl-10 rounded-xl bg-background/50"
+                  className="pl-9 sm:pl-10 rounded-xl bg-background/50"
                 />
               </div>
             </div>
@@ -219,79 +219,64 @@ export function UsersTab() {
         </CardContent>
       </Card>
 
-      {/* Users Table */}
+      {/* Users Table / Mobile List */}
       <Card className="rounded-2xl border border-border/60 bg-background/60 backdrop-blur overflow-hidden">
         <CardContent className="p-0">
           {users.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <User className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">{t('admin.noUsersFound')}</h3>
-              <p className="text-muted-foreground text-center max-w-md">
+            <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4 text-center">
+              <User className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4" />
+              <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">{t('admin.noUsersFound')}</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-md">
                 {search || roleFilter !== 'all' ? t('admin.noUsersMatchFilters') : t('admin.noUsersYet')}
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table className="text-sm">
-                <TableHeader className="bg-muted/40">
-                  <TableRow>
-                    <TableHead className="font-semibold uppercase tracking-wide text-xs text-muted-foreground">{t('admin.user')}</TableHead>
-                    <TableHead className="font-semibold uppercase tracking-wide text-xs text-muted-foreground">{t('admin.role')}</TableHead>
-                    <TableHead className="font-semibold uppercase tracking-wide text-xs text-muted-foreground">{t('admin.status')}</TableHead>
-                    <TableHead className="font-semibold uppercase tracking-wide text-xs text-muted-foreground">{t('admin.progress')}</TableHead>
-                    <TableHead className="font-semibold uppercase tracking-wide text-xs text-muted-foreground">{t('admin.reports')}</TableHead>
-                    <TableHead className="font-semibold uppercase tracking-wide text-xs text-muted-foreground">{t('admin.joined')}</TableHead>
-                    <TableHead className="text-right font-semibold uppercase tracking-wide text-xs text-muted-foreground">{t('common.actions')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                  <TableRow key={user.id} className="hover:bg-muted/30 transition-colors">
-                    <TableCell>
+            <>
+              {/* Mobile: stacked list */}
+              <div className="md:hidden divide-y divide-border">
+                {users.map((user) => (
+                  <div key={user.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium leading-tight">{user.name || user.email}</div>
-                        <div className="text-xs text-muted-foreground">{user.email}</div>
+                        <div className="font-medium leading-tight text-sm">{user.name || user.email}</div>
+                        <div className="text-[11px] text-muted-foreground break-all">{user.email}</div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${getRoleColor(user.role)} border-none font-medium rounded-full px-2.5 py-0.5 text-xs`}> 
-                        {user.role === 'admin' ? (
-                          <Shield className="h-3 w-3 mr-1" />
-                        ) : (
-                          <User className="h-3 w-3 mr-1" />
-                        )}
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${getStatusColor(user.status)} border-none font-medium rounded-full px-2.5 py-0.5 text-xs`}> 
-                        {user.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-xs">
-                        <Activity className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                        <Badge className={`${getRoleColor(user.role)} border-none font-medium rounded-full px-2.5 py-0.5 text-[10px]`}> 
+                          {user.role === 'admin' ? (
+                            <Shield className="h-3 w-3 mr-1" />
+                          ) : (
+                            <User className="h-3 w-3 mr-1" />
+                          )}
+                          {user.role}
+                        </Badge>
+                        <Badge className={`${getStatusColor(user.status)} border-none font-medium rounded-full px-2.5 py-0.5 text-[10px]`}> 
+                          {user.status}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Activity className="h-4 w-4" />
                         <span>{user._count.progress}</span>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-xs">
-                        <Flag className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-1">
+                        <Flag className="h-4 w-4" />
                         <span>{user._count.reports}</span>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-xs">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4" />
                         <span>{formatDate(user.createdAt)}</span>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-right">
+                    </div>
+
+                    <div className="flex justify-end">
                       <Select
                         value={user.role}
                         onValueChange={(value: 'student' | 'admin') => handleRoleChange(user.id, value)}
                       >
-                        <SelectTrigger className="w-32 rounded-xl bg-background/50">
+                        <SelectTrigger className="w-40 rounded-xl bg-background/50">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -309,12 +294,97 @@ export function UsersTab() {
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                  </div>
                 ))}
-                </TableBody>
-              </Table>
-            </div>
+              </div>
+
+              {/* Desktop: table */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table className="text-xs sm:text-sm">
+                  <TableHeader className="bg-muted/40">
+                    <TableRow>
+                      <TableHead className="font-semibold uppercase tracking-wide text-[10px] sm:text-xs text-muted-foreground">{t('admin.user')}</TableHead>
+                      <TableHead className="font-semibold uppercase tracking-wide text-[10px] sm:text-xs text-muted-foreground">{t('admin.role')}</TableHead>
+                      <TableHead className="font-semibold uppercase tracking-wide text-[10px] sm:text-xs text-muted-foreground">{t('admin.status')}</TableHead>
+                      <TableHead className="font-semibold uppercase tracking-wide text-[10px] sm:text-xs text-muted-foreground">{t('admin.progress')}</TableHead>
+                      <TableHead className="font-semibold uppercase tracking-wide text-[10px] sm:text-xs text-muted-foreground">{t('admin.reports')}</TableHead>
+                      <TableHead className="font-semibold uppercase tracking-wide text-[10px] sm:text-xs text-muted-foreground">{t('admin.joined')}</TableHead>
+                      <TableHead className="text-right font-semibold uppercase tracking-wide text-[10px] sm:text-xs text-muted-foreground">{t('common.actions')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                    <TableRow key={user.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell>
+                        <div>
+                          <div className="font-medium leading-tight text-sm sm:text-base">{user.name || user.email}</div>
+                          <div className="text-[10px] sm:text-xs text-muted-foreground break-all">{user.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${getRoleColor(user.role)} border-none font-medium rounded-full px-2.5 py-0.5 text-[10px] sm:text-xs`}> 
+                          {user.role === 'admin' ? (
+                            <Shield className="h-3 w-3 mr-1" />
+                          ) : (
+                            <User className="h-3 w-3 mr-1" />
+                          )}
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${getStatusColor(user.status)} border-none font-medium rounded-full px-2.5 py-0.5 text-[10px] sm:text-xs`}> 
+                          {user.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-[10px] sm:text-xs">
+                          <Activity className="h-4 w-4 text-muted-foreground" />
+                          <span>{user._count.progress}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-[10px] sm:text-xs">
+                          <Flag className="h-4 w-4 text-muted-foreground" />
+                          <span>{user._count.reports}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-[10px] sm:text-xs">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>{formatDate(user.createdAt)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Select
+                          value={user.role}
+                          onValueChange={(value: 'student' | 'admin') => handleRoleChange(user.id, value)}
+                        >
+                          <SelectTrigger className="w-28 sm:w-32 rounded-xl bg-background/50">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="student">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                {t('admin.student')}
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="admin">
+                              <div className="flex items-center gap-2">
+                                <Shield className="h-4 w-4" />
+                                {t('admin.admin')}
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -357,7 +427,7 @@ export function UsersTab() {
 
       {/* Results Summary */}
       {pagination && (
-        <div className="text-center text-xs text-muted-foreground">
+        <div className="text-center text-[11px] sm:text-xs text-muted-foreground">
           {t('admin.showingResults', { 
             from: ((currentPage - 1) * pagination.limit) + 1,
             to: Math.min(currentPage * pagination.limit, pagination.totalCount),

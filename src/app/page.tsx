@@ -253,7 +253,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white overflow-x-hidden">
       {/* Custom Animations */}
       <style jsx global>{`
         @keyframes fade-in {
@@ -342,69 +342,69 @@ export default function HomePage() {
 
       {/* Navigation */}
       <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${
-        isScrolled 
-          ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200' 
-          : 'bg-transparent'
-      }`}>
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <h1 className={`text-2xl font-bold transition-colors ${
-                isScrolled ? 'text-purple-600' : 'text-white'
-              }`}>
-                MedQ
-              </h1>
-            </div>
-            <div className="hidden md:flex space-x-8">
-              {[
-                { name: 'Accueil', id: 'accueil' },
-                { name: 'Caractéristiques', id: 'caracteristiques' },
-                { name: 'Fonctionnalités', id: 'fonctionnalites' },
-                { name: 'Tarifs', id: 'tarifs' },
-                { name: 'FAQ', id: 'faq' }
-              ].map((item) => (
-                <button
-                  key={item.name}
-                  onClick={() => scrollToSection(item.id)}
-                  className={`px-4 py-2 font-medium transition-all duration-200 relative ${
-                    activeTab === item.name
-                      ? isScrolled 
-                        ? 'text-purple-600 border-b-2 border-purple-600' 
-                        : 'text-white border-b-2 border-white'
-                      : isScrolled
-                        ? 'text-gray-900 hover:text-purple-600'
-                        : 'text-white/80 hover:text-white'
-                  }`}
-                >
-                  {item.name}
-                </button>
-              ))}
-            </div>
-            <div className="flex space-x-4">
-              <Button 
-                variant="outline" 
-                onClick={() => router.push('/auth')}
-                className={`bg-transparent text-sm md:text-base px-3 md:px-4 py-1.5 md:py-2 rounded-lg ${isScrolled 
-                  ? 'border-purple-600 text-purple-600 hover:bg-purple-50' 
-                  : 'border-white text-white hover:bg-white hover:text-purple-600'
-                }`}
-              >
-                Connexion
-              </Button>
-              <Button 
-                onClick={() => router.push('/auth')}
-                className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg transform hover:scale-105 transition-all duration-200"
-              >
-                Commencer
-              </Button>
-            </div>
-          </div>
-        </div>
-      </nav>
+         isScrolled 
+           ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200' 
+           : 'bg-transparent'
+       }`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-14 md:h-16">
+             <div className="flex items-center">
+               <h1 className={`text-xl md:text-2xl font-bold transition-colors ${
+                 isScrolled ? 'text-purple-600' : 'text-white'
+               }`}>
+                 MedQ
+               </h1>
+             </div>
+             <div className="hidden md:flex space-x-8">
+               {[
+                 { name: 'Accueil', id: 'accueil' },
+                 { name: 'Caractéristiques', id: 'caracteristiques' },
+                 { name: 'Fonctionnalités', id: 'fonctionnalites' },
+                 { name: 'Tarifs', id: 'tarifs' },
+                 { name: 'FAQ', id: 'faq' }
+               ].map((item) => (
+                 <button
+                   key={item.name}
+                   onClick={() => scrollToSection(item.id)}
+                   className={`px-4 py-2 font-medium transition-all duration-200 relative ${
+                     activeTab === item.name
+                       ? isScrolled 
+                         ? 'text-purple-600 border-b-2 border-purple-600' 
+                         : 'text-white border-b-2 border-white'
+                       : isScrolled
+                         ? 'text-gray-900 hover:text-purple-600'
+                         : 'text-white/80 hover:text-white'
+                   }`}
+                 >
+                   {item.name}
+                 </button>
+               ))}
+             </div>
+            <div className="flex space-x-3 md:space-x-4">
+               <Button 
+                 variant="outline" 
+                 onClick={() => router.push('/auth')}
+                 className={`bg-transparent text-sm md:text-base px-3 md:px-4 py-1.5 md:py-2 rounded-lg ${isScrolled 
+                   ? 'border-purple-600 text-purple-600 hover:bg-purple-50' 
+                   : 'border-white text-white hover:bg-white hover:text-purple-600'
+                 }`}
+               >
+                 Connexion
+               </Button>
+               <Button 
+                 onClick={() => router.push('/auth')}
+                 className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg transform hover:scale-105 transition-all duration-200"
+               >
+                 Commencer
+               </Button>
+             </div>
+           </div>
+         </div>
+       </nav>
 
-      {/* Hero Section */}
-      <section id="accueil" className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800"></div>
+       {/* Hero Section */}
+       <section id="accueil" className="relative min-h-screen flex items-center justify-center overflow-hidden">
+         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800"></div>
         
         {/* ONE BIG DRAMATIC CURVE */}
         <div className="absolute bottom-0 left-0 w-full overflow-hidden z-20 pointer-events-none">
@@ -427,68 +427,68 @@ export default function HomePage() {
         </div>
         
         <div className="absolute inset-0 bg-black/10 z-0"></div>
-        <div className="relative max-w-7xl mx-auto px-6 py-12 z-10">
-          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            <div className="text-white space-y-8">
-              <Badge className="inline-flex bg-white/20 text-white border-white/30 backdrop-blur-sm shadow-lg">
-                🏥 Plateforme d'apprentissage médical de nouvelle génération
-              </Badge>
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight animate-fade-in">
-                Med<span className="text-purple-300 bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">Q</span>
-              </h1>
-              <p className="text-base md:text-lg lg:text-xl text-purple-100 animate-slide-up font-medium">
-                La plateforme d'excellence pour les étudiants en médecine
-              </p>
-              <p className="text-sm md:text-base opacity-90 leading-relaxed animate-slide-up max-w-2xl" style={{ animationDelay: '0.2s' }}>
-                Préparez-vous aux examens médicaux avec des milliers de questions, 
-                des cas cliniques authentiques et un suivi personnalisé de vos progrès. 
-                Rejoignez une communauté d'excellence médicale.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
-                  size="lg"
-                  onClick={() => router.push('/auth')}
-                  className="bg-white text-purple-600 hover:bg-purple-50 font-bold text-lg md:text-xl px-8 md:px-10 py-4 md:py-5 shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-xl border-2 border-white hover:border-purple-200"
-                >
-                  <span className="flex items-center gap-3">
-                    Commencer gratuitement
-                    <ArrowRight className="w-5 h-5 md:w-6 md:h-6" />
-                  </span>
-                </Button>
-                <Button 
-                  size="lg"
-                  variant="outline"
-                  onClick={() => scrollToSection('fonctionnalites')}
-                  className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-purple-600 font-semibold text-sm md:text-base px-5 md:px-6 py-3 md:py-3.5 shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-xl backdrop-blur-sm"
-                >
-                  <span className="flex items-center gap-3">
-                    <Play className="w-5 h-5 md:w-6 md:h-6" />
-                    Voir la démo
-                  </span>
-                </Button>
-              </div>
-              <div className="inline-flex w-auto self-start items-center justify-start sm:gap-4 animate-slide-up bg-white/10 backdrop-blur-md rounded-lg p-2 md:p-3 border border-white/20" style={{ animationDelay: '0.6s' }}>
-                <div className="text-center">
-                  <div className="text-lg md:text-xl font-bold text-white">10K+</div>
-                  <div className="text-purple-200 text-[10px] md:text-xs font-medium">Questions</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg md:text-xl font-bold text-white">500+</div>
-                  <div className="text-purple-200 text-[10px] md:text-xs font-medium">Cas cliniques</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg md:text-xl font-bold text-white">15+</div>
-                  <div className="text-purple-200 text-[10px] md:text-xs font-medium">Spécialités</div>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-center lg:justify-end">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 z-10">
+          <div className="grid lg:grid-cols-2 gap-6 md:gap-8 lg:gap-12 items-center">
+             <div className="text-white space-y-8">
+               <Badge className="inline-flex bg-white/20 text-white border-white/30 backdrop-blur-sm shadow-lg">
+                 🏥 Plateforme d'apprentissage médical de nouvelle génération
+               </Badge>
+               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight animate-fade-in">
+                 Med<span className="text-purple-300 bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">Q</span>
+               </h1>
+               <p className="text-base md:text-lg lg:text-xl text-purple-100 animate-slide-up font-medium">
+                 La plateforme d'excellence pour les étudiants en médecine
+               </p>
+               <p className="text-sm md:text-base opacity-90 leading-relaxed animate-slide-up max-w-2xl" style={{ animationDelay: '0.2s' }}>
+                 Préparez-vous aux examens médicaux avec des milliers de questions, 
+                 des cas cliniques authentiques et un suivi personnalisé de vos progrès. 
+                 Rejoignez une communauté d'excellence médicale.
+               </p>
+               <div className="flex flex-col sm:flex-row gap-4">
+                 <Button 
+                   size="lg"
+                   onClick={() => router.push('/auth')}
+                   className="bg-white text-purple-600 hover:bg-purple-50 font-bold text-lg md:text-xl px-8 md:px-10 py-4 md:py-5 shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-xl border-2 border-white hover:border-purple-200"
+                 >
+                   <span className="flex items-center gap-3">
+                     Commencer gratuitement
+                     <ArrowRight className="w-5 h-5 md:w-6 md:h-6" />
+                   </span>
+                 </Button>
+                 <Button 
+                   size="lg"
+                   variant="outline"
+                   onClick={() => scrollToSection('fonctionnalites')}
+                   className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-purple-600 font-semibold text-sm md:text-base px-5 md:px-6 py-3 md:py-3.5 shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-xl backdrop-blur-sm"
+                 >
+                   <span className="flex items-center gap-3">
+                     <Play className="w-5 h-5 md:w-6 md:h-6" />
+                     Voir la démo
+                   </span>
+                 </Button>
+               </div>
+               <div className="inline-flex w-auto self-start items-center justify-start gap-3 sm:gap-4 animate-slide-up bg-white/10 backdrop-blur-md rounded-lg p-2 md:p-3 border border-white/20" style={{ animationDelay: '0.6s' }}>
+                 <div className="text-center">
+                   <div className="text-lg md:text-xl font-bold text-white">10K+</div>
+                   <div className="text-purple-200 text-[10px] md:text-xs font-medium">Questions</div>
+                 </div>
+                 <div className="text-center">
+                   <div className="text-lg md:text-xl font-bold text-white">500+</div>
+                   <div className="text-purple-200 text-[10px] md:text-xs font-medium">Cas cliniques</div>
+                 </div>
+                 <div className="text-center">
+                   <div className="text-lg md:text-xl font-bold text-white">15+</div>
+                   <div className="text-purple-200 text-[10px] md:text-xs font-medium">Spécialités</div>
+                 </div>
+               </div>
+             </div>
+            <div className="hidden md:flex justify-center lg:justify-end">
               <div className="relative animate-float">
                 {/* Main Device - Smaller */}
                 <div className="w-72 h-80 md:w-80 md:h-[24rem] bg-white rounded-3xl shadow-2xl p-4 md:p-6 transform rotate-1 hover:rotate-0 transition-all duration-500 hover:shadow-3xl border border-gray-100">
-                  <div className="h-full bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 rounded-2xl p-3 md:p-4 flex flex-col relative overflow-hidden">
-                    {/* Subtle background pattern */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl"></div>
+                   <div className="h-full bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 rounded-2xl p-3 md:p-4 flex flex-col relative overflow-hidden">
+                     {/* Subtle background pattern */}
+                     <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-2xl"></div>
                     
                     {/* Header */}
                     <div className="relative z-10 flex items-center gap-3 mb-4">
@@ -619,289 +619,289 @@ export default function HomePage() {
       </section>
 
       {/* Characteristics Section */}
-      <section id="caracteristiques" className="content-section py-20 bg-white" style={{ margin: 0, padding: '5rem 0' }}>
-        <div className="max-w-7xl mx-auto px-6">
+      <section id="caracteristiques" className="content-section py-14 md:py-20 bg-white" style={{ margin: 0 }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
               Nos Caractéristiques
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
               Une plateforme conçue spécialement pour les étudiants en médecine, 
               avec des fonctionnalités avancées pour maximiser votre réussite.
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {characteristics.map((char, index) => (
-              <Card key={index} className="group hover:shadow-xl transition-all duration-300 border-0 bg-white shadow-md">
-                <CardHeader className="text-center pb-4">
-                  <div className="mx-auto w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                    {char.icon}
-                  </div>
-                  <CardTitle className="text-xl font-bold text-gray-900">{char.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center">
-                  <CardDescription className="text-gray-600 leading-relaxed">
-                    {char.description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+             {characteristics.map((char, index) => (
+               <Card key={index} className="group hover:shadow-xl transition-all duration-300 border-0 bg-white shadow-md">
+                 <CardHeader className="text-center pb-4">
+                   <div className="mx-auto w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                     {char.icon}
+                   </div>
+                   <CardTitle className="text-xl font-bold text-gray-900">{char.title}</CardTitle>
+                 </CardHeader>
+                 <CardContent className="text-center">
+                   <CardDescription className="text-gray-600 leading-relaxed">
+                     {char.description}
+                   </CardDescription>
+                 </CardContent>
+               </Card>
+             ))}
+           </div>
+         </div>
+       </section>
 
-      {/* Features Section */}
-      <section id="fonctionnalites" className="content-section py-20 bg-white" style={{ margin: 0, padding: '5rem 0' }}>
-        <div className="max-w-7xl mx-auto px-6">
+       {/* Features Section */}
+       <section id="fonctionnalites" className="content-section py-14 md:py-20 bg-white" style={{ margin: 0 }}>
+         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
               Fonctionnalités Avancées
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
               Découvrez tous les outils dont vous avez besoin pour exceller 
               dans vos études médicales et préparer votre future carrière.
             </p>
           </div>
           <div className="grid lg:grid-cols-2 gap-12 mb-20">
-            {features.map((feature, index) => (
-              <div key={index} className="flex gap-6 group">
-                <div className="flex-shrink-0">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    {feature.icon}
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">{feature.title}</h3>
-                  <p className="text-gray-600 leading-relaxed">{feature.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+             {features.map((feature, index) => (
+               <div key={index} className="flex gap-6 group">
+                 <div className="flex-shrink-0">
+                   <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                     {feature.icon}
+                   </div>
+                 </div>
+                 <div className="flex-1">
+                   <h3 className="text-2xl font-bold text-gray-900 mb-3">{feature.title}</h3>
+                   <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                 </div>
+               </div>
+             ))}
+           </div>
 
-          {/* Additional Features */}
-          <div className="bg-white rounded-3xl p-8 lg:p-12 border border-gray-100">
-            <h3 className="text-3xl font-bold text-gray-900 text-center mb-12">
-              Fonctionnalités Supplémentaires
-            </h3>
-            <div className="grid md:grid-cols-3 gap-8">
-              {additionalFeatures.map((feature, index) => (
-                <div key={index} className="text-center group">
-                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
-                    {feature.icon}
-                  </div>
-                  <h4 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h4>
-                  <p className="text-gray-600">{feature.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+           {/* Additional Features */}
+           <div className="bg-white rounded-3xl p-8 lg:p-12 border border-gray-100">
+             <h3 className="text-3xl font-bold text-gray-900 text-center mb-12">
+               Fonctionnalités Supplémentaires
+             </h3>
+             <div className="grid md:grid-cols-3 gap-8">
+               {additionalFeatures.map((feature, index) => (
+                 <div key={index} className="text-center group">
+                   <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
+                     {feature.icon}
+                   </div>
+                   <h4 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h4>
+                   <p className="text-gray-600">{feature.description}</p>
+                 </div>
+               ))}
+             </div>
+           </div>
+         </div>
+       </section>
 
-      {/* Testimonials */}
-      <section className="content-section py-20 bg-white" style={{ margin: 0, padding: '5rem 0' }}>
-        <div className="max-w-7xl mx-auto px-6">
+       {/* Testimonials */}
+       <section className="content-section py-14 md:py-20 bg-white" style={{ margin: 0 }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
               Témoignages d'Étudiants
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-lg md:text-xl text-gray-600">
               Découvrez ce que disent nos utilisateurs de MedQ
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <div className="text-4xl">{testimonial.avatar}</div>
-                    <div>
-                      <CardTitle className="text-lg text-gray-900">{testimonial.name}</CardTitle>
-                      <CardDescription className="text-purple-600">{testimonial.role}</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Quote className="w-8 h-8 text-purple-400 mb-4" />
-                  <p className="text-gray-600 italic leading-relaxed">"{testimonial.content}"</p>
-                  <div className="flex gap-1 mt-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+             {testimonials.map((testimonial, index) => (
+               <Card key={index} className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                 <CardHeader>
+                   <div className="flex items-center gap-4">
+                     <div className="text-4xl">{testimonial.avatar}</div>
+                     <div>
+                       <CardTitle className="text-lg text-gray-900">{testimonial.name}</CardTitle>
+                       <CardDescription className="text-purple-600">{testimonial.role}</CardDescription>
+                     </div>
+                   </div>
+                 </CardHeader>
+                 <CardContent>
+                   <Quote className="w-8 h-8 text-purple-400 mb-4" />
+                   <p className="text-gray-600 italic leading-relaxed">"{testimonial.content}"</p>
+                   <div className="flex gap-1 mt-4">
+                     {[...Array(testimonial.rating)].map((_, i) => (
+                       <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                     ))}
+                   </div>
+                 </CardContent>
+               </Card>
+             ))}
+           </div>
+         </div>
+       </section>
 
-      {/* Pricing Section */}
-      <section id="tarifs" className="content-section py-20 bg-white" style={{ margin: 0, padding: '5rem 0' }}>
-        <div className="max-w-7xl mx-auto px-6">
+       {/* Pricing Section */}
+       <section id="tarifs" className="content-section py-14 md:py-20 bg-white" style={{ margin: 0 }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
               Plans d'Abonnement
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
               Choisissez le plan qui correspond à votre niveau d'étude et à vos objectifs académiques.
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {pricingPlans.map((plan, index) => (
-              <Card key={index} className={`relative bg-white border border-gray-200 ${plan.popular ? 'ring-2 ring-purple-500 shadow-xl' : 'shadow-lg'} hover:shadow-xl transition-all duration-300 transform hover:scale-105`}>
-                {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-purple-500">
-                    Populaire
-                  </Badge>
-                )}
-                <CardHeader className="text-center bg-white">
-                  <CardTitle className="text-lg font-bold text-gray-900">{plan.name}</CardTitle>
-                  <div className="text-3xl font-bold text-purple-600 mt-4">
-                    {plan.price} <span className="text-sm text-gray-500">TND</span>
-                  </div>
-                  <CardDescription className="text-gray-600">{plan.duration}</CardDescription>
-                </CardHeader>
-                <CardContent className="bg-white">
-                  <ul className="space-y-3">
-                    {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-center gap-3">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span className="text-sm text-gray-600">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button 
-                    className={`w-full mt-6 ${plan.popular ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'} text-white transform hover:scale-105 transition-all duration-200`}
-                    onClick={() => router.push('/auth')}
-                  >
-                    Choisir ce plan
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+             {pricingPlans.map((plan, index) => (
+               <Card key={index} className={`relative bg-white border border-gray-200 ${plan.popular ? 'ring-2 ring-purple-500 shadow-xl' : 'shadow-lg'} hover:shadow-xl transition-all duration-300 transform hover:scale-105`}>
+                 {plan.popular && (
+                   <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-purple-500">
+                     Populaire
+                   </Badge>
+                 )}
+                 <CardHeader className="text-center bg-white">
+                   <CardTitle className="text-lg font-bold text-gray-900">{plan.name}</CardTitle>
+                   <div className="text-3xl font-bold text-purple-600 mt-4">
+                     {plan.price} <span className="text-sm text-gray-500">TND</span>
+                   </div>
+                   <CardDescription className="text-gray-600">{plan.duration}</CardDescription>
+                 </CardHeader>
+                 <CardContent className="bg-white">
+                   <ul className="space-y-3">
+                     {plan.features.map((feature, featureIndex) => (
+                       <li key={featureIndex} className="flex items-center gap-3">
+                         <CheckCircle className="w-4 h-4 text-green-500" />
+                         <span className="text-sm text-gray-600">{feature}</span>
+                       </li>
+                     ))}
+                   </ul>
+                   <Button 
+                     className={`w-full mt-6 ${plan.popular ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'} text-white transform hover:scale-105 transition-all duration-200`}
+                     onClick={() => router.push('/auth')}
+                   >
+                     Choisir ce plan
+                   </Button>
+                 </CardContent>
+               </Card>
+             ))}
+           </div>
+         </div>
+       </section>
 
-      {/* FAQ Section */}
-      <section id="faq" className="content-section py-20 bg-white" style={{ margin: 0, padding: '5rem 0' }}>
-        <div className="max-w-4xl mx-auto px-6">
+       {/* FAQ Section */}
+       <section id="faq" className="content-section py-14 md:py-20 bg-white" style={{ margin: 0 }}>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
               Questions Fréquentes
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-lg md:text-xl text-gray-600">
               Trouvez rapidement les réponses à vos questions
             </p>
           </div>
           <div className="space-y-4">
-            {faqItems.map((item, index) => (
-              <Card key={index} className="border border-gray-200 shadow-sm bg-white hover:shadow-md transition-all duration-200">
-                <button
-                  onClick={() => toggleFAQ(index)}
-                  className="w-full text-left p-6 flex items-center justify-between hover:bg-purple-50 transition-colors"
-                >
-                  <span className="font-semibold text-gray-900 pr-4">{item.question}</span>
-                  <ChevronDown
-                    className={`w-5 h-5 text-purple-500 transition-transform duration-200 ${
-                      openFAQ === index ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                {openFAQ === index && (
-                  <div className="px-6 pb-6 border-t border-gray-100 bg-purple-50">
-                    <p className="text-gray-600 leading-relaxed pt-4">{item.answer}</p>
-                  </div>
-                )}
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+             {faqItems.map((item, index) => (
+               <Card key={index} className="border border-gray-200 shadow-sm bg-white hover:shadow-md transition-all duration-200">
+                 <button
+                   onClick={() => toggleFAQ(index)}
+                   className="w-full text-left p-6 flex items-center justify-between hover:bg-purple-50 transition-colors"
+                 >
+                   <span className="font-semibold text-gray-900 pr-4">{item.question}</span>
+                   <ChevronDown
+                     className={`w-5 h-5 text-purple-500 transition-transform duration-200 ${
+                       openFAQ === index ? 'rotate-180' : ''
+                     }`}
+                   />
+                 </button>
+                 {openFAQ === index && (
+                   <div className="px-6 pb-6 border-t border-gray-100 bg-purple-50">
+                     <p className="text-gray-600 leading-relaxed pt-4">{item.answer}</p>
+                   </div>
+                 )}
+               </Card>
+             ))}
+           </div>
+         </div>
+       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-purple-600 to-blue-800">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
-            Prêt à Exceller en Médecine ?
-          </h2>
-          <p className="text-xl text-purple-100 mb-8 max-w-2xl mx-auto">
-            Rejoignez des milliers d'étudiants qui ont déjà choisi MedQ pour réussir leurs examens médicaux.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg"
-              onClick={() => router.push('/auth')}
-              className="bg-white text-purple-600 hover:bg-purple-50 font-semibold text-lg px-8 py-4 shadow-lg transform hover:scale-105 transition-all duration-200"
-            >
-              Commencer maintenant
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-            <Button 
-              size="lg"
-              variant="outline"
-              className="border-white text-purple-600 hover:bg-white hover:text-purple-600 font-semibold text-lg px-8 py-4 shadow-lg transform hover:scale-105 transition-all duration-200"
-            >
-              Essai gratuit 7 jours
-            </Button>
-          </div>
-        </div>
-      </section>
+       {/* CTA Section */}
+       <section className="py-16 md:py-20 bg-gradient-to-br from-purple-600 to-blue-800">
+         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
+             Prêt à Exceller en Médecine ?
+           </h2>
+           <p className="text-lg md:text-xl text-purple-100 mb-8 max-w-2xl mx-auto">
+             Rejoignez des milliers d'étudiants qui ont déjà choisi MedQ pour réussir leurs examens médicaux.
+           </p>
+           <div className="flex flex-col sm:flex-row gap-4 justify-center">
+             <Button 
+               size="lg"
+               onClick={() => router.push('/auth')}
+               className="bg-white text-purple-600 hover:bg-purple-50 font-semibold text-lg px-8 py-4 shadow-lg transform hover:scale-105 transition-all duration-200"
+             >
+               Commencer maintenant
+               <ArrowRight className="ml-2 w-5 h-5" />
+             </Button>
+             <Button 
+               size="lg"
+               variant="outline"
+               className="border-white text-purple-600 hover:bg-white hover:text-purple-600 font-semibold text-lg px-8 py-4 shadow-lg transform hover:scale-105 transition-all duration-200"
+             >
+               Essai gratuit 7 jours
+             </Button>
+           </div>
+         </div>
+       </section>
 
-      {/* Footer */}
-      <footer className="bg-gradient-to-br from-gray-800 to-gray-900 text-white py-16">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-8 mb-12">
-            <div>
-              <h3 className="text-2xl font-bold mb-4 text-purple-300">MedQ</h3>
-              <p className="text-gray-300 leading-relaxed">
-                La plateforme d'apprentissage médical de référence pour les étudiants ambitieux.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4 text-white">Plateforme</h4>
-              <ul className="space-y-2 text-gray-300">
-                <li><a href="#" className="hover:text-purple-300 transition-colors">Fonctionnalités</a></li>
-                <li><a href="#" className="hover:text-purple-300 transition-colors">Tarifs</a></li>
-                <li><a href="#" className="hover:text-purple-300 transition-colors">Support</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4 text-white">Ressources</h4>
-              <ul className="space-y-2 text-gray-300">
-                <li><a href="#" className="hover:text-purple-300 transition-colors">Guide d'utilisation</a></li>
-                <li><a href="#" className="hover:text-purple-300 transition-colors">FAQ</a></li>
-                <li><a href="#" className="hover:text-purple-300 transition-colors">Contact</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4 text-white">Suivez-nous</h4>
-              <div className="flex space-x-4">
-                <a href="#" className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors transform hover:scale-110 duration-200">
-                  <Facebook className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors transform hover:scale-110 duration-200">
-                  <Instagram className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center hover:bg-green-700 transition-colors transform hover:scale-110 duration-200">
-                  <MessageCircle className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors transform hover:scale-110 duration-200">
-                  <Mail className="w-5 h-5" />
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-700 pt-8 text-center">
-            <p className="text-gray-400">
-              © 2024-2025 MedQ. Tous droits réservés. | 
-              <a href="#" className="hover:text-purple-300 ml-2">Politique de confidentialité</a> | 
-              <a href="#" className="hover:text-purple-300 ml-2">Conditions d'utilisation</a>
-            </p>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
-}
+       {/* Footer */}
+       <footer className="bg-gradient-to-br from-gray-800 to-gray-900 text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+           <div className="grid md:grid-cols-4 gap-8 mb-12">
+             <div>
+               <h3 className="text-2xl font-bold mb-4 text-purple-300">MedQ</h3>
+               <p className="text-gray-300 leading-relaxed">
+                 La plateforme d'apprentissage médical de référence pour les étudiants ambitieux.
+               </p>
+             </div>
+             <div>
+               <h4 className="font-semibold mb-4 text-white">Plateforme</h4>
+               <ul className="space-y-2 text-gray-300">
+                 <li><a href="#" className="hover:text-purple-300 transition-colors">Fonctionnalités</a></li>
+                 <li><a href="#" className="hover:text-purple-300 transition-colors">Tarifs</a></li>
+                 <li><a href="#" className="hover:text-purple-300 transition-colors">Support</a></li>
+               </ul>
+             </div>
+             <div>
+               <h4 className="font-semibold mb-4 text-white">Ressources</h4>
+               <ul className="space-y-2 text-gray-300">
+                 <li><a href="#" className="hover:text-purple-300 transition-colors">Guide d'utilisation</a></li>
+                 <li><a href="#" className="hover:text-purple-300 transition-colors">FAQ</a></li>
+                 <li><a href="#" className="hover:text-purple-300 transition-colors">Contact</a></li>
+               </ul>
+             </div>
+             <div>
+               <h4 className="font-semibold mb-4 text-white">Suivez-nous</h4>
+               <div className="flex space-x-4">
+                 <a href="#" className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors transform hover:scale-110 duration-200">
+                   <Facebook className="w-5 h-5" />
+                 </a>
+                 <a href="#" className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors transform hover:scale-110 duration-200">
+                   <Instagram className="w-5 h-5" />
+                 </a>
+                 <a href="#" className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center hover:bg-green-700 transition-colors transform hover:scale-110 duration-200">
+                   <MessageCircle className="w-5 h-5" />
+                 </a>
+                 <a href="#" className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors transform hover:scale-110 duration-200">
+                   <Mail className="w-5 h-5" />
+                 </a>
+               </div>
+             </div>
+           </div>
+           <div className="border-t border-gray-700 pt-8 text-center">
+             <p className="text-gray-400">
+               © 2024-2025 MedQ. Tous droits réservés. | 
+               <a href="#" className="hover:text-purple-300 ml-2">Politique de confidentialité</a> | 
+               <a href="#" className="hover:text-purple-300 ml-2">Conditions d'utilisation</a>
+             </p>
+           </div>
+         </div>
+       </footer>
+     </div>
+   );
+ }

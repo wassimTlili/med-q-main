@@ -27,10 +27,10 @@ export default function SettingsPageRoute() {
   return (
     <ProtectedRoute>
       <AppLayout>
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">{t('settings.title')}</h1>
-            <p className="text-lg mt-2 text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">{t('settings.title')}</h1>
+            <p className="text-sm sm:text-base md:text-lg mt-2 text-muted-foreground">
               {t('settings.description')}
             </p>
           </div>
@@ -101,4 +101,4 @@ export default function SettingsPageRoute() {
       </AppLayout>
     </ProtectedRoute>
   )
-} 
+}

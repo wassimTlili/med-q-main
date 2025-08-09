@@ -61,7 +61,7 @@ export function RecentResults({ results, isLoading = false }: RecentResultsProps
           {t('dashboard.recentResults.title')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4">
         {results.length === 0 ? (
           <div className="text-center py-8">
             <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -75,29 +75,31 @@ export function RecentResults({ results, isLoading = false }: RecentResultsProps
             const scoreColor = getScoreColor(result.score);
             
             return (
-              <div key={result.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-sm">{result.lectureTitle}</h3>
-                    {result.isImprovement && (
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                    )}
+              <div key={result.id} className="p-3 border rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-sm sm:text-base truncate">{result.lectureTitle}</h3>
+                      {result.isImprovement && (
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                      )}
+                    </div>
+                    <Badge variant="outline" className="text-[10px] sm:text-xs mb-2">
+                      {result.specialtyName}
+                    </Badge>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">
+                      {new Date(result.completedAt).toLocaleDateString('fr-FR')}
+                    </div>
                   </div>
-                  <Badge variant="outline" className="text-xs mb-2">
-                    {result.specialtyName}
-                  </Badge>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(result.completedAt).toLocaleDateString('fr-FR')}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-full ${scoreColor}`}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-lg">{result.score}%</div>
-                    <div className="text-xs text-muted-foreground">
-                      {result.totalQuestions} {t('dashboard.recentResults.questions')}
+                  <div className="flex items-center gap-2 sm:justify-end">
+                    <div className={`p-2 rounded-full ${scoreColor}`}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-lg">{result.score}%</div>
+                      <div className="text-[10px] sm:text-xs text-muted-foreground">
+                        {result.totalQuestions} {t('dashboard.recentResults.questions')}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -108,4 +110,4 @@ export function RecentResults({ results, isLoading = false }: RecentResultsProps
       </CardContent>
     </Card>
   );
-} 
+}

@@ -41,11 +41,11 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col md:flex-row overflow-x-hidden">
       {/* Left Panel - Marketing Content */}
-      <div className="w-1/2 bg-gradient-to-br from-purple-600 to-purple-800 text-white p-12 flex flex-col justify-center relative overflow-hidden">
+      <div className="hidden md:flex w-full md:w-1/2 bg-gradient-to-br from-purple-600 to-purple-800 text-white p-10 lg:p-12 flex-col justify-center relative overflow-hidden">
         <div className="relative z-10">
-          <h1 className="text-5xl lg:text-6xl font-bold mb-4">
+          <h1 className="text-4xl lg:text-6xl font-bold mb-4">
             La nouvelle plateforme de<br />
             <span className="text-purple-200">Questions révolutionnaire !</span>
           </h1>
@@ -57,7 +57,7 @@ export default function AuthPage() {
             <span className="text-3xl lg:text-4xl font-semibold">MedQ</span>
           </div>
           
-          <p className="text-purple-200 text-xl lg:text-2xl mb-12">
+          <p className="text-purple-200 text-lg lg:text-2xl mb-12">
             Destinée aux étudiants en<br />
             sciences médicales
           </p>
@@ -165,32 +165,51 @@ export default function AuthPage() {
       </div>
 
       {/* Right Panel - Auth Forms */}
-      <div className="w-1/2 bg-gray-50 p-8 flex flex-col justify-center">
-        <div className="max-w-md mx-auto w-full">
-          {authMode === 'login' && (
-            <LoginForm
-              onToggleForm={() => setAuthMode('register')}
-              onForgotPassword={() => setAuthMode('forgot')}
-            />
-          )}
-          {authMode === 'register' && (
-            <RegisterForm onToggleForm={() => setAuthMode('login')} />
-          )}
-          {authMode === 'forgot' && (
-            <ForgotPasswordForm onBack={() => setAuthMode('login')} />
-          )}
-          {authMode === 'reset' && (
-            <ResetPasswordForm />
-          )}
+      <div className="w-full md:w-1/2 bg-gray-50 p-6 sm:p-8 flex flex-col justify-center">
+        {/* Mobile Hero (visible on small screens only) */}
+        <div className="md:hidden bg-gradient-to-br from-purple-600 to-purple-800 text-white rounded-xl p-5 mb-6">
+          <div className="flex items-center mb-3">
+            <div className="w-12 h-12 border-4 border-white rounded-full flex items-center justify-center mr-3">
+              <Brain className="w-6 h-6" />
+            </div>
+            <span className="text-2xl font-semibold">MedQ</span>
+          </div>
+          <p className="text-purple-100 text-sm">
+            La nouvelle plateforme de questions destinée aux étudiants en sciences médicales
+          </p>
         </div>
+         <div className="max-w-md mx-auto w-full">
+           {authMode === 'login' && (
+             <LoginForm
+               onToggleForm={() => setAuthMode('register')}
+               onForgotPassword={() => setAuthMode('forgot')}
+             />
+           )}
+           {authMode === 'register' && (
+             <RegisterForm onToggleForm={() => setAuthMode('login')} />
+           )}
+           {authMode === 'forgot' && (
+             <ForgotPasswordForm onBack={() => setAuthMode('login')} />
+           )}
+           {authMode === 'reset' && (
+             <ResetPasswordForm />
+           )}
+         </div>
 
-        {/* reCAPTCHA placeholder */}
-        <div className="fixed bottom-4 right-4">
+         {/* reCAPTCHA placeholder */}
+         {/* Inline on mobile */}
+         <div className="md:hidden mt-6">
           <div className="bg-gray-200 p-2 rounded text-xs text-gray-500 border">
             reCAPTCHA
           </div>
         </div>
-      </div>
-    </div>
+        {/* Fixed on desktop */}
+        <div className="hidden md:block fixed bottom-4 right-4">
+          <div className="bg-gray-200 p-2 rounded text-xs text-gray-500 border">
+            reCAPTCHA
+          </div>
+        </div>
+       </div>
+     </div>
   );
 }

@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Lecture } from '@/types';
 import { LecturesListView } from '@/components/specialties/LecturesListView';
@@ -93,28 +92,28 @@ export function LecturesList({ lectures, isLoading }: LecturesListProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.3 }}
-      className="space-y-6"
+      className="space-y-4 sm:space-y-6"
     >
       {/* Section Header */}
       <Card className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 rounded-2xl shadow-md">
         <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-10 h-10 bg-purple-100 dark:bg-purple-900/50 rounded-xl">
                 <BookOpen className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <CardTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                <CardTitle className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
                   {t('lectures.title') || 'Lectures'}
                 </CardTitle>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                   {lectures.length} {lectures.length === 1 ? 'lecture' : 'lectures'} available
                 </p>
               </div>
             </div>
             
             {/* Search Component */}
-            <div className="w-80">
+            <div className="w-full sm:w-80">
               <LectureSearch onSearch={setSearchTerm} />
             </div>
           </div>

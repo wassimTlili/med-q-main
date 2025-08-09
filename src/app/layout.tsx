@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
@@ -10,6 +10,14 @@ export const metadata: Metadata = {
   description: 'A platform for medical education and question management',
 }
 
+// Ensure proper mobile responsiveness
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -17,11 +25,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} overflow-x-hidden`}>
         <Providers>
           {children}
         </Providers>
       </body>
     </html>
   )
-} 
+}

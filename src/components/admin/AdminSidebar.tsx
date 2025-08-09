@@ -125,8 +125,8 @@ export function AdminSidebar() {
 
   return (
     <>
-      <Sidebar className="border-r border-border bg-background shadow-lg" collapsible="icon">
-        <SidebarHeader className={`border-b border-border py-4 ${state === 'expanded' ? 'px-6' : 'px-2'}`}>
+      <Sidebar className="border-r border-border bg-background shadow-lg max-w-[80vw] sm:max-w-none" collapsible="icon">
+        <SidebarHeader className={`border-b border-border py-3 sm:py-4 ${state === 'expanded' ? 'px-4 sm:px-6' : 'px-2'}`}>
           <div className="flex items-center justify-center">
             <div className="flex items-center gap-3">
               {isMobile && (
@@ -146,10 +146,10 @@ export function AdminSidebar() {
                     <Brain className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-bold text-lg bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                    <span className="font-bold text-base sm:text-lg bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
                       MedQ
                     </span>
-                    <span className="text-xs text-muted-foreground">Admin Panel</span>
+                    <span className="text-[10px] sm:text-xs text-muted-foreground">Admin Panel</span>
                   </div>
                 </div>
               ) : (
@@ -162,9 +162,9 @@ export function AdminSidebar() {
         </SidebarHeader>
         <SidebarContent>
           <ScrollArea className="h-full">
-            <SidebarGroup className="mt-4">
+            <SidebarGroup className="mt-3 sm:mt-4">
               <SidebarGroupContent>
-                <SidebarMenu className={`space-y-2 ${state === 'expanded' ? 'px-3' : 'px-0'}`}>
+                <SidebarMenu className={`space-y-2 ${state === 'expanded' ? 'px-2 sm:px-3' : 'px-0'}`}>
                   {adminMenuItems.slice(0, -1).map((item) => {
                     // Derive target tab if present
                     let itemTab: string | null = null;
@@ -197,7 +197,7 @@ export function AdminSidebar() {
                         >
                           <Link href={item.href} className={`${state === 'expanded' ? 'flex items-center gap-3 w-full' : 'flex items-center justify-center w-full h-full'}`}>
                             <item.icon className={`${iconSize} ${isActive ? 'text-white' : 'text-purple-500 group-hover:text-purple-600'} transition-all flex-shrink-0`} />
-                            <span className={`${state === 'expanded' ? 'block' : 'sr-only'} font-medium`}>
+                            <span className={`${state === 'expanded' ? 'block' : 'sr-only'} font-medium text-sm`}>
                               {item.label}
                             </span>
                           </Link>
@@ -207,7 +207,7 @@ export function AdminSidebar() {
                   })}
                   
                   {/* Separator */}
-                  <div className={`${state === 'expanded' ? 'mx-3' : 'mx-0'} my-4`}>
+                  <div className={`${state === 'expanded' ? 'mx-2 sm:mx-3' : 'mx-0'} my-3 sm:my-4`}>
                     <div className="h-px bg-border"></div>
                   </div>
                   
@@ -234,7 +234,7 @@ export function AdminSidebar() {
                         >
                           <Link href={item.href} className={`${state === 'expanded' ? 'flex items-center gap-3 w-full' : 'flex items-center justify-center w-full h-full'}`}>
                             <item.icon className={`${iconSize} ${isStudentPanel ? 'text-white' : 'text-green-500 group-hover:text-green-600'} transition-all flex-shrink-0`} />
-                            <span className={`${state === 'expanded' ? 'block' : 'sr-only'} font-medium`}>
+                            <span className={`${state === 'expanded' ? 'block' : 'sr-only'} font-medium text-sm`}>
                               {item.label}
                             </span>
                           </Link>
@@ -248,7 +248,7 @@ export function AdminSidebar() {
           </ScrollArea>
         </SidebarContent>
         
-        <SidebarFooter className={`border-t border-border py-3 bg-background ${state === 'expanded' ? 'px-4' : 'px-2'}`}>
+        <SidebarFooter className={`border-t border-border py-2.5 sm:py-3 bg-background ${state === 'expanded' ? 'px-3 sm:px-4' : 'px-2'}`}>
           <div className="space-y-2">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -264,7 +264,7 @@ export function AdminSidebar() {
                   title={t('auth.signOut')}
                 >
                   <LogOut className="h-5 w-5 flex-shrink-0" />
-                  {state === "expanded" && <span className="ml-3 font-medium">{t('auth.signOut')}</span>}
+                  {state === "expanded" && <span className="ml-3 font-medium text-sm">{t('auth.signOut')}</span>}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" align="center">
@@ -282,7 +282,7 @@ export function AdminSidebar() {
 export function AdminSidebarProvider({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen={false} className="w-full">
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="flex min-h-screen w-full bg-background overflow-x-hidden">
         {children}
       </div>
     </SidebarProvider>

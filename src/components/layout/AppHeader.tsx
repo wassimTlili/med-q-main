@@ -47,9 +47,9 @@ export function AppHeader() {
 
   return (
     <header className="border-b border-border/40 bg-gradient-to-r from-background via-background to-muted/20 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 sticky top-0 z-40 shadow-sm">
-      <div className="flex h-16 items-center gap-4 px-4 sm:px-6">
+      <div className="flex h-16 items-center gap-2 sm:gap-4 px-3 sm:px-6">
         {/* Left Section: Sidebar toggle + Branding */}
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -61,11 +61,11 @@ export function AppHeader() {
           </Button>
           <Button 
             variant="link" 
-            className="font-bold text-xl p-0 flex items-center gap-2 whitespace-nowrap hover:no-underline group" 
+            className="font-bold text-lg sm:text-xl p-0 flex items-center gap-2 whitespace-nowrap hover:no-underline group" 
             onClick={() => router.push('/dashboard')}
           >
-            <span className="flex items-center justify-center bg-gradient-to-br from-purple-600 to-purple-700 text-white rounded-xl w-9 h-9 shadow-lg shadow-purple-500/25 group-hover:shadow-purple-500/40 transition-all duration-200">
-              <Stethoscope className="h-5 w-5" />
+            <span className="flex items-center justify-center bg-gradient-to-br from-purple-600 to-purple-700 text-white rounded-xl w-8 h-8 sm:w-9 sm:h-9 shadow-lg shadow-purple-500/25 group-hover:shadow-purple-500/40 transition-all duration-200">
+              <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
             </span>
             <span className="hidden md:inline-block bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-600 bg-clip-text text-transparent">{t('app.name')}</span>
           </Button>
@@ -132,7 +132,7 @@ export function AppHeader() {
                   variant="ghost"
                   size="sm"
                   onClick={() => router.push('/admin')}
-                  className="font-medium bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 hidden sm:inline-flex rounded-xl px-4 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-200"
+                  className="font-medium bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 hidden sm:inline-flex rounded-xl px-3 sm:px-4 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-200"
                 >
                   {t('admin.adminPanel')}
                 </Button>

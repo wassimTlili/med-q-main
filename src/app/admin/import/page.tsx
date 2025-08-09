@@ -479,30 +479,30 @@ export default function ImportPage() {
     <ProtectedRoute requireAdmin>
       <AdminRoute>
         <AdminLayout>
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" onClick={handleBack}>
+          <div className="space-y-6 sm:space-y-8">
+            <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+              <Button variant="ghost" size="sm" onClick={handleBack} className="order-2 sm:order-1">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 {t('common.back')}
               </Button>
-              <div>
-                <h1 className="text-2xl font-bold">{t('admin.multiSheetImport')}</h1>
-                <p className="text-muted-foreground">{t('admin.expectedSheets')}</p>
+              <div className="order-1 sm:order-2">
+                <h1 className="text-xl sm:text-2xl font-bold">{t('admin.multiSheetImport')}</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t('admin.expectedSheets')}</p>
               </div>
             </div>
 
             {!selectedFile ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
                     <Upload className="h-5 w-5" />
                     {t('admin.selectExcelFile')}
                   </CardTitle>
-                  <CardDescription>{t('admin.requiredExcelFormat')}</CardDescription>
+                  <CardDescription className="text-sm">{t('admin.requiredExcelFormat')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors">
+                    <label className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors">
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
                         <p className="mb-2 text-sm text-muted-foreground">
@@ -524,32 +524,32 @@ export default function ImportPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-6 sm:space-y-8">
                 {/* File Info */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <FileText className="h-5 w-5" />
                       {selectedFile.name}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                       <div>
-                        <p className="text-sm font-medium">{t('admin.totalQuestions')}</p>
-                        <p className="text-2xl font-bold">{importPreview?.totalQuestions || 0}</p>
+                        <p className="text-xs sm:text-sm font-medium">{t('admin.totalQuestions')}</p>
+                        <p className="text-xl sm:text-2xl font-bold">{importPreview?.totalQuestions || 0}</p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium">{t('admin.specialties')}</p>
-                        <p className="text-2xl font-bold">{importPreview?.specialties.length || 0}</p>
+                        <p className="text-xs sm:text-sm font-medium">{t('admin.specialties')}</p>
+                        <p className="text-xl sm:text-2xl font-bold">{importPreview?.specialties.length || 0}</p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium">{t('admin.matchedLectures')}</p>
-                        <p className="text-2xl font-bold text-green-600">{importPreview?.matchedLectures || 0}</p>
+                        <p className="text-xs sm:text-sm font-medium">{t('admin.matchedLectures')}</p>
+                        <p className="text-xl sm:text-2xl font-bold text-green-600">{importPreview?.matchedLectures || 0}</p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium">{t('admin.unmatchedLectures')}</p>
-                        <p className="text-2xl font-bold text-orange-600">{importPreview?.unmatchedLectures || 0}</p>
+                        <p className="text-xs sm:text-sm font-medium">{t('admin.unmatchedLectures')}</p>
+                        <p className="text-xl sm:text-2xl font-bold text-orange-600">{importPreview?.unmatchedLectures || 0}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -561,7 +561,7 @@ export default function ImportPage() {
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       {sheetErrors.map((e, idx) => (
-                        <div key={idx} className="text-xs">
+                        <div key={idx} className="text-[11px] sm:text-xs">
                           <strong>{e.sheet}</strong>: {e.message}
                         </div>
                       ))}
@@ -573,22 +573,22 @@ export default function ImportPage() {
                 {importPreview && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>{t('admin.importPreview')}</CardTitle>
-                      <CardDescription>{t('admin.previewFirst10')}</CardDescription>
+                      <CardTitle className="text-lg">{t('admin.importPreview')}</CardTitle>
+                      <CardDescription className="text-sm">{t('admin.previewFirst10')}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-6">
+                      <div className="space-y-4 sm:space-y-6">
                         {Object.entries(importPreview.sheets).map(([sheetName, sheetData]) => (
-                          <div key={sheetName} className="space-y-4">
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-lg font-semibold capitalize">{sheetName.replace('_', ' ')}</h3>
+                          <div key={sheetName} className="space-y-3 sm:space-y-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-base sm:text-lg font-semibold capitalize">{sheetName.replace('_', ' ')}</h3>
                               <Badge variant="outline">{sheetData.questionType}</Badge>
                               <Badge variant="secondary">{sheetData.totalQuestions} questions</Badge>
                             </div>
                             
-                            <div className="space-y-3">
+                            <div className="space-y-2 sm:space-y-3">
                               {sheetData.previewData.map((item, index) => (
-                                <div key={index} className="flex items-start gap-4 p-3 border rounded-lg">
+                                <div key={index} className="flex items-start gap-3 sm:gap-4 p-3 border rounded-lg">
                                   <div className="flex-shrink-0">
                                     {item.matchedLecture ? (
                                       <CheckCircle className="h-5 w-5 text-green-500" />
@@ -615,20 +615,20 @@ export default function ImportPage() {
                                     </div>
                                     
                                     {item.caseText && (
-                                      <div className="mb-2 p-2 bg-muted rounded text-xs">
+                                      <div className="mb-2 p-2 bg-muted rounded text-[11px] sm:text-xs">
                                         <strong>Case:</strong> {item.caseText.substring(0, 100)}...
                                       </div>
                                     )}
                                     
-                                    <p className="text-sm text-muted-foreground line-clamp-2">
+                                    <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
                                       {item.questionText}
                                     </p>
                                     
                                     {item.options && item.options.length > 0 && (
                                       <div className="mt-2 space-y-1">
-                                        <p className="text-xs font-semibold">Options:</p>
+                                        <p className="text-[11px] sm:text-xs font-semibold">Options:</p>
                                         {item.options.map((option, optIndex) => (
-                                          <p key={optIndex} className="text-xs text-muted-foreground ml-2">
+                                          <p key={optIndex} className="text-[11px] sm:text-xs text-muted-foreground ml-2">
                                             {String.fromCharCode(65 + optIndex)}. {option}
                                           </p>
                                         ))}
@@ -636,12 +636,12 @@ export default function ImportPage() {
                                     )}
                                     
                                     {item.mediaUrl && (
-                                      <p className="text-xs text-muted-foreground mt-1">
+                                      <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                                         <span className="font-semibold">{t('admin.image')}:</span> {item.mediaUrl}
                                       </p>
                                     )}
                                     
-                                    <p className="text-xs text-muted-foreground mt-1">
+                                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                                       {item.matchedLecture ? t('admin.matched') : t('admin.unmatched')}
                                     </p>
                                   </div>
@@ -671,7 +671,7 @@ export default function ImportPage() {
                 {progress && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                         {progress.phase === 'validating' && <FileText className="h-5 w-5" />}
                         {progress.phase === 'importing' && <Upload className="h-5 w-5 animate-pulse" />}
                         {progress.phase === 'complete' && <CheckCircle className="h-5 w-5 text-green-500" />}
@@ -680,7 +680,7 @@ export default function ImportPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-xs sm:text-sm">
                           <span>{t('admin.importProgress')}</span>
                           <span>{progress.progress.toFixed(2)}%</span>
                         </div>
@@ -694,10 +694,10 @@ export default function ImportPage() {
                             <h4 className="text-sm font-medium">Live Logs</h4>
                             <Badge variant="outline">{progress.logs.length}</Badge>
                           </div>
-                          <ScrollArea className="h-48 w-full border rounded-md p-3 bg-muted/50">
+                          <ScrollArea className="h-40 sm:h-48 w-full border rounded-md p-3 bg-muted/50">
                             <div className="space-y-1">
                               {progress.logs.map((log, index) => (
-                                <div key={index} className="text-xs font-mono text-muted-foreground">
+                                <div key={index} className="text-[11px] sm:text-xs font-mono text-muted-foreground">
                                   {log}
                                 </div>
                               ))}
@@ -713,50 +713,50 @@ export default function ImportPage() {
                 {importResult && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                         <CheckCircle className="h-5 w-5 text-green-500" />
                         {t('admin.importResults')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-4">
                         <div>
-                          <p className="text-sm font-medium">{t('admin.totalQuestions')}</p>
-                          <p className="text-2xl font-bold">{importResult.total}</p>
+                          <p className="text-xs sm:text-sm font-medium">{t('admin.totalQuestions')}</p>
+                          <p className="text-xl sm:text-2xl font-bold">{importResult.total}</p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium">{t('admin.importSuccessful')}</p>
-                          <p className="text-2xl font-bold text-green-600">{importResult.imported}</p>
+                          <p className="text-xs sm:text-sm font-medium">{t('admin.importSuccessful')}</p>
+                          <p className="text-xl sm:text-2xl font-bold text-green-600">{importResult.imported}</p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium">{t('admin.failed')}</p>
-                          <p className="text-2xl font-bold text-red-600">{importResult.failed}</p>
+                          <p className="text-xs sm:text-sm font-medium">{t('admin.failed')}</p>
+                          <p className="text-xl sm:text-2xl font-bold text-red-600">{importResult.failed}</p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium">{t('admin.createdNewSpecialties')}</p>
-                          <p className="text-2xl font-bold text-blue-600">{importResult.createdSpecialties}</p>
+                          <p className="text-xs sm:text-sm font-medium">{t('admin.createdNewSpecialties')}</p>
+                          <p className="text-xl sm:text-2xl font-bold text-blue-600">{importResult.createdSpecialties}</p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-4">
                         {importResult.createdLectures > 0 && (
                           <div>
-                            <p className="text-sm font-medium">{t('admin.createdNewLectures')}</p>
-                            <p className="text-xl font-bold text-blue-600">{importResult.createdLectures}</p>
+                            <p className="text-xs sm:text-sm font-medium">{t('admin.createdNewLectures')}</p>
+                            <p className="text-lg sm:text-xl font-bold text-blue-600">{importResult.createdLectures}</p>
                           </div>
                         )}
 
                         {importResult.createdCases > 0 && (
                           <div>
-                            <p className="text-sm font-medium">Clinical Cases Created</p>
-                            <p className="text-xl font-bold text-indigo-600">{importResult.createdCases}</p>
+                            <p className="text-xs sm:text-sm font-medium">Clinical Cases Created</p>
+                            <p className="text-lg sm:text-xl font-bold text-indigo-600">{importResult.createdCases}</p>
                           </div>
                         )}
 
                         {importResult.questionsWithImages > 0 && (
                           <div>
-                            <p className="text-sm font-medium">{t('admin.questionsWithImages')}</p>
-                            <p className="text-xl font-bold text-purple-600">{importResult.questionsWithImages}</p>
+                            <p className="text-xs sm:text-sm font-medium">{t('admin.questionsWithImages')}</p>
+                            <p className="text-lg sm:text-xl font-bold text-purple-600">{importResult.questionsWithImages}</p>
                           </div>
                         )}
                       </div>
@@ -772,10 +772,10 @@ export default function ImportPage() {
                           </CollapsibleTrigger>
                           <CollapsibleContent>
                             <div className="mt-4 p-4 border rounded-lg bg-muted/50">
-                              <ScrollArea className="h-64">
-                                <div className="space-y-2">
+                              <ScrollArea className="h-56 sm:h-64">
+                                <div className="space-y-1">
                                   {importResult.errors.map((error: string, index: number) => (
-                                    <div key={index} className="text-sm text-red-600">
+                                    <div key={index} className="text-[11px] sm:text-xs text-red-600">
                                       {error}
                                     </div>
                                   ))}
@@ -790,20 +790,20 @@ export default function ImportPage() {
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   {!isUploading && !importResult && (
-                    <Button onClick={handleUpload} className="flex-1" disabled={sheetErrors.length > 0}>
+                    <Button onClick={handleUpload} className="w-full sm:flex-1" disabled={sheetErrors.length > 0}>
                       <Upload className="h-4 w-4 mr-2" />
                       {t('admin.importQuestions')}
                     </Button>
                   )}
                   {isUploading && (
-                    <Button variant="outline" onClick={handleReset} disabled={!isUploading}>
+                    <Button variant="outline" onClick={handleReset} disabled={!isUploading} className="w-full sm:w-auto">
                       {t('common.cancel') || 'Cancel'}
                     </Button>
                   )}
                   {!isUploading && (
-                    <Button variant="outline" onClick={handleReset}>
+                    <Button variant="outline" onClick={handleReset} className="w-full sm:w-auto">
                       {importResult ? t('admin.importAnotherFile') : t('common.reset')}
                     </Button>
                   )}

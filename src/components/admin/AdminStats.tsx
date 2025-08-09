@@ -115,7 +115,8 @@ export function AdminStats() {
   if (isLoading) {
     return (
       <div className="space-y-8 animate-fade-in">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {/* tighter gaps on mobile */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
           {[...Array(5)].map((_, i) => (
             <Card key={i} className="animate-pulse border-0 shadow-lg bg-card hover:shadow-xl transition-all duration-300">
               <CardHeader className="pb-4">
@@ -127,7 +128,7 @@ export function AdminStats() {
             </Card>
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {[...Array(4)].map((_, i) => (
             <Card key={i} className="animate-pulse border-0 shadow-lg bg-card hover:shadow-xl transition-all duration-300">
               <CardHeader>
@@ -160,74 +161,74 @@ export function AdminStats() {
   return (
     <div className="space-y-12 animate-fade-in">
       {/* Basic Stats Cards - Modern Design with Dark Mode */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
         <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-card shadow-md transform hover:scale-105">
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-              <BookOpen className="w-8 h-8 text-purple-500" />
+            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
+              <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
               {t('admin.totalSpecialties')}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <div className="text-3xl font-bold text-foreground">{stats.specialties}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{stats.specialties}</div>
           </CardContent>
         </Card>
         
         <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-card shadow-md transform hover:scale-105">
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-              <FileText className="w-8 h-8 text-blue-500" />
+            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
+              <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
               {t('admin.totalLectures')}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <div className="text-3xl font-bold text-foreground">{stats.lectures}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{stats.lectures}</div>
           </CardContent>
         </Card>
         
         <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-card shadow-md transform hover:scale-105">
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-              <HelpCircle className="w-8 h-8 text-purple-500" />
+            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
+              <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
               {t('admin.totalQuestions')}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <div className="text-3xl font-bold text-foreground">{stats.questions}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{stats.questions}</div>
           </CardContent>
         </Card>
         
         <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-card shadow-md transform hover:scale-105">
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-              <Users className="w-8 h-8 text-blue-500" />
+            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
+              <Users className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
               {t('admin.registeredUsers')}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <div className="text-3xl font-bold text-foreground">{stats.users}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{stats.users}</div>
           </CardContent>
         </Card>
         
         <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-card shadow-md transform hover:scale-105">
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-              <AlertTriangle className="w-8 h-8 text-orange-500" />
+            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
+              <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
               {t('admin.pendingReports')}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
-            <div className="text-3xl font-bold text-foreground">{stats.pendingReports}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{stats.pendingReports}</div>
           </CardContent>
         </Card>
       </div>

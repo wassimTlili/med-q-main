@@ -60,9 +60,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Modern inset area with theme-aware background */}
       <SidebarInset className="bg-background min-h-screen flex flex-col admin-content">
         <AppHeader />
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 overflow-x-hidden">
           {/* Clean container with consistent spacing like landing page */}
-          <div className="max-w-7xl mx-auto w-full px-6 py-8 lg:py-12">
+          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 lg:py-12">
             {/* Enhanced content wrapper with modern styling */}
             <div className="space-y-8 animate-fade-in">
               {children}

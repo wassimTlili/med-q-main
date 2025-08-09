@@ -53,7 +53,7 @@ export function PopularCourses({ courses, isLoading = false }: PopularCoursesPro
           {t('dashboard.popularCourses.title')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4">
         {courses.length === 0 ? (
           <div className="text-center py-8">
             <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -63,43 +63,37 @@ export function PopularCourses({ courses, isLoading = false }: PopularCoursesPro
           </div>
         ) : (
           courses.map((course, index) => (
-            <div key={course.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    #{index + 1}
-                  </span>
-                  <h3 className="font-semibold text-sm">{course.title}</h3>
-                  {course.isFree && (
-                    <Badge variant="secondary" className="text-xs">
-                      {t('dashboard.popularCourses.free')}
-                    </Badge>
-                  )}
-                </div>
-                <Badge variant="outline" className="text-xs mb-2">
-                  {course.specialty.name}
-                </Badge>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    <span>{course.studentCount}</span>
+            <div key={course.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">#{index + 1}</span>
+                    <h3 className="font-semibold text-sm sm:text-base truncate">{course.title}</h3>
+                    {course.isFree && (
+                      <Badge variant="secondary" className="text-[10px] sm:text-xs">{t('dashboard.popularCourses.free')}</Badge>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3" />
-                    <span>{course.averageScore.toFixed(1)}%</span>
+                  <Badge variant="outline" className="text-[10px] sm:text-xs mb-2">{course.specialty.name}</Badge>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5" />
+                      <span>{course.studentCount}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Star className="h-3.5 w-3.5" />
+                      <span>{course.averageScore.toFixed(1)}%</span>
+                    </div>
+                    <span>{course.questionCount} {t('dashboard.popularCourses.questions')}</span>
                   </div>
-                  <span>{course.questionCount} {t('dashboard.popularCourses.questions')}</span>
                 </div>
+                <Link href={`/lecture/${course.id}`}>
+                  <Button size="sm" variant="outline" className="w-full sm:w-auto">{t('dashboard.popularCourses.start')}</Button>
+                </Link>
               </div>
-              <Link href={`/lecture/${course.id}`}>
-                <Button size="sm" variant="outline">
-                  {t('dashboard.popularCourses.start')}
-                </Button>
-              </Link>
             </div>
           ))
         )}
       </CardContent>
     </Card>
   );
-} 
+}

@@ -244,15 +244,15 @@ export default function LecturePageRoute() {
     <ProtectedRoute>
       <AppLayout>
         <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-blue-50/50 dark:from-purple-950/20 dark:via-gray-900 dark:to-blue-950/20">
-          <div className="container mx-auto px-4 py-6">
-            <div className="flex flex-col lg:flex-row gap-6 pb-12 lg:pb-0">
-              <div className="flex-1 space-y-6 min-w-0 w-full max-w-full">
+          <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 pb-10 lg:pb-0">
+              <div className="flex-1 space-y-4 sm:space-y-6 min-w-0 w-full max-w-full">
                 <div className="flex justify-end">
                   <LectureTimer lectureId={lectureId} />
                 </div>
 
                 {currentQuestion && (
-                  <div className="space-y-6">
+                  <div className="space-y-4 sm:space-y-6">
                     {renderCurrentQuestion()}
                   </div>
                 )}
@@ -273,7 +273,7 @@ export default function LecturePageRoute() {
             </div>
             
             {/* Mobile Control Panel - rendered separately to avoid layout issues */}
-            <div className="lg:hidden">
+            <div className="lg:hidden mt-4 sm:mt-6">
               <QuestionControlPanel
                 questions={questions}
                 currentQuestionIndex={currentQuestionIndex}
@@ -290,4 +290,4 @@ export default function LecturePageRoute() {
       </AppLayout>
     </ProtectedRoute>
   );
-} 
+}
