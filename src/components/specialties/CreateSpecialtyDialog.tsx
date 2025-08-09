@@ -1,0 +1,206 @@
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { IconSelector } from '@/components/ui/icon-selector';
+import { toast } from '@/hooks/use-toast';
+import { useTranslation } from 'react-i18next';
+import { Niveau } from '@/types';
+import { getIconBySpecialtyName } from '@/lib/medical-icons';
+
+interface CreateSpecialtyDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSpecialtyCreated: () => void;
+}
+
+export function CreateSpecialtyDialog({ 
+  isOpen, 
+  onOpenChange, 
+  onSpecialtyCreated 
+}: CreateSpecialtyDialogProps) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [icon, setIcon] = useState('');
+  const [niveauId, setNiveauId] = useState<string>('');
+  const [isFree, setIsFree] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [niveaux, setNiveaux] = useState<Niveau[]>([]);
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    const fetchNiveaux = async () => {
+      try {
+        const response = await fetch('/api/niveaux');
+        if (response.ok) {
+          const data = await response.json();
+          setNiveaux(data);
+        }
+      } catch (error) {
+        console.error('Error fetching niveaux:', error);
+      }
+    };
+
+    if (isOpen) {
+      fetchNiveaux();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset form when dialog closes
+      setName('');
+      setDescription('');
+      setIcon('');
+      setNiveauId('');
+      setIsFree(true);
+    }
+  }, [isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name.trim()) {
+      toast({
+        title: t('common.error'),
+        description: t('common.nameRequired'),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Auto-suggest icon if none selected
+      const finalIcon = icon || getIconBySpecialtyName(name).name;
+      
+      const response = await fetch('/api/specialties', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || null,
+          icon: finalIcon,
+          niveauId: niveauId || null,
+          isFree,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create specialty');
+      }
+
+      toast({
+        title: t('common.success'),
+        description: t('specialties.createdSuccessfully'),
+      });
+
+      onSpecialtyCreated();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error creating specialty:', error);
+      toast({
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('common.tryAgain'),
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto backdrop-blur-sm bg-white/95 dark:bg-gray-900/95 border-purple-200 dark:border-purple-800">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
+            {t('specialties.addSpecialty')}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">{t('common.name')} *</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t('specialties.enterName')}
+              className="border-purple-200 dark:border-purple-800 focus:border-purple-500 focus:ring-purple-500"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="description">{t('common.description')}</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t('specialties.enterDescription')}
+              rows={3}
+              className="border-purple-200 dark:border-purple-800 focus:border-purple-500 focus:ring-purple-500"
+            />
+          </div>
+
+          <IconSelector
+            value={icon}
+            onChange={setIcon}
+            label={t('specialties.icon')}
+          />
+
+          <div className="space-y-2">
+            <Label htmlFor="niveau">{t('common.niveau')}</Label>
+            <Select value={niveauId || "none"} onValueChange={(value) => setNiveauId(value === "none" ? "" : value)}>
+              <SelectTrigger className="border-purple-200 dark:border-purple-800 focus:border-purple-500 focus:ring-purple-500">
+                <SelectValue placeholder={t('common.selectNiveau')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t('common.noNiveau')}</SelectItem>
+                {niveaux.map((niveau) => (
+                  <SelectItem key={niveau.id} value={niveau.id}>
+                    {niveau.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="isFree"
+              checked={isFree}
+              onCheckedChange={setIsFree}
+            />
+            <Label htmlFor="isFree">{t('specialties.isFree')}</Label>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+              className="border-purple-300 dark:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {isLoading ? t('common.creating') : t('common.create')}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

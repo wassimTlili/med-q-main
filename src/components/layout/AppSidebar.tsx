@@ -1,0 +1,210 @@
+import React, { useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  useSidebar
+} from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { LayoutDashboard, UserCircle, Settings, Users, LogOut, X, Menu, BookOpen } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useTranslation } from 'react-i18next';
+import { toast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
+export function AppSidebar() {
+  const { user, isAdmin, logout } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+  const { state, setOpen, setOpenMobile, isMobile: sidebarIsMobile, open, openMobile, toggleSidebar } = useSidebar();
+  const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  
+  const regularMenuItems = [
+    { label: t('sidebar.dashboard'), icon: LayoutDashboard, href: '/dashboard' },
+    { label: t('sidebar.exercices'), icon: BookOpen, href: '/exercices' },
+    { label: t('sidebar.profile'), icon: UserCircle, href: '/profile' },
+    { label: t('sidebar.settings'), icon: Settings, href: '/settings' },
+  ];
+
+  const adminItem = isAdmin ? { label: t('sidebar.admin'), icon: Users, href: '/admin' } : null;
+
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      router.push('/auth');
+    } catch (err) {
+      console.error('Unexpected sign out error:', err);
+      toast({
+        title: t('auth.signOutError'),
+        description: t('auth.unexpectedError'),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCloseSidebar = () => {
+    if (sidebarIsMobile) {
+      setOpenMobile(false);
+    } else {
+      setOpen(false);
+    }
+  };
+
+  const handleToggleSidebar = () => {
+    toggleSidebar();
+  };
+
+  // Icon size based on sidebar state
+  const iconSize = state === 'expanded' ? 'h-5 w-5' : 'h-6 w-6';
+
+  return (
+    <>
+      <Sidebar className="border-r border-border/40 bg-gradient-to-b from-background to-muted/20" collapsible="icon">
+        <SidebarHeader className="border-b border-border/40 bg-gradient-to-r from-purple-50 to-purple-100/50 dark:from-purple-950/50 dark:to-purple-900/30">
+          <div className={`flex items-center justify-center transition-all duration-300 ${state === 'expanded' ? 'px-4 py-4' : 'px-2 py-4'}`}>
+            {/* Logo/Brand */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center bg-gradient-to-br from-purple-600 to-purple-700 text-white rounded-xl w-10 h-10 shadow-lg shadow-purple-500/25">
+                <BookOpen className="h-5 w-5" />
+              </div>
+              {state === 'expanded' && (
+                <div className="flex flex-col">
+                  <span className="font-bold text-lg bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-600 bg-clip-text text-transparent">
+                    MedQ
+                  </span>
+                  <span className="text-xs text-muted-foreground">Student Panel</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </SidebarHeader>
+        
+        <SidebarContent className="bg-gradient-to-b from-background to-muted/10">
+          <ScrollArea className="h-full">
+            <SidebarGroup className="px-0">
+              <SidebarGroupContent>
+                <SidebarMenu className={`space-y-2 ${state === 'expanded' ? 'px-3' : 'px-2'}`}>
+                  {regularMenuItems.map((item) => {
+                    const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton 
+                          asChild 
+                          tooltip={item.label}
+                          className={
+                            `group transition-all duration-200 font-medium rounded-xl ${
+                              state === 'expanded' 
+                                ? 'px-4 py-3 min-h-[44px] flex items-center' 
+                                : 'p-0 min-h-[44px] w-full flex items-center justify-center'
+                            } ${
+                              isActive
+                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
+                                : 'hover:bg-muted/80 text-foreground hover:text-purple-600'
+                            }`
+                          }
+                        >
+                          <Link href={item.href} className={`${state === 'expanded' ? 'flex items-center gap-3 w-full' : 'flex items-center justify-center w-full h-full'}`}>
+                            <item.icon className={`${iconSize} ${isActive ? 'text-white' : 'text-purple-500 group-hover:text-purple-600'} transition-all flex-shrink-0`} />
+                            <span className={`${state === 'expanded' ? 'block' : 'sr-only'} font-medium`}>
+                              {item.label}
+                            </span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                  
+                  {/* Separator for admin item */}
+                  {adminItem && (
+                    <>
+                      <div className={`${state === 'expanded' ? 'mx-3' : 'mx-2'} my-4`}>
+                        <div className="h-px bg-border"></div>
+                      </div>
+                      
+                      {/* Admin Panel - Special styling */}
+                      <SidebarMenuItem key={adminItem.href}>
+                        <SidebarMenuButton 
+                          asChild 
+                          tooltip={adminItem.label}
+                          className={
+                            `group transition-all duration-200 font-medium rounded-xl ${
+                              state === 'expanded' 
+                                ? 'px-4 py-3 min-h-[44px] flex items-center' 
+                                : 'p-0 min-h-[44px] w-full flex items-center justify-center'
+                            } ${
+                              pathname.startsWith('/admin')
+                                ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-500/25'
+                                : 'hover:bg-muted/80 text-foreground hover:text-green-600'
+                            }`
+                          }
+                        >
+                          <Link href={adminItem.href} className={`${state === 'expanded' ? 'flex items-center gap-3 w-full' : 'flex items-center justify-center w-full h-full'}`}>
+                            <adminItem.icon className={`${iconSize} ${pathname.startsWith('/admin') ? 'text-white' : 'text-green-500 group-hover:text-green-600'} transition-all flex-shrink-0`} />
+                            <span className={`${state === 'expanded' ? 'block' : 'sr-only'} font-medium`}>
+                              {adminItem.label}
+                            </span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </>
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </ScrollArea>
+        </SidebarContent>
+        
+        <SidebarFooter className="border-t border-border/40 bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/50 dark:to-red-900/30 p-2">
+          <div className="space-y-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`w-full font-medium rounded-xl transition-all duration-200 ${
+                    state === 'expanded' 
+                      ? 'justify-start px-3 py-3 min-h-[44px]' 
+                      : 'justify-center p-0 min-h-[44px]'
+                  } text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300`}
+                  onClick={handleSignOut}
+                  title={t('auth.signOut')}
+                >
+                  <LogOut className={`${iconSize} flex-shrink-0`} />
+                  {state === "expanded" && <span className="ml-3">{t('auth.signOut')}</span>}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" align="center" className="bg-background/95 backdrop-blur-sm border-border/50">
+                <p>{t('auth.signOut')}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </SidebarFooter>
+      </Sidebar>
+      <SidebarRail />
+    </>
+  );
+}
+
+export function AppSidebarProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider defaultOpen={false} className="w-full">
+      <div className="flex min-h-screen w-full">
+        {children}
+      </div>
+    </SidebarProvider>
+  );
+}
