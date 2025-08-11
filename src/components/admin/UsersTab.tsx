@@ -184,8 +184,8 @@ export function UsersTab() {
       <Card className="rounded-2xl border border-border/60 bg-background/60 backdrop-blur shadow-sm">
         <CardHeader className="pb-2 sm:pb-3">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold tracking-tight">
-            <User className="h-5 w-5 text-purple-600" />
-            <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">{t('admin.manageUsers')}</span>
+            <User className="h-5 w-5 text-blue-600" />
+            <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">{t('admin.manageUsers')}</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -212,7 +212,7 @@ export function UsersTab() {
                 <SelectItem value="admin">{t('admin.admins')}</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={handleSearch} className="w-full lg:w-auto rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500">
+            <Button onClick={handleSearch} className="w-full lg:w-auto rounded-xl bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700">
               {t('common.search')}
             </Button>
           </div>

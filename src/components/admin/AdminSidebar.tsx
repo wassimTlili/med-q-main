@@ -142,18 +142,18 @@ export function AdminSidebar() {
               )}
               {state === "expanded" ? (
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg flex items-center justify-center shadow-lg">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
                     <Brain className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-bold text-base sm:text-lg bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                    <span className="font-bold text-base sm:text-lg bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
                       MedQ
                     </span>
                     <span className="text-[10px] sm:text-xs text-muted-foreground">Admin Panel</span>
                   </div>
                 </div>
               ) : (
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg flex items-center justify-center shadow-lg">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
                   <Brain className="w-5 h-5 text-white" />
                 </div>
               )}
@@ -190,13 +190,13 @@ export function AdminSidebar() {
                                 : 'p-0 min-h-[44px] w-full flex items-center justify-center'
                             } ${
                               isActive
-                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
-                                : 'hover:bg-muted/80 text-foreground hover:text-purple-600'
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg shadow-blue-500/25'
+                                : 'hover:bg-muted/80 text-foreground hover:text-blue-600'
                             }`
                           }
                         >
                           <Link href={item.href} className={`${state === 'expanded' ? 'flex items-center gap-3 w-full' : 'flex items-center justify-center w-full h-full'}`}>
-                            <item.icon className={`${iconSize} ${isActive ? 'text-white' : 'text-purple-500 group-hover:text-purple-600'} transition-all flex-shrink-0`} />
+                            <item.icon className={`${iconSize} ${isActive ? 'text-white' : 'text-blue-500 group-hover:text-blue-600'} transition-all flex-shrink-0`} />
                             <span className={`${state === 'expanded' ? 'block' : 'sr-only'} font-medium text-sm`}>
                               {item.label}
                             </span>

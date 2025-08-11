@@ -92,7 +92,7 @@ export function LectureItem({ lecture, onDelete, onUpdate }: LectureItemProps) {
   
   return (
     <Card className="group relative overflow-hidden rounded-xl border border-border/60 bg-background/60 backdrop-blur hover:shadow-lg transition-all">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500" />
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700" />
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1 w-full pr-2">

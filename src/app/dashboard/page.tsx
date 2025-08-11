@@ -55,7 +55,7 @@ export default function DashboardPage() {
             )}
 
             <div className="text-center md:text-left">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-600 bg-clip-text text-transparent animate-fade-in">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent animate-fade-in">
                 {t('dashboard.title')}
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-muted-foreground mt-2 animate-slide-up">

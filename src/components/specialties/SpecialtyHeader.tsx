@@ -47,7 +47,7 @@ export function SpecialtyHeader({ specialty, isLoading }: SpecialtyHeaderProps) 
           </p>
           <Button 
             variant="outline" 
-            className="bg-white/80 dark:bg-gray-700/80 hover:bg-purple-50 dark:hover:bg-purple-900/50 border-purple-200 dark:border-purple-700" 
+            className="bg-white/80 dark:bg-gray-700/80 hover:bg-blue-50 dark:hover:bg-blue-900/50 border-blue-200 dark:border-blue-700" 
             onClick={() => router.push('/dashboard')}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -72,7 +72,7 @@ export function SpecialtyHeader({ specialty, isLoading }: SpecialtyHeaderProps) 
       {/* Main Header Card */}
       <div className="relative overflow-hidden backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 rounded-2xl shadow-lg">
         {/* Background Pattern */}
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-white/30 to-blue-50/50 dark:from-purple-900/20 dark:via-gray-800/50 dark:to-blue-900/20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white/30 to-blue-100/50 dark:from-blue-900/20 dark:via-gray-800/50 dark:to-blue-800/20" />
         
         {/* Header Content */}
         <div className="relative z-10 p-4 sm:p-6 md:p-8">
@@ -82,7 +82,7 @@ export function SpecialtyHeader({ specialty, isLoading }: SpecialtyHeaderProps) 
               variant="ghost" 
               size="sm"
               onClick={() => router.push('/exercices')}
-              className="h-9 w-9 sm:h-10 sm:w-10 p-0 bg-white/80 dark:bg-gray-700/80 hover:bg-purple-50 dark:hover:bg-purple-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm"
+              className="h-9 w-9 sm:h-10 sm:w-10 p-0 bg-white/80 dark:bg-gray-700/80 hover:bg-blue-50 dark:hover:bg-blue-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm"
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
@@ -99,7 +99,7 @@ export function SpecialtyHeader({ specialty, isLoading }: SpecialtyHeaderProps) 
                   {specialty.name}
                 </h1>
                 {specialty.niveau && (
-                  <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 text-xs sm:text-sm font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full border border-purple-200 dark:border-purple-700">
+                  <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 text-xs sm:text-sm font-medium bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full border border-blue-200 dark:border-blue-700">
                     {specialty.niveau.name}
                   </span>
                 )}
@@ -126,7 +126,7 @@ export function SpecialtyHeader({ specialty, isLoading }: SpecialtyHeaderProps) 
                 <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Questions</div>
               </div>
               <div className="text-center p-3 sm:p-4 bg-gray-50/50 dark:bg-gray-700/30 rounded-xl border border-gray-200/50 dark:border-gray-600/50">
-                <div className="text-xl sm:text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">
+                <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">
                   {Math.round(specialty.progress.questionProgress || 0)}%
                 </div>
                 <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Completion</div>

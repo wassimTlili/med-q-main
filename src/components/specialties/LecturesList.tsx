@@ -99,8 +99,8 @@ export function LecturesList({ lectures, isLoading }: LecturesListProps) {
         <CardHeader className="pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 bg-purple-100 dark:bg-purple-900/50 rounded-xl">
-                <BookOpen className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              <div className="flex items-center justify-center w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-xl">
+                <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <CardTitle className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">

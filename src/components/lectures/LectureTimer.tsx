@@ -40,8 +40,8 @@ export function LectureTimer({ lectureId }: LectureTimerProps) {
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 rounded-xl shadow-md">
-      <div className="flex items-center justify-center w-8 h-8 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-        <Clock className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+      <div className="flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+        <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
       </div>
       <span className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
         {formatTime(elapsedTime)}

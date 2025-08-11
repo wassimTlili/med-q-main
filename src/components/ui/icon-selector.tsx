@@ -75,15 +75,15 @@ export function IconSelector({ value, onChange, label, className }: IconSelector
                   className={cn(
                     "h-16 flex-col gap-1 p-2 transition-all duration-200",
                     isSelected ? 
-                      "bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700" :
-                      "hover:bg-purple-50 dark:hover:bg-purple-900/10"
+                      "bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700" :
+                      "hover:bg-blue-50 dark:hover:bg-blue-900/10"
                   )}
                   title={iconData.label}
                 >
                   <div className={cn(
                     "flex items-center justify-center w-8 h-8 rounded transition-colors",
                     isSelected ? 
-                      "text-purple-600 dark:text-purple-400" : 
+                      "text-blue-600 dark:text-blue-400" : 
                       iconData.color + " " + iconData.darkColor
                   )}>
                     <IconComponent className="w-5 h-5" />

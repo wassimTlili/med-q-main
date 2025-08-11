@@ -106,7 +106,7 @@ export function SpecialtiesTab() {
               placeholder="Search specialties..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 sm:pl-11 pr-9 sm:pr-11 w-full sm:w-80 h-10 sm:h-11 rounded-xl border-border focus:border-purple-500 focus:ring-purple-500 bg-background shadow-sm"
+              className="pl-9 sm:pl-11 pr-9 sm:pr-11 w-full sm:w-80 h-10 sm:h-11 rounded-xl border-border focus:border-blue-500 focus:ring-blue-500 bg-background shadow-sm"
             />
             {searchQuery && (
               <Button
@@ -121,7 +121,7 @@ export function SpecialtiesTab() {
           </div>
           <Button 
             onClick={() => setIsCreateDialogOpen(true)}
-            className="h-10 sm:h-11 px-5 sm:px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+            className="h-10 sm:h-11 px-5 sm:px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
           >
             <PlusCircle className="h-4 w-4 mr-2" />
             {t('specialties.addSpecialty')}

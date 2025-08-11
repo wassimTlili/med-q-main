@@ -89,7 +89,7 @@ export function LecturesTab() {
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-end gap-4 sm:gap-6 justify-between">
         <div className="flex-1 space-y-1 sm:space-y-2">
-            <h3 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">{t('admin.manageLectures')}</h3>
+            <h3 className="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">{t('admin.manageLectures')}</h3>
             <p className="text-xs sm:text-sm text-muted-foreground">
               {searchQuery ? 
                 `Showing ${filteredLectures.length} of ${lectures.length} lectures` : 
@@ -103,7 +103,7 @@ export function LecturesTab() {
               placeholder="Search lectures..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 sm:pl-10 pr-9 sm:pr-10 w-full sm:w-72 h-10 sm:h-11 rounded-xl bg-background/60 backdrop-blur border border-border/60 focus-visible:ring-purple-500"
+              className="pl-9 sm:pl-10 pr-9 sm:pr-10 w-full sm:w-72 h-10 sm:h-11 rounded-xl bg-background/60 backdrop-blur border border-border/60 focus-visible:ring-blue-500"
             />
             {searchQuery && (
               <Button
@@ -118,7 +118,7 @@ export function LecturesTab() {
           </div>
           <Button 
             onClick={() => setIsCreateDialogOpen(true)}
-            className="h-10 sm:h-11 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md hover:shadow-lg transition-all"
+            className="h-10 sm:h-11 rounded-xl bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 shadow-md hover:shadow-lg transition-all"
           >
             <PlusCircle className="h-4 w-4 mr-2" />
             {t('admin.addLecture')}

@@ -13,7 +13,7 @@ export function OpenQuestionHeader({ questionText, questionNumber, session }: Op
   
   return (
     <div className="space-y-2">
-      <div className="inline-flex items-center px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 text-sm font-medium">
+      <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-sm font-medium">
         <PenLine className="h-4 w-4 mr-1" />
         {t('questions.openQuestion')} {questionNumber ? `#${questionNumber}` : ''}
       </div>

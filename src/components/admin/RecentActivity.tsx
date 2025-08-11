@@ -116,7 +116,7 @@ export function RecentActivity({
             variant="ghost" 
             size="sm"
             onClick={() => router.push('/admin?tab=users')}
-            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
           >
             View all
             <ArrowRight className="w-4 h-4 ml-1" />
@@ -136,8 +136,8 @@ export function RecentActivity({
                 {recentUsers.map((user) => (
                   <div key={user.id} className="flex items-center justify-between p-4 rounded-xl border bg-card hover:bg-muted/30 transition-all duration-200">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 flex items-center justify-center">
-                        <User className="w-5 h-5 text-purple-500" />
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 flex items-center justify-center">
+                        <User className="w-5 h-5 text-blue-500" />
                       </div>
                       <div>
                         <p className="font-medium text-foreground">{user.name || user.email}</p>
@@ -147,7 +147,7 @@ export function RecentActivity({
                     <div className="flex items-center gap-3">
                       <Badge 
                         variant={user.role === 'admin' ? 'default' : 'secondary'}
-                        className={user.role === 'admin' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800' : ''}
+                        className={user.role === 'admin' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800' : ''}
                       >
                         {user.role}
                       </Badge>
@@ -167,8 +167,8 @@ export function RecentActivity({
       <Card className="border-0 shadow-lg bg-card hover:shadow-xl transition-all duration-300">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-lg font-bold text-foreground flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 rounded-xl flex items-center justify-center">
-              <HelpCircle className="w-5 h-5 text-purple-500" />
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-xl flex items-center justify-center">
+              <HelpCircle className="w-5 h-5 text-blue-500" />
             </div>
             {t('admin.recentQuestions')}
           </CardTitle>
@@ -176,7 +176,7 @@ export function RecentActivity({
             variant="ghost" 
             size="sm"
             onClick={() => router.push('/admin?tab=questions')}
-            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
           >
             View all
             <ArrowRight className="w-4 h-4 ml-1" />
@@ -214,7 +214,7 @@ export function RecentActivity({
                         variant="ghost" 
                         size="sm"
                         onClick={() => router.push(`/admin/lecture/${question.lecture.id}`)}
-                        className="h-8 px-3 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                        className="h-8 px-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                       >
                         <Eye className="w-3 h-3 mr-1" />
                         View
@@ -241,7 +241,7 @@ export function RecentActivity({
             variant="ghost" 
             size="sm"
             onClick={() => router.push('/admin?tab=lectures')}
-            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
           >
             View all
             <ArrowRight className="w-4 h-4 ml-1" />
@@ -279,7 +279,7 @@ export function RecentActivity({
                         variant="ghost" 
                         size="sm"
                         onClick={() => router.push(`/admin/lecture/${lecture.id}`)}
-                        className="h-8 px-3 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                        className="h-8 px-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                       >
                         <Eye className="w-3 h-3 mr-1" />
                         View
@@ -306,7 +306,7 @@ export function RecentActivity({
             variant="ghost" 
             size="sm"
             onClick={() => router.push('/admin?tab=reports')}
-            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
           >
             View all
             <ArrowRight className="w-4 h-4 ml-1" />
@@ -344,7 +344,7 @@ export function RecentActivity({
                         variant="ghost" 
                         size="sm"
                         onClick={() => router.push(`/lecture/${report.lecture.id}`)}
-                        className="h-8 px-3 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                        className="h-8 px-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                       >
                         <Eye className="w-3 h-3 mr-1" />
                         View

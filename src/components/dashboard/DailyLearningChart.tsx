@@ -61,7 +61,7 @@ export function DailyLearningChart({ data, isLoading = false }: DailyLearningCha
         <div className="bg-white/95 dark:bg-muted/95 border border-border/50 rounded-xl p-3 shadow-lg backdrop-blur-sm">
           <p className="font-medium text-foreground">{formatDate(label)}</p>
           <p className="text-sm text-muted-foreground">
-            {t('dashboard.chart.questionsAnswered')}: <span className="font-medium text-purple-600 dark:text-purple-400">{payload[0].value}</span>
+            {t('dashboard.chart.questionsAnswered')}: <span className="font-medium text-blue-600 dark:text-blue-400">{payload[0].value}</span>
           </p>
         </div>
       );
@@ -72,8 +72,8 @@ export function DailyLearningChart({ data, isLoading = false }: DailyLearningCha
   return (
     <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 group">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-600 bg-clip-text text-transparent">
-          <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+          <Activity className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           {t('dashboard.chart.dailyActivity')}
           {(!data || data.length === 0) && (
             <span className="text-sm text-muted-foreground bg-gradient-to-r from-muted-foreground to-muted-foreground bg-clip-text">(Données d'exemple)</span>
@@ -100,13 +100,13 @@ export function DailyLearningChart({ data, isLoading = false }: DailyLearningCha
                 <Tooltip content={<CustomTooltip />} />
                 <Bar 
                   dataKey="questions" 
-                  fill="url(#purpleGradient)"
+                  fill="url(#blueGradient)"
                   radius={[6, 6, 0, 0]}
                 />
                 <defs>
-                  <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#9333ea" />
-                    <stop offset="100%" stopColor="#7c3aed" />
+                  <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#1d4ed8" />
                   </linearGradient>
                 </defs>
               </BarChart>

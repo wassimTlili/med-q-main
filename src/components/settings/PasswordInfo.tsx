@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Calendar, Info } from 'lucide-react';
+import { Shield, Calendar, Info, Key } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface PasswordInfoProps {
@@ -41,9 +41,9 @@ export function PasswordInfo({ passwordUpdatedAt, hasPassword }: PasswordInfoPro
   };
 
   return (
-    <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-purple-200 dark:border-purple-800 shadow-lg hover:shadow-xl transition-all duration-300">
+    <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-all duration-300">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+        <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
           <Shield className="h-5 w-5" />
           {t('settings.passwordInfo')}
         </CardTitle>

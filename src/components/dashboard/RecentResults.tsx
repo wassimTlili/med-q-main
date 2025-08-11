@@ -54,10 +54,10 @@ export function RecentResults({ results, isLoading = false }: RecentResultsProps
   }
 
   return (
-    <Card>
+    <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Trophy className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+          <Trophy className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           {t('dashboard.recentResults.title')}
         </CardTitle>
       </CardHeader>

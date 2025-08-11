@@ -74,16 +74,16 @@ export function AppSidebar() {
   return (
     <>
       <Sidebar className="border-r border-border/40 bg-gradient-to-b from-background to-muted/20" collapsible="icon">
-        <SidebarHeader className="border-b border-border/40 bg-gradient-to-r from-purple-50 to-purple-100/50 dark:from-purple-950/50 dark:to-purple-900/30">
+        <SidebarHeader className="border-b border-border/40 bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-950/50 dark:to-blue-900/30">
           <div className={`flex items-center justify-center transition-all duration-300 ${state === 'expanded' ? 'px-4 py-4' : 'px-2 py-4'}`}>
             {/* Logo/Brand */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center bg-gradient-to-br from-purple-600 to-purple-700 text-white rounded-xl w-10 h-10 shadow-lg shadow-purple-500/25">
+              <div className="flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-xl w-10 h-10 shadow-lg shadow-blue-500/25">
                 <BookOpen className="h-5 w-5" />
               </div>
               {state === 'expanded' && (
                 <div className="flex flex-col">
-                  <span className="font-bold text-lg bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-600 bg-clip-text text-transparent">
+                  <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
                     MedQ
                   </span>
                   <span className="text-xs text-muted-foreground">Student Panel</span>
@@ -112,13 +112,13 @@ export function AppSidebar() {
                                 : 'p-0 min-h-[44px] w-full flex items-center justify-center'
                             } ${
                               isActive
-                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
-                                : 'hover:bg-muted/80 text-foreground hover:text-purple-600'
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg shadow-blue-500/25'
+                                : 'hover:bg-muted/80 text-foreground hover:text-blue-600'
                             }`
                           }
                         >
                           <Link href={item.href} className={`${state === 'expanded' ? 'flex items-center gap-3 w-full' : 'flex items-center justify-center w-full h-full'}`}>
-                            <item.icon className={`${iconSize} ${isActive ? 'text-white' : 'text-purple-500 group-hover:text-purple-600'} transition-all flex-shrink-0`} />
+                            <item.icon className={`${iconSize} ${isActive ? 'text-white' : 'text-blue-500 group-hover:text-blue-600'} transition-all flex-shrink-0`} />
                             <span className={`${state === 'expanded' ? 'block' : 'sr-only'} font-medium`}>
                               {item.label}
                             </span>

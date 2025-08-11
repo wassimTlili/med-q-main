@@ -46,10 +46,10 @@ export function PopularCourses({ courses, isLoading = false }: PopularCoursesPro
   }
 
   return (
-    <Card>
+    <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5" />
+        <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+          <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           {t('dashboard.popularCourses.title')}
         </CardTitle>
       </CardHeader>
@@ -87,7 +87,7 @@ export function PopularCourses({ courses, isLoading = false }: PopularCoursesPro
                   </div>
                 </div>
                 <Link href={`/lecture/${course.id}`}>
-                  <Button size="sm" variant="outline" className="w-full sm:w-auto">{t('dashboard.popularCourses.start')}</Button>
+                  <Button size="sm" variant="outline" className="w-full sm:w-auto border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20">{t('dashboard.popularCourses.start')}</Button>
                 </Link>
               </div>
             </div>

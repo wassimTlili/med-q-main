@@ -29,15 +29,15 @@ export default function SettingsPageRoute() {
       <AppLayout>
         <div className="space-y-4 sm:space-y-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">{t('settings.title')}</h1>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">{t('settings.title')}</h1>
             <p className="text-sm sm:text-base md:text-lg mt-2 text-muted-foreground">
               {t('settings.description')}
             </p>
           </div>
 
-          <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-purple-200 dark:border-purple-800 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+              <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                 <SettingsIcon className="h-5 w-5" />
                 {t('settings.appearance')}
               </CardTitle>
@@ -54,7 +54,7 @@ export default function SettingsPageRoute() {
                   variant="outline"
                   size="sm"
                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="border-purple-300 dark:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:border-purple-400 dark:hover:border-purple-500 transition-all duration-200"
+                  className="border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-400 dark:hover:border-blue-500 transition-all duration-200"
                 >
                   {theme === 'dark' ? (
                     <>
@@ -79,9 +79,9 @@ export default function SettingsPageRoute() {
 
           <PasswordChangeForm />
 
-          <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-purple-200 dark:border-purple-800 shadow-lg hover:shadow-xl transition-all duration-300">
+          <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+              <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                 <LogOut className="h-5 w-5" />
                 {t('settings.account')}
               </CardTitle>

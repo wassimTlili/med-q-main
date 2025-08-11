@@ -99,9 +99,9 @@ export function PasswordChangeForm() {
   };
 
   return (
-    <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-purple-200 dark:border-purple-800 shadow-lg hover:shadow-xl transition-all duration-300">
+    <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-all duration-300">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+        <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
           <Lock className="h-5 w-5" />
           {t('settings.changePassword')}
         </CardTitle>
@@ -210,7 +210,7 @@ export function PasswordChangeForm() {
 
           <Button 
             type="submit" 
-            className="w-full bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white shadow-lg hover:shadow-xl transition-all duration-300" 
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow-lg hover:shadow-xl transition-all duration-300" 
             disabled={isLoading}
           >
             {isLoading ? (

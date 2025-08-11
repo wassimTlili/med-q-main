@@ -51,9 +51,9 @@ export function UserStats({
       title: t('dashboard.stats.totalLectures'),
       value: totalLectures.toString(),
       icon: Award,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30',
-      shadowColor: 'shadow-purple-500/20'
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30',
+      shadowColor: 'shadow-blue-500/20'
     }
   ];
 
@@ -90,7 +90,7 @@ export function UserStats({
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent group-hover:from-purple-600 group-hover:to-purple-800 dark:group-hover:from-purple-400 dark:group-hover:to-purple-600 transition-all duration-300">
+              <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent group-hover:from-blue-600 group-hover:to-blue-800 dark:group-hover:from-blue-400 dark:group-hover:to-blue-600 transition-all duration-300">
                 {stat.value}
               </div>
             </CardContent>

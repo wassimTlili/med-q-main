@@ -20,7 +20,7 @@ export default function ProfilePageRoute() {
         <AppLayout>
           <div className="space-y-4 sm:space-y-6">
             <div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">{t('profile.title')}</h1>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">{t('profile.title')}</h1>
               <p className="text-sm sm:text-base md:text-lg mt-2 text-muted-foreground">
                 {t('profile.description')}
               </p>
@@ -28,9 +28,9 @@ export default function ProfilePageRoute() {
 
             <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
               {/* Personal Information Card */}
-              <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-purple-200 dark:border-purple-800 shadow-lg hover:shadow-xl transition-all duration-300">
+              <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-all duration-300">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                  <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                     <User className="h-5 w-5" />
                     {t('profile.personalInfo')}
                   </CardTitle>
@@ -90,9 +90,9 @@ export default function ProfilePageRoute() {
               </Card>
 
               {/* Account Information Card */}
-              <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-purple-200 dark:border-purple-800 shadow-lg hover:shadow-xl transition-all duration-300">
+              <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-all duration-300">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                  <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                     <Shield className="h-5 w-5" />
                     {t('profile.accountInfo')}
                   </CardTitle>
@@ -135,9 +135,9 @@ export default function ProfilePageRoute() {
             </div>
 
             {/* Subscription Information Card */}
-            <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-purple-200 dark:border-purple-800 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
                   <Crown className="h-5 w-5" />
                   {t('profile.subscriptionDetails')}
                 </CardTitle>
@@ -193,7 +193,7 @@ export default function ProfilePageRoute() {
                 </div>
 
                 {!user?.hasActiveSubscription && user?.role !== 'admin' && (
-                  <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg border border-purple-200 dark:border-purple-700">
+                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg border border-blue-200 dark:border-blue-700">
                     <div className="flex items-center gap-2 mb-2">
                       <Crown className="h-4 w-4 text-yellow-600" />
                       <span className="font-medium">{t('profile.upgradeToPremium')}</span>
@@ -201,7 +201,7 @@ export default function ProfilePageRoute() {
                     <p className="text-sm text-muted-foreground mb-3">
                       {t('profile.upgradeDescription')}
                     </p>
-                    <button className="text-sm bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent font-medium hover:from-purple-700 hover:to-purple-900 transition-all duration-200">
+                    <button className="text-sm bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent font-medium hover:from-blue-700 hover:to-blue-900 transition-all duration-200">
                       {t('profile.learnMoreAboutPremium')}
                     </button>
                   </div>

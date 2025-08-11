@@ -140,8 +140,8 @@ export default function ExercicesPage() {
 
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div className="text-center md:text-left">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-600 bg-clip-text text-transparent animate-fade-in">
-                Exercices
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent animate-fade-in">
+                {t('exercices.title')}
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-muted-foreground mt-2 animate-slide-up">
                 {t('dashboard.welcome', { name: user?.name || user?.email })}
@@ -151,7 +151,7 @@ export default function ExercicesPage() {
               <div className="flex md:justify-end">
                 <Button 
                   onClick={() => setIsAddDialogOpen(true)}
-                  className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-200"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200"
                 >
                   {t('specialties.add')}
                 </Button>

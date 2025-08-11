@@ -164,8 +164,8 @@ export function AdminStats() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
         <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-card shadow-md transform hover:scale-105">
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
-              <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
+            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
+              <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
               {t('admin.totalSpecialties')}
@@ -192,8 +192,8 @@ export function AdminStats() {
         
         <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-card shadow-md transform hover:scale-105">
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
-              <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 text-purple-500" />
+            <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-2xl flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300">
+              <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
               {t('admin.totalQuestions')}

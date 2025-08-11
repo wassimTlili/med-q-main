@@ -756,7 +756,7 @@ export default function ImportPage() {
                         {importResult.questionsWithImages > 0 && (
                           <div>
                             <p className="text-xs sm:text-sm font-medium">{t('admin.questionsWithImages')}</p>
-                            <p className="text-lg sm:text-xl font-bold text-purple-600">{importResult.questionsWithImages}</p>
+                            <p className="text-lg sm:text-xl font-bold text-blue-600">{importResult.questionsWithImages}</p>
                           </div>
                         )}
                       </div>

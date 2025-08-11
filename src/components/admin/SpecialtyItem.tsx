@@ -88,22 +88,22 @@ export function SpecialtyItem({ specialty, onDelete, onUpdate }: SpecialtyItemPr
   };
   
   return (
-    <Card className="group relative overflow-hidden rounded-xl backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-purple-200 dark:border-purple-800 shadow-lg hover:shadow-xl transition-all duration-300">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500" />
+    <Card className="group relative overflow-hidden rounded-xl backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500" />
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 flex-1">
             {/* Medical Icon */}
-            <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border border-purple-200 dark:border-purple-700 flex-shrink-0 ${medicalIcon.color} ${medicalIcon.darkColor}`}>
+            <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-700 flex-shrink-0 ${medicalIcon.color} ${medicalIcon.darkColor}`}>
               <IconComponent className="w-6 h-6" />
             </div>
             <div className="space-y-1 min-w-0 flex-1">
-              <CardTitle className="text-sm font-semibold leading-tight line-clamp-1 text-purple-700 dark:text-purple-300">{specialty.name}</CardTitle>
+              <CardTitle className="text-sm font-semibold leading-tight line-clamp-1 text-blue-700 dark:text-blue-300">{specialty.name}</CardTitle>
               <CardDescription className="line-clamp-2 text-xs">{specialty.description || 'No description available'}</CardDescription>
             </div>
           </div>
           {specialty.niveau && (
-            <span className="flex-shrink-0 text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full uppercase tracking-wide">
+            <span className="flex-shrink-0 text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full uppercase tracking-wide">
               {specialty.niveau.name}
             </span>
           )}

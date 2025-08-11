@@ -51,7 +51,7 @@ export default function LecturePageRoute() {
     return (
       <ProtectedRoute>
         <AppLayout>
-          <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-blue-50/50 dark:from-purple-950/20 dark:via-gray-900 dark:to-blue-950/20">
+          <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-blue-50/50 dark:from-blue-950/20 dark:via-gray-900 dark:to-blue-950/20">
             <div className="container mx-auto px-4 py-6">
               <LectureLoadingState />
             </div>
@@ -65,7 +65,7 @@ export default function LecturePageRoute() {
     return (
       <ProtectedRoute>
         <AppLayout>
-          <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-blue-50/50 dark:from-purple-950/20 dark:via-gray-900 dark:to-blue-950/20">
+          <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-blue-50/50 dark:from-blue-950/20 dark:via-gray-900 dark:to-blue-950/20">
             <div className="container mx-auto px-4 py-12">
               <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="text-center max-w-md mx-auto">
@@ -78,7 +78,7 @@ export default function LecturePageRoute() {
                     </p>
                     <Button 
                       onClick={handleBackToSpecialty} 
-                      className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800"
+                      className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
                     >
                       <ArrowLeft className="h-4 w-4 mr-2" />
                       {t('common.back')}
@@ -97,7 +97,7 @@ export default function LecturePageRoute() {
     return (
       <ProtectedRoute>
         <AppLayout>
-          <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-blue-50/50 dark:from-purple-950/20 dark:via-gray-900 dark:to-blue-950/20">
+          <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-blue-50/50 dark:from-blue-950/20 dark:via-gray-900 dark:to-blue-950/20">
             <div className="container mx-auto px-4 py-6">
               <LectureComplete
                 onRestart={handleRestart}
@@ -243,7 +243,7 @@ export default function LecturePageRoute() {
   return (
     <ProtectedRoute>
       <AppLayout>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50/50 via-white to-blue-50/50 dark:from-purple-950/20 dark:via-gray-900 dark:to-blue-950/20">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-blue-50/50 dark:from-blue-950/20 dark:via-gray-900 dark:to-blue-950/20">
           <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
             <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 pb-10 lg:pb-0">
               <div className="flex-1 space-y-4 sm:space-y-6 min-w-0 w-full max-w-full">

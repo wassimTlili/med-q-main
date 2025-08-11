@@ -100,10 +100,10 @@ export function QuestionControlPanel({
       <DrawerTrigger asChild>
         <Button 
           variant="outline" 
-          className="fixed bottom-6 right-6 lg:hidden z-50 gap-2 shadow-xl backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 hover:bg-purple-50 dark:hover:bg-purple-900/50 hover:border-purple-300 dark:hover:border-purple-600 rounded-xl"
+          className="fixed bottom-6 right-6 lg:hidden z-50 gap-2 shadow-xl backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 hover:bg-blue-50 dark:hover:bg-blue-900/50 hover:border-blue-300 dark:hover:border-blue-600 rounded-xl"
         >
           <span className="font-medium">{t('questions.questions')}</span>
-          <span className="text-xs bg-purple-600 dark:bg-purple-700 text-white rounded-full px-2 py-0.5 font-medium">
+          <span className="text-xs bg-blue-600 dark:bg-blue-700 text-white rounded-full px-2 py-0.5 font-medium">
             {questions.length}
           </span>
         </Button>
@@ -125,8 +125,8 @@ export function QuestionControlPanel({
     <Card className="hidden lg:block sticky top-6 h-fit max-h-[calc(100vh-8rem)] backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 shadow-lg rounded-2xl">
       <CardContent className="p-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="flex items-center justify-center w-10 h-10 bg-purple-100 dark:bg-purple-900/50 rounded-xl">
-            <Circle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          <div className="flex items-center justify-center w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-xl">
+            <Circle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
             <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">
@@ -199,9 +199,9 @@ export function QuestionControlPanel({
 
           return (
             <div key={type} className="space-y-3">
-              <div className="flex items-center gap-2 px-3 py-2 bg-purple-50/50 dark:bg-purple-900/20 border border-purple-200/50 dark:border-purple-700/50 rounded-xl">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+              <div className="flex items-center gap-2 px-3 py-2 bg-blue-50/50 dark:bg-blue-900/20 border border-blue-200/50 dark:border-blue-700/50 rounded-xl">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
                   {getTypeLabel(type)} ({typeQuestions.length})
                 </span>
               </div>
@@ -219,8 +219,8 @@ export function QuestionControlPanel({
                       ref={(el) => { questionRefs.current[question.originalIndex] = el; }}
                       variant="outline"
                       className={cn(
-                        "w-full justify-start h-auto p-3 backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:border-purple-300 dark:hover:border-purple-600 rounded-xl transition-all duration-200",
-                        isCurrent && "border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/30 shadow-md",
+                        "w-full justify-start h-auto p-3 backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 dark:hover:border-blue-600 rounded-xl transition-all duration-200",
+                        isCurrent && "border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/30 shadow-md",
                         isAnswered && "bg-gray-50 dark:bg-gray-700/50"
                       )}
                       onClick={() => {
@@ -365,7 +365,7 @@ export function QuestionControlPanel({
             onNext();
             setIsDrawerOpen(false);
           }}
-          className="flex-1 backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 hover:bg-purple-50 dark:hover:bg-purple-900/50 hover:border-purple-300 dark:hover:border-purple-600 rounded-xl"
+          className="flex-1 backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 hover:bg-blue-50 dark:hover:bg-blue-900/50 hover:border-blue-300 dark:hover:border-blue-600 rounded-xl"
         >
           {t('questions.viewSummary')}
         </Button>
@@ -375,7 +375,7 @@ export function QuestionControlPanel({
             onNext();
             setIsDrawerOpen(false);
           }}
-          className="flex-1 bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 rounded-xl"
+          className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 rounded-xl"
         >
           {t('common.next')}
           <ChevronRight className="h-4 w-4 ml-2" />

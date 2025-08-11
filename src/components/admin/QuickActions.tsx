@@ -42,9 +42,9 @@ export function QuickActions() {
       description: t('admin.importQuestionsDesc'),
       icon: Upload,
       onClick: () => router.push('/admin/import'),
-      color: 'text-purple-500',
-      bgColor: 'from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20',
-      hoverColor: 'hover:bg-purple-50 dark:hover:bg-purple-900/20'
+      color: 'text-blue-500',
+      bgColor: 'from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20',
+      hoverColor: 'hover:bg-blue-50 dark:hover:bg-blue-900/20'
     },
     {
       title: t('admin.manageUsers'),
@@ -102,7 +102,7 @@ export function QuickActions() {
                   <p className="text-sm text-muted-foreground leading-relaxed mb-3">
                     {action.description}
                   </p>
-                  <div className="flex items-center text-sm font-medium text-purple-600 group-hover:text-purple-700 transition-colors">
+                  <div className="flex items-center text-sm font-medium text-blue-600 group-hover:text-blue-700 transition-colors">
                     Get started
                     <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform duration-200" />
                   </div>

@@ -118,9 +118,9 @@ export function CreateSpecialtyDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto backdrop-blur-sm bg-white/95 dark:bg-gray-900/95 border-purple-200 dark:border-purple-800">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto backdrop-blur-sm bg-white/95 dark:bg-gray-900/95 border-blue-200 dark:border-blue-800">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
             {t('specialties.addSpecialty')}
           </DialogTitle>
         </DialogHeader>
@@ -132,7 +132,7 @@ export function CreateSpecialtyDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('specialties.enterName')}
-              className="border-purple-200 dark:border-purple-800 focus:border-purple-500 focus:ring-purple-500"
+              className="border-blue-200 dark:border-blue-800 focus:border-blue-500 focus:ring-blue-500"
               required
             />
           </div>
@@ -145,7 +145,7 @@ export function CreateSpecialtyDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('specialties.enterDescription')}
               rows={3}
-              className="border-purple-200 dark:border-purple-800 focus:border-purple-500 focus:ring-purple-500"
+              className="border-blue-200 dark:border-blue-800 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
 
@@ -158,7 +158,7 @@ export function CreateSpecialtyDialog({
           <div className="space-y-2">
             <Label htmlFor="niveau">{t('common.niveau')}</Label>
             <Select value={niveauId || "none"} onValueChange={(value) => setNiveauId(value === "none" ? "" : value)}>
-              <SelectTrigger className="border-purple-200 dark:border-purple-800 focus:border-purple-500 focus:ring-purple-500">
+              <SelectTrigger className="border-blue-200 dark:border-blue-800 focus:border-blue-500 focus:ring-blue-500">
                 <SelectValue placeholder={t('common.selectNiveau')} />
               </SelectTrigger>
               <SelectContent>
@@ -187,14 +187,14 @@ export function CreateSpecialtyDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
-              className="border-purple-300 dark:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+              className="border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
             >
               {t('common.cancel')}
             </Button>
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="bg-gradient-to-r from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
               {isLoading ? t('common.creating') : t('common.create')}
             </Button>

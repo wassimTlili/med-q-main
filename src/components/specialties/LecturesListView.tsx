@@ -259,18 +259,18 @@ export function LecturesListView({ lectures, isLoading }: LecturesListViewProps)
           >
             <Card 
               className={`relative overflow-hidden backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 shadow-md hover:shadow-lg transition-all duration-300 rounded-xl ${
-                canAccess ? 'cursor-pointer hover:border-purple-300 dark:hover:border-purple-600' : 'cursor-not-allowed opacity-75'
+                canAccess ? 'cursor-pointer hover:border-blue-300 dark:hover:border-blue-600' : 'cursor-not-allowed opacity-75'
               }`}
               onClick={handleLectureClick}
             >
               {/* Background Pattern */}
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-50/30 via-white/20 to-blue-50/30 dark:from-purple-900/10 dark:via-gray-800/30 dark:to-blue-900/10" />
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-white/20 to-blue-50/30 dark:from-blue-900/10 dark:via-gray-800/30 dark:to-blue-900/10" />
               
               <CardContent className="relative z-10 p-6">
                 <div className="flex items-center gap-4">
                   {/* Lecture Icon */}
                   <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-gray-700 dark:to-gray-800 border border-gray-200 dark:border-gray-600 shadow-sm group-hover:shadow-md transition-all duration-300 ${
-                    isCompleted ? 'text-green-600 dark:text-green-400' : 'text-purple-600 dark:text-purple-400'
+                    isCompleted ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'
                   }`}>
                     {isCompleted ? (
                       <CheckCircle2 className="w-6 h-6" />
@@ -282,7 +282,7 @@ export function LecturesListView({ lectures, isLoading }: LecturesListViewProps)
                   {/* Lecture Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors duration-200">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors duration-200">
                         {lecture.title}
                       </h3>
                       {isLocked && (
@@ -327,7 +327,7 @@ export function LecturesListView({ lectures, isLoading }: LecturesListViewProps)
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="h-10 w-10 p-0 bg-white/80 dark:bg-gray-700/80 hover:bg-purple-50 dark:hover:bg-purple-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm"
+                      className="h-10 w-10 p-0 bg-white/80 dark:bg-gray-700/80 hover:bg-blue-50 dark:hover:bg-blue-900/50 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm"
                       disabled={!canAccess}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -347,7 +347,7 @@ export function LecturesListView({ lectures, isLoading }: LecturesListViewProps)
               
               {/* Hover Overlay */}
               {canAccess && (
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-600/0 to-blue-500/0 group-hover:from-purple-500/5 group-hover:via-purple-600/5 group-hover:to-blue-500/5 transition-all duration-300 rounded-xl" />
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-600/0 to-blue-500/0 group-hover:from-blue-500/5 group-hover:via-blue-600/5 group-hover:to-blue-500/5 transition-all duration-300 rounded-xl" />
               )}
             </Card>
           </motion.div>

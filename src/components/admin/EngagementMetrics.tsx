@@ -57,8 +57,8 @@ export function EngagementMetrics({
       value: recentProgressEntries.toLocaleString(),
       description: t('admin.recentActivityDesc'),
       icon: TrendingUp,
-      color: 'text-purple-500',
-      bgColor: 'from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20',
+      color: 'text-blue-500',
+      bgColor: 'from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20',
       progress: null
     }
   ];
@@ -82,8 +82,8 @@ export function EngagementMetrics({
       label: t('admin.newLectures'),
       value: lecturesThisWeek,
       icon: Clock,
-      color: 'text-purple-500',
-      bgColor: 'from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20'
+      color: 'text-blue-500',
+      bgColor: 'from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20'
     },
     {
       label: t('admin.newReports'),

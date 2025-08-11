@@ -107,7 +107,7 @@ export function SpecialtyCard({ specialty }: SpecialtyCardProps) {
     >
       <Card 
         className={`relative overflow-hidden h-full backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl ${
-          canAccess ? 'cursor-pointer hover:border-purple-300 dark:hover:border-purple-600' : 'cursor-not-allowed opacity-75'
+          canAccess ? 'cursor-pointer hover:border-blue-300 dark:hover:border-blue-600' : 'cursor-not-allowed opacity-75'
         }`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -116,7 +116,7 @@ export function SpecialtyCard({ specialty }: SpecialtyCardProps) {
         {/* Header with Icon */}
         <div className="relative p-6 pb-4">
           {/* Background Pattern */}
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 via-white/30 to-blue-50/50 dark:from-purple-900/20 dark:via-gray-800/50 dark:to-blue-900/20" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white/30 to-blue-50/50 dark:from-blue-900/20 dark:via-gray-800/50 dark:to-blue-900/20" />
           
           {/* Top-right badge for lock status */}
           {isLocked && (
@@ -134,7 +134,7 @@ export function SpecialtyCard({ specialty }: SpecialtyCardProps) {
             </div>
             
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1 line-clamp-1 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors duration-200">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors duration-200">
                 {specialty.name}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
@@ -152,7 +152,7 @@ export function SpecialtyCard({ specialty }: SpecialtyCardProps) {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600 dark:text-gray-400 font-medium">{t('progress.overallProgress')}</span>
-                  <span className="font-bold text-purple-700 dark:text-purple-300">
+                  <span className="font-bold text-blue-700 dark:text-blue-300">
                     {Math.round(specialty.progress.questionProgress)}%
                   </span>
                 </div>
@@ -160,7 +160,7 @@ export function SpecialtyCard({ specialty }: SpecialtyCardProps) {
                 {/* Modern Progress Bar */}
                 <div className="relative h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div 
-                    className="absolute h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-500 ease-out"
+                    className="absolute h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500 ease-out"
                     style={{ width: `${specialty.progress.questionProgress}%` }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
@@ -207,7 +207,7 @@ export function SpecialtyCard({ specialty }: SpecialtyCardProps) {
 
         {/* Hover Overlay */}
         {canAccess && (
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 via-purple-600/0 to-blue-500/0 group-hover:from-purple-500/5 group-hover:via-purple-600/5 group-hover:to-blue-500/5 transition-all duration-300 rounded-2xl" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-600/0 to-blue-500/0 group-hover:from-blue-500/5 group-hover:via-blue-600/5 group-hover:to-blue-500/5 transition-all duration-300 rounded-2xl" />
         )}
       </Card>
       

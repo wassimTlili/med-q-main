@@ -27,8 +27,8 @@ export function SpecialtiesList({ specialties, isLoading }: SpecialtiesListProps
   
   if (specialties.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-purple-300 dark:border-purple-700 backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 p-8 text-center animate-fade-in">
-        <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-300">No specialties available</h3>
+      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-blue-300 dark:border-blue-700 backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 p-8 text-center animate-fade-in">
+        <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300">No specialties available</h3>
         <p className="text-muted-foreground mt-2">
           Please check back later or contact an administrator.
         </p>
