@@ -4,18 +4,21 @@ import { toast } from '@/hooks/use-toast';
 import { Lecture, Question, ClinicalCase } from '@/types';
 import { useLocalStorage } from './use-local-storage';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProgress } from './use-progress';
 
 // Cache for lecture data to avoid refetching
 const lectureCache = new Map<string, { lecture: Lecture; questions: Question[]; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-export function useLecture(lectureId: string | undefined) {
+export function useLecture(lectureId: string | undefined, mode?: string | null) {
   const router = useRouter();
   const { user } = useAuth();
+  const { trackQuestionProgress, trackLectureProgress } = useProgress();
   const [lecture, setLecture] = useState<Lecture | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
+  const [pinnedQuestionIds, setPinnedQuestionIds] = useState<string[]>([]);
   
-  const storageKey = `lecture-${lectureId}`;
+  const storageKey = `lecture-${lectureId}${mode ? `-${mode}` : ''}`;
   const [currentQuestionIndex, setCurrentQuestionIndex] = useLocalStorage<number>(`${storageKey}-currentIndex`, 0);
   const [answers, setAnswers] = useLocalStorage<Record<string, any>>(`${storageKey}-answers`, {});
   const [answerResults, setAnswerResults] = useLocalStorage<Record<string, boolean | 'partial'>>(`${storageKey}-results`, {});
@@ -26,6 +29,14 @@ export function useLecture(lectureId: string | undefined) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddQuestionOpen, setIsAddQuestionOpen] = useState(false);
   const hasSyncedProgress = useRef(false);
+
+  // Create filtered questions based on mode
+  const questions = useMemo(() => {
+    if (mode === 'pinned') {
+      return allQuestions.filter(q => pinnedQuestionIds.includes(q.id));
+    }
+    return allQuestions;
+  }, [allQuestions, pinnedQuestionIds, mode]);
 
   // Group clinical case questions and organize all questions properly
   const groupedQuestions = useMemo(() => {
@@ -103,7 +114,7 @@ export function useLecture(lectureId: string | undefined) {
     const cached = lectureCache.get(lectureId);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
       setLecture(cached.lecture);
-      setQuestions(cached.questions);
+      setAllQuestions(cached.questions);
       setIsLoading(false);
       return;
     }
@@ -136,7 +147,7 @@ export function useLecture(lectureId: string | undefined) {
       });
       
       setLecture(data);
-      setQuestions(data.questions || []);
+      setAllQuestions(data.questions || []);
       
       // Reset to first question if current index is out of bounds
       if (data.questions && data.questions.length > 0 && currentQuestionIndex >= data.questions.length) {
@@ -161,6 +172,26 @@ export function useLecture(lectureId: string | undefined) {
     hasSyncedProgress.current = false;
   }, [fetchLectureData]);
 
+  // Load pinned questions if in pinned mode
+  useEffect(() => {
+    const loadPinnedQuestions = async () => {
+      if (mode === 'pinned' && user?.id) {
+        try {
+          const response = await fetch(`/api/pinned-questions?userId=${user.id}`);
+          if (response.ok) {
+            const pinnedQuestions = await response.json();
+            const questionIds = pinnedQuestions.map((pq: any) => pq.questionId);
+            setPinnedQuestionIds(questionIds);
+          }
+        } catch (error) {
+          console.error('Error loading pinned questions:', error);
+        }
+      }
+    };
+
+    loadPinnedQuestions();
+  }, [mode, user?.id]);
+
   // Clear cache when adding questions
   useEffect(() => {
     if (isAddQuestionOpen) {
@@ -179,8 +210,13 @@ export function useLecture(lectureId: string | undefined) {
         ...prevResults,
         [questionId]: isCorrect
       }));
+      
+      // Track progress in database
+      if (lectureId) {
+        trackQuestionProgress(lectureId, questionId, isCorrect);
+      }
     }
-  }, []);
+  }, [lectureId, trackQuestionProgress]);
 
   // Handle clinical case submission
   const handleClinicalCaseSubmit = useCallback((caseNumber: number, caseAnswers: Record<string, any>, caseResults: Record<string, boolean | 'partial'>) => {
@@ -195,15 +231,27 @@ export function useLecture(lectureId: string | undefined) {
       ...prevResults,
       ...caseResults
     }));
-  }, []);
+    
+    // Track progress for each question in the clinical case
+    if (lectureId) {
+      Object.entries(caseResults).forEach(([questionId, result]) => {
+        trackQuestionProgress(lectureId, questionId, result);
+      });
+    }
+  }, [lectureId, trackQuestionProgress]);
 
   const handleNext = useCallback(() => {
     if (currentQuestionIndex < groupedQuestions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
       setIsComplete(true);
+      
+      // Track lecture completion in database
+      if (lectureId) {
+        trackLectureProgress(lectureId, true);
+      }
     }
-  }, [currentQuestionIndex, groupedQuestions.length, setCurrentQuestionIndex]);
+  }, [currentQuestionIndex, groupedQuestions.length, setCurrentQuestionIndex, lectureId, trackLectureProgress]);
 
   const handleRestart = useCallback(() => {
     setCurrentQuestionIndex(0);

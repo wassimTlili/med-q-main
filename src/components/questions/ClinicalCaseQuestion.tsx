@@ -179,7 +179,7 @@ export function ClinicalCaseQuestion({
           <MCQQuestion
             question={question}
             onSubmit={(answer, isCorrect) => handleQuestionAnswer(question.id, answer, isCorrect)}
-            onNext={() => {}} // No auto-next since we're showing all questions
+            onNext={() => {}} // No auto-next since we&apos;re showing all questions
             lectureId={lectureId}
             isAnswered={showResults ? isAnswered : false} // Only show as answered when results are shown
             answerResult={showResults ? answerResult : undefined}

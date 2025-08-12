@@ -129,7 +129,7 @@ export function UsersTab() {
         title: t('admin.roleUpdated'),
         description: t('admin.roleUpdatedSuccess', { email: updatedUser.email, role: newRole }),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating user role:', error);
       toast({
         title: t('common.error'),

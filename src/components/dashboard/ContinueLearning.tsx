@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
 import { Play, BookOpen, Clock } from 'lucide-react';
@@ -106,7 +105,12 @@ export function ContinueLearning({ lastLecture, isLoading = false }: ContinueLea
             <span>{t('dashboard.continueLearning.progress')}</span>
             <span className="font-medium">{lastLecture.completedQuestions}/{lastLecture.totalQuestions}</span>
           </div>
-          <Progress value={lastLecture.progress} className="h-3 bg-muted/50" />
+          <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-200">
+            <div 
+              className="h-full bg-blue-600 transition-all duration-300 ease-in-out rounded-full"
+              style={{ width: `${lastLecture.progress}%` }}
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground bg-gradient-to-r from-muted/30 to-muted/10 rounded-lg p-3">

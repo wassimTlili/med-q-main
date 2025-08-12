@@ -78,11 +78,11 @@ export function ReportQuestionDialog({
       setReason('');
       onOpenChange(false);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting report:', error);
       let errorMessage = t('common.tryAgain');
       
-      if (error.message) {
+      if (error instanceof Error) {
         errorMessage = error.message;
       }
       

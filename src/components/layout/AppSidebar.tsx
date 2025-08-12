@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 import {
   Sidebar,
@@ -18,7 +19,7 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, UserCircle, Settings, Users, LogOut, X, Menu, BookOpen } from 'lucide-react';
+import { LayoutDashboard, UserCircle, Settings, Users, LogOut, BookOpen, Moon, Sun } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
@@ -27,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 export function AppSidebar() {
   const { user, isAdmin, logout } = useAuth();
+  const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
   const { state, setOpen, setOpenMobile, isMobile: sidebarIsMobile, open, openMobile, toggleSidebar } = useSidebar();
@@ -56,18 +58,6 @@ export function AppSidebar() {
     }
   };
 
-  const handleCloseSidebar = () => {
-    if (sidebarIsMobile) {
-      setOpenMobile(false);
-    } else {
-      setOpen(false);
-    }
-  };
-
-  const handleToggleSidebar = () => {
-    toggleSidebar();
-  };
-
   // Icon size based on sidebar state
   const iconSize = state === 'expanded' ? 'h-5 w-5' : 'h-6 w-6';
 
@@ -75,7 +65,10 @@ export function AppSidebar() {
     <>
       <Sidebar className="border-r border-border/40 bg-gradient-to-b from-background to-muted/20" collapsible="icon">
         <SidebarHeader className="border-b border-border/40 bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-950/50 dark:to-blue-900/30">
-          <div className={`flex items-center justify-center transition-all duration-300 ${state === 'expanded' ? 'px-4 py-4' : 'px-2 py-4'}`}>
+          <div 
+            className={`flex items-center justify-center transition-all duration-300 cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/20 ${state === 'expanded' ? 'px-4 py-4' : 'px-2 py-4'}`}
+            onClick={toggleSidebar}
+          >
             {/* Logo/Brand */}
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-xl w-10 h-10 shadow-lg shadow-blue-500/25">
@@ -168,23 +161,48 @@ export function AppSidebar() {
           </ScrollArea>
         </SidebarContent>
         
-        <SidebarFooter className="border-t border-border/40 bg-gradient-to-r from-red-50 to-red-100/50 dark:from-red-950/50 dark:to-red-900/30 p-2">
+        <SidebarFooter className="border-t border-border/40 bg-gradient-to-r from-muted/50 to-muted/30 dark:from-muted/30 dark:to-muted/10 p-2">
           <div className="space-y-2">
+            {/* Theme Toggle Button */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className={`w-full font-medium rounded-xl transition-all duration-200 ${
-                    state === 'expanded' 
-                      ? 'justify-start px-3 py-3 min-h-[44px]' 
-                      : 'justify-center p-0 min-h-[44px]'
-                  } text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300`}
+                  className={`w-full font-medium rounded-xl transition-all duration-200 justify-center p-0 min-h-[44px] text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 hover:text-blue-700 dark:hover:text-blue-300`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Theme toggle clicked, current theme:', theme);
+                    const newTheme = theme === 'dark' ? 'light' : 'dark';
+                    console.log('Setting theme to:', newTheme);
+                    setTheme(newTheme);
+                  }}
+                  title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                >
+                  {theme === 'dark' ? (
+                    <Sun className={`${iconSize} flex-shrink-0`} />
+                  ) : (
+                    <Moon className={`${iconSize} flex-shrink-0`} />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" align="center" className="bg-background/95 backdrop-blur-sm border-border/50">
+                <p>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Logout Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`w-full font-medium rounded-xl transition-all duration-200 justify-center p-0 min-h-[44px] text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:text-red-700 dark:hover:text-red-300`}
                   onClick={handleSignOut}
                   title={t('auth.signOut')}
                 >
                   <LogOut className={`${iconSize} flex-shrink-0`} />
-                  {state === "expanded" && <span className="ml-3">{t('auth.signOut')}</span>}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right" align="center" className="bg-background/95 backdrop-blur-sm border-border/50">
@@ -201,7 +219,7 @@ export function AppSidebar() {
 
 export function AppSidebarProvider({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider defaultOpen={false} className="w-full">
+    <SidebarProvider className="w-full">
       <div className="flex min-h-screen w-full">
         {children}
       </div>

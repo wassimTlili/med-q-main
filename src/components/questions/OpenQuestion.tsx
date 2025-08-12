@@ -10,9 +10,11 @@ import { OpenQuestionActions } from './open/OpenQuestionActions';
 import { QuestionEditDialog } from './QuestionEditDialog';
 import { ReportQuestionDialog } from './ReportQuestionDialog';
 import { Button } from '@/components/ui/button';
-import { Pencil } from 'lucide-react';
+import { Pencil, Pin, PinOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useProgress } from '@/hooks/use-progress';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 
 import { QuestionMedia } from './QuestionMedia';
 
@@ -49,9 +51,103 @@ export function OpenQuestion({
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false); // Track if question has been submitted
   const [deferredAssessmentResult, setDeferredAssessmentResult] = useState<boolean | 'partial' | null>(null); // Track deferred self-assessment
+  const [isPinned, setIsPinned] = useState(false); // Track if question is pinned
   const hasSubmittedRef = useRef(false); // Immediate synchronous access to submission state
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { trackQuestionProgress } = useProgress();
+
+  // Load pinned status from database on mount
+  useEffect(() => {
+    const loadPinnedStatus = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const response = await fetch(`/api/pinned-questions?userId=${user.id}`);
+        if (response.ok) {
+          const pinnedData = await response.json();
+          const isQuestionPinned = pinnedData.some((item: any) => item.questionId === question.id);
+          setIsPinned(isQuestionPinned);
+        }
+      } catch (error) {
+        console.error('Error loading pinned question status:', error);
+      }
+    };
+
+    if (user?.id && question.id) {
+      loadPinnedStatus();
+    }
+  }, [user?.id, question.id]);
+
+  // Pin/Unpin handlers for questions
+  const handlePinQuestion = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await fetch('/api/pinned-questions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          questionId: question.id,
+        }),
+      });
+
+      if (response.ok) {
+        setIsPinned(true);
+        toast({
+          title: "Question Pinned",
+          description: "This question has been pinned to your collection.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to pin question.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error pinning question:', error);
+      toast({
+        title: "Error",
+        description: "Failed to pin question.",
+        variant: "destructive",
+      });
+    }
+  }, [user?.id, question.id]);
+
+  const handleUnpinQuestion = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await fetch(`/api/pinned-questions?userId=${user.id}&questionId=${question.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setIsPinned(false);
+        toast({
+          title: "Question Unpinned",
+          description: "This question has been removed from your pinned collection.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to unpin question.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error unpinning question:', error);
+      toast({
+        title: "Error",
+        description: "Failed to unpin question.",
+        variant: "destructive",
+      });
+    }
+  }, [user?.id, question.id]);
 
   // Force reset when question changes (safety net)
   useEffect(() => {
@@ -162,7 +258,7 @@ export function OpenQuestion({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === '1') {
-        // Only trigger if not already submitted and there's text in the answer
+        // Only trigger if not already submitted and there&apos;s text in the answer
         if (!submitted && answer.trim()) {
           handleSubmit();
         } else if (submitted && assessmentCompleted) {
@@ -197,6 +293,20 @@ export function OpenQuestion({
         </div>
         
         <div className="flex gap-2 flex-shrink-0">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={isPinned ? handleUnpinQuestion : handlePinQuestion}
+            className="flex items-center gap-1"
+          >
+            {isPinned ? (
+              <PinOff className="h-3.5 w-3.5" />
+            ) : (
+              <Pin className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">{isPinned ? 'Unpin' : 'Pin'}</span>
+          </Button>
+          
           <Button 
             variant="outline" 
             size="sm"

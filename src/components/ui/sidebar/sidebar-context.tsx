@@ -49,12 +49,27 @@ export function useSidebar() {
 }
 
 /**
- * Determines the default open state of the sidebar based on the current route
+ * Determines the default open state of the sidebar based on stored preference
  * 
- * Always starts collapsed for all routes
+ * Reads from cookie to maintain state across page navigations
  */
-const getDefaultOpenState = (path: string): boolean => {
-  return false; // Always start collapsed
+const getDefaultOpenState = (): boolean => {
+  // Check if we&apos;re in the browser environment
+  if (typeof window === 'undefined') return false;
+  
+  // Try to read from cookie
+  const cookies = document.cookie.split(';');
+  const sidebarCookie = cookies.find(cookie => 
+    cookie.trim().startsWith(`${SIDEBAR_COOKIE_NAME}=`)
+  );
+  
+  if (sidebarCookie) {
+    const value = sidebarCookie.split('=')[1];
+    return value === 'true';
+  }
+  
+  // Default to closed if no cookie found
+  return false;
 }
 
 interface SidebarProviderProps {
@@ -89,10 +104,10 @@ export const SidebarProvider = React.forwardRef<
     const pathname = usePathname()
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    // Get the default open state based on the current route
+    // Get the default open state based on stored preference
     const routeBasedDefaultOpen = React.useMemo(() => {
-      return defaultOpen !== undefined ? defaultOpen : getDefaultOpenState(pathname || '/')
-    }, [pathname, defaultOpen])
+      return defaultOpen !== undefined ? defaultOpen : getDefaultOpenState()
+    }, [defaultOpen])
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
@@ -136,12 +151,8 @@ export const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown)
     }, [toggleSidebar])
 
-    // Update sidebar state when route changes
-    React.useEffect(() => {
-      if (openProp === undefined) {
-        _setOpen(getDefaultOpenState(pathname || '/'))
-      }
-    }, [pathname, openProp])
+    // Remove the route-based reset effect since we want to preserve state
+    // The sidebar state should only change when user manually toggles it
 
     // We add a state so that we can do data-state="expanded" or "collapsed".
     // This makes it easier to style the sidebar with Tailwind classes.

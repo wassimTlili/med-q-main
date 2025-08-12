@@ -76,11 +76,11 @@ export function AddLectureDialog({
       // Refresh the lectures list
       onLectureAdded();
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating lecture:', error);
       let errorMessage = t('common.tryAgain');
       
-      if (error.message) {
+      if (error instanceof Error) {
         errorMessage = error.message;
       }
       

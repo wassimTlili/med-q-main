@@ -10,7 +10,7 @@ export function useProgress() {
     isCorrect: boolean | 'partial',
     score?: number
   ) => {
-    if (!user) return;
+    if (!user?.id) return;
 
     // Convert the result to a numeric score for database storage
     let numericScore: number;
@@ -32,7 +32,8 @@ export function useProgress() {
         lectureId,
         questionId,
         completed: true,
-        score: numericScore
+        score: numericScore,
+        userId: user.id
       }),
     }).catch(error => {
       console.error('Error tracking progress:', error);
@@ -43,7 +44,7 @@ export function useProgress() {
     lectureId: string,
     completed: boolean = true
   ) => {
-    if (!user) return;
+    if (!user?.id) return;
 
     // Fire and forget - don't block the UI
     fetch('/api/progress', {
@@ -53,7 +54,8 @@ export function useProgress() {
       },
       body: JSON.stringify({
         lectureId,
-        completed
+        completed,
+        userId: user.id
       }),
     }).catch(error => {
       console.error('Error tracking lecture progress:', error);
@@ -61,12 +63,13 @@ export function useProgress() {
   }, [user]);
 
   const getProgress = useCallback(async (lectureId?: string, specialtyId?: string) => {
-    if (!user) return null;
+    if (!user?.id) return null;
 
     try {
       const params = new URLSearchParams();
       if (lectureId) params.append('lectureId', lectureId);
       if (specialtyId) params.append('specialtyId', specialtyId);
+      params.append('userId', user.id);
 
       const response = await fetch(`/api/progress?${params.toString()}`);
       if (response.ok) {

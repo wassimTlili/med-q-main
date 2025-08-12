@@ -91,7 +91,7 @@ export function AddSpecialtyDialog({
       // Refresh the specialties list
       onSpecialtyAdded();
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating specialty:', error);
       let errorMessage = t('common.tryAgain');
       

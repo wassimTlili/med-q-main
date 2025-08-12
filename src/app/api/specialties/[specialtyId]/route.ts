@@ -8,10 +8,29 @@ async function getHandler(
 ) {
   try {
     const { specialtyId } = await params;
+    const userId = request.user!.userId;
 
+    console.log('Fetching specialty:', specialtyId, 'for user:', userId);
+
+    // Get specialty with lectures and questions
     const specialty = await prisma.specialty.findUnique({
       where: { id: specialtyId },
       include: {
+        niveau: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
+        lectures: {
+          include: {
+            _count: {
+              select: {
+                questions: true
+              }
+            }
+          }
+        },
         _count: {
           select: {
             lectures: true
@@ -21,17 +40,88 @@ async function getHandler(
     });
 
     if (!specialty) {
+      console.error('Specialty not found:', specialtyId);
       return NextResponse.json(
         { error: 'Specialty not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(specialty);
+    console.log('Specialty found:', specialty.name);
+
+    // Calculate total questions across all lectures
+    const totalQuestions = specialty.lectures.reduce((sum, lecture) => {
+      return sum + lecture._count.questions;
+    }, 0);
+
+    // Get user progress for all questions in this specialty
+    const userProgress = await prisma.userProgress.findMany({
+      where: {
+        userId: userId,
+        lecture: {
+          specialtyId: specialtyId
+        }
+      }
+    });
+
+    // Calculate progress metrics
+    const completedQuestions = userProgress.filter(p => p.completed).length;
+    const correctAnswers = userProgress.filter(p => p.completed && (p.score || 0) > 0.7).length;
+    const partialAnswers = userProgress.filter(p => p.completed && (p.score || 0) > 0.3 && (p.score || 0) <= 0.7).length;
+    const incorrectAnswers = userProgress.filter(p => p.completed && (p.score || 0) <= 0.3).length;
+
+    const questionProgress = totalQuestions > 0 ? (completedQuestions / totalQuestions) * 100 : 0;
+    const averageScore = completedQuestions > 0 ? 
+      (userProgress.reduce((sum, p) => sum + (p.score || 0), 0) / completedQuestions) * 100 : 0;
+
+    // Calculate lecture progress
+    const lectureProgressMap = new Map();
+    specialty.lectures.forEach(lecture => {
+      const lectureQuestions = lecture._count.questions;
+      const lectureUserProgress = userProgress.filter(p => p.lectureId === lecture.id);
+      const completedLectureQuestions = lectureUserProgress.filter(p => p.completed).length;
+      
+      lectureProgressMap.set(lecture.id, {
+        totalQuestions: lectureQuestions,
+        completedQuestions: completedLectureQuestions,
+        percentage: lectureQuestions > 0 ? (completedLectureQuestions / lectureQuestions) * 100 : 0
+      });
+    });
+
+    const completedLectures = specialty.lectures.filter(lecture => {
+      const progress = lectureProgressMap.get(lecture.id);
+      return progress && progress.percentage === 100;
+    }).length;
+
+    const lectureProgress = specialty.lectures.length > 0 ? (completedLectures / specialty.lectures.length) * 100 : 0;
+
+    const specialtyWithProgress = {
+      ...specialty,
+      progress: {
+        totalLectures: specialty._count.lectures,
+        completedLectures: completedLectures,
+        totalQuestions: totalQuestions,
+        completedQuestions: completedQuestions,
+        lectureProgress: Math.round(lectureProgress),
+        questionProgress: Math.round(questionProgress),
+        averageScore: Math.round(averageScore),
+        correctQuestions: correctAnswers,
+        incorrectQuestions: incorrectAnswers,
+        partialQuestions: partialAnswers,
+        incompleteQuestions: totalQuestions - completedQuestions
+      }
+    };
+
+    console.log('Returning specialty with calculated progress:', {
+      name: specialtyWithProgress.name,
+      progress: specialtyWithProgress.progress
+    });
+    
+    return NextResponse.json(specialtyWithProgress);
   } catch (error) {
     console.error('Error fetching specialty:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch specialty' },
+      { error: 'Failed to fetch specialty', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

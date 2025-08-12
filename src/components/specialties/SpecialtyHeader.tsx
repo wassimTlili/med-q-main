@@ -43,7 +43,7 @@ export function SpecialtyHeader({ specialty, isLoading }: SpecialtyHeaderProps) 
         <div className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 rounded-2xl p-12 shadow-lg max-w-md mx-auto">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">Specialty not found</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            The specialty you're looking for doesn't exist or has been removed.
+            The specialty you&apos;re looking for doesn&apos;t exist or has been removed.
           </p>
           <Button 
             variant="outline" 

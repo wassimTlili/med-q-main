@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
 
-async function postHandler(request: AuthenticatedRequest) {
+// POST - Update progress
+export async function POST(request: NextRequest) {
   try {
-    const { lectureId, questionId, completed, score } = await request.json();
-    const userId = request.user!.userId;
+    const { lectureId, questionId, completed, score, userId } = await request.json();
 
-    if (!lectureId) {
+    if (!lectureId || !userId) {
       return NextResponse.json(
-        { error: 'Lecture ID is required' },
+        { error: 'Lecture ID and user ID are required' },
         { status: 400 }
       );
     }
@@ -54,12 +53,20 @@ async function postHandler(request: AuthenticatedRequest) {
   }
 }
 
-async function getHandler(request: AuthenticatedRequest) {
+// GET - Fetch progress
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const lectureId = searchParams.get('lectureId');
     const specialtyId = searchParams.get('specialtyId');
-    const userId = request.user!.userId;
+    const userId = searchParams.get('userId');
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      );
+    }
 
     // Get user with their niveau information
     const user = await prisma.user.findUnique({
@@ -136,7 +143,4 @@ async function getHandler(request: AuthenticatedRequest) {
       { status: 500 }
     );
   }
-}
-
-export const POST = requireAuth(postHandler);
-export const GET = requireAuth(getHandler); 
+} 

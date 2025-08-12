@@ -47,7 +47,7 @@ export function MediaUpload({ mediaUrl, mediaType, onMediaChange }: MediaUploadP
     setIsUploading(true);
     
     try {
-      // For now, create a local file URL (in production, you'd upload to a cloud storage service)
+      // For now, create a local file URL (in production, you&apos;d upload to a cloud storage service)
       const fileUrl = URL.createObjectURL(file);
       
       // Simulate upload delay
@@ -59,7 +59,7 @@ export function MediaUpload({ mediaUrl, mediaType, onMediaChange }: MediaUploadP
         title: t('admin.mediaUploaded'),
         description: t('admin.mediaUploadSuccess'),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading file:', error);
       toast({
         title: t('common.error'),

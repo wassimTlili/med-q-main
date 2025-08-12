@@ -30,7 +30,7 @@ export function UpgradeDialog({ isOpen, onOpenChange, onUpgrade }: UpgradeDialog
     setIsLoading(true);
     try {
       // Here you would integrate with your payment provider
-      // For now, we'll just call the onUpgrade callback
+      // For now, we&apos;ll just call the onUpgrade callback
       await onUpgrade();
     } catch (error) {
       console.error('Error during upgrade:', error);

@@ -1,7 +1,9 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
-import { AppLayout } from '@/components/layout/AppLayout'
+import { UniversalHeader } from '@/components/layout/UniversalHeader';
+import { AppSidebar, AppSidebarProvider } from '@/components/layout/AppSidebar';
+import { SidebarInset } from '@/components/ui/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -26,14 +28,19 @@ export default function SettingsPageRoute() {
 
   return (
     <ProtectedRoute>
-      <AppLayout>
-        <div className="space-y-4 sm:space-y-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">{t('settings.title')}</h1>
-            <p className="text-sm sm:text-base md:text-lg mt-2 text-muted-foreground">
-              {t('settings.description')}
-            </p>
-          </div>
+      <AppSidebarProvider>
+        <div className="flex min-h-screen w-full">
+          <AppSidebar />
+          <SidebarInset className="flex-1 flex flex-col">
+            {/* Universal Header */}
+            <UniversalHeader
+              title="Settings"
+            />
+
+            {/* Main Content */}
+            <div className="flex-1 bg-gray-50 dark:bg-gray-900">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="space-y-4 sm:space-y-6">
 
           <Card className="backdrop-blur-sm bg-white/80 dark:bg-gray-800/80 border-blue-200 dark:border-blue-800 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader>
@@ -97,8 +104,12 @@ export default function SettingsPageRoute() {
               </Button>
             </CardContent>
           </Card>
+                </div>
+              </div>
+            </div>
+          </SidebarInset>
         </div>
-      </AppLayout>
+      </AppSidebarProvider>
     </ProtectedRoute>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useLecture } from '@/hooks/use-lecture'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -12,27 +12,26 @@ import { MCQQuestion } from '@/components/questions/MCQQuestion'
 import { OpenQuestion } from '@/components/questions/OpenQuestion'
 import { ClinicalCaseQuestion } from '@/components/questions/ClinicalCaseQuestion'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Dumbbell } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { ClinicalCase, Question } from '@/types'
 
 export default function LecturePageRoute() {
   const params = useParams()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const { t } = useTranslation()
   
-  if (!params?.lectureId) {
-    return <div>Lecture ID not found</div>
-  }
-  
-  const lectureId = params.lectureId as string
-  
+  const lectureId = params?.lectureId as string
+  const mode = searchParams?.get('mode') // 'pinned' or null for all questions
+
+  // Always call hooks at the top level
   const {
     lecture,
     questions,
     currentQuestionIndex,
-    setCurrentQuestionIndex,
-    answers,
+    userAnswers,
     answerResults,
     isLoading,
     isComplete,
@@ -43,9 +42,11 @@ export default function LecturePageRoute() {
     handleNext,
     handleRestart,
     handleBackToSpecialty,
-  } = useLecture(lectureId);
+  } = useLecture(lectureId, mode); // Pass mode to the hook
 
-
+  if (!lectureId) {
+    return <div>Lecture ID not found</div>
+  }
 
   if (isLoading) {
     return (
@@ -74,7 +75,7 @@ export default function LecturePageRoute() {
                       {t('lectures.lectureNotFound')}
                     </h1>
                     <p className="text-gray-600 dark:text-gray-400 mb-6">
-                      The lecture you're looking for doesn't exist or has been removed.
+                      The lecture you&apos;re looking for doesn&apos;t exist or has been removed.
                     </p>
                     <Button 
                       onClick={handleBackToSpecialty} 
@@ -106,6 +107,7 @@ export default function LecturePageRoute() {
                 answers={answers}
                 answerResults={answerResults}
                 lectureTitle={lecture.title}
+                lectureId={lectureId}
               />
             </div>
           </div>
@@ -242,12 +244,114 @@ export default function LecturePageRoute() {
 
   return (
     <ProtectedRoute>
-      <AppLayout>
+      {/* Show navbar only for pinned mode, hide for regular study mode */}
+      {mode === 'pinned' ? (
+        <AppLayout>
+          <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-blue-50/50 dark:from-blue-950/20 dark:via-gray-900 dark:to-blue-950/20">
+            <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
+              <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 pb-10 lg:pb-0">
+                <div className="flex-1 space-y-4 sm:space-y-6 min-w-0 w-full max-w-full">
+                  <div className="flex justify-between items-center">
+                    {/* Mode indicator for pinned questions */}
+                    {mode === 'pinned' && (
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 rounded-full text-sm font-medium">
+                        <Dumbbell className="w-4 h-4" />
+                        Pinned Questions Only
+                        {questions.length === 0 && (
+                          <span className="text-xs text-orange-600 dark:text-orange-400">
+                            (No pinned questions found)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex-1"></div>
+                    <LectureTimer lectureId={lectureId} />
+                  </div>
+
+                  {currentQuestion && (
+                    <div className="space-y-4 sm:space-y-6">
+                      {renderCurrentQuestion()}
+                    </div>
+                  )}
+
+                  {/* No pinned questions message */}
+                  {mode === 'pinned' && questions.length === 0 && !isLoading && (
+                    <div className="flex items-center justify-center min-h-[60vh]">
+                      <div className="text-center max-w-md mx-auto">
+                        <div className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 rounded-2xl p-8 shadow-lg">
+                          <Dumbbell className="w-12 h-12 text-orange-500 mx-auto mb-4" />
+                          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                            No Pinned Questions
+                          </h1>
+                          <p className="text-gray-600 dark:text-gray-400 mb-6">
+                            You haven&apos;t pinned any questions from this lecture yet. 
+                            Pin questions while studying to create your personal test set.
+                          </p>
+                          <Button 
+                            onClick={() => router.push(`/lecture/${lectureId}`)} 
+                            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 mr-3"
+                          >
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Study All Questions
+                          </Button>
+                          <Button 
+                            onClick={handleBackToSpecialty} 
+                            variant="outline"
+                          >
+                            Back to Specialty
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="hidden lg:block lg:w-80 lg:flex-shrink-0">
+                  <QuestionControlPanel
+                    questions={questions}
+                    currentQuestionIndex={currentQuestionIndex}
+                    answers={answers}
+                    answerResults={answerResults}
+                    onQuestionSelect={handleQuestionSelect}
+                    onPrevious={handlePrevious}
+                    onNext={handleNext}
+                    isComplete={isComplete}
+                  />
+                </div>
+              </div>
+              
+              {/* Mobile Control Panel - rendered separately to avoid layout issues */}
+              <div className="lg:hidden mt-4 sm:mt-6">
+                <QuestionControlPanel
+                  questions={questions}
+                  currentQuestionIndex={currentQuestionIndex}
+                  answers={answers}
+                  answerResults={answerResults}
+                  onQuestionSelect={handleQuestionSelect}
+                  onPrevious={handlePrevious}
+                  onNext={handleNext}
+                  isComplete={isComplete}
+                />
+              </div>
+            </div>
+          </div>
+        </AppLayout>
+      ) : (
+        /* Regular study mode - NO NAVBAR but keep Questions Navigator */
         <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-blue-50/50 dark:from-blue-950/20 dark:via-gray-900 dark:to-blue-950/20">
           <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
             <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 pb-10 lg:pb-0">
               <div className="flex-1 space-y-4 sm:space-y-6 min-w-0 w-full max-w-full">
-                <div className="flex justify-end">
+                <div className="flex justify-between items-center">
+                  {/* Back to specialty button */}
+                  <Button
+                    onClick={handleBackToSpecialty}
+                    variant="ghost"
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Specialty
+                  </Button>
                   <LectureTimer lectureId={lectureId} />
                 </div>
 
@@ -287,7 +391,7 @@ export default function LecturePageRoute() {
             </div>
           </div>
         </div>
-      </AppLayout>
+      )}
     </ProtectedRoute>
   );
 }

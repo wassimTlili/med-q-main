@@ -39,6 +39,10 @@ export type Specialty = {
     name: string;
   };
   progress?: SpecialtyProgress;
+  _count?: {
+    lectures?: number;
+    questions?: number;
+  };
 };
 
 export type SpecialtyProgress = {
@@ -72,12 +76,16 @@ export type Lecture = {
     };
   };
   progress?: LectureProgress;
+  reportsCount?: number; // Only available for admins
 };
 
 export type LectureProgress = {
   totalQuestions: number;
   completedQuestions: number;
   percentage: number;
+  correctAnswers: number;
+  incorrectAnswers: number;
+  partialAnswers: number;
   lastAccessed?: Date;
 };
 

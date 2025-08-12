@@ -186,9 +186,6 @@ export function EditSpecialtyDialog({
               disabled={isLoading}
               className="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             >
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={isLoading}>
               {isLoading ? t('common.saving') : t('common.save')}
             </Button>
           </div>

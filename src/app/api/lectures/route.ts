@@ -73,8 +73,58 @@ async function getHandler(request: AuthenticatedRequest) {
         }
       }
     });
+
+    // Calculate progress for each lecture
+    const lecturesWithProgress = await Promise.all(
+      lectures.map(async (lecture) => {
+        // Get user progress for this lecture
+        const userProgress = await prisma.userProgress.findMany({
+          where: {
+            userId: userId,
+            lectureId: lecture.id
+          }
+        });
+
+        const totalQuestions = lecture._count.questions;
+        const completedQuestions = userProgress.filter(p => p.completed).length;
+        const correctAnswers = userProgress.filter(p => p.completed && (p.score || 0) > 0.7).length;
+        const partialAnswers = userProgress.filter(p => p.completed && (p.score || 0) > 0.3 && (p.score || 0) <= 0.7).length;
+        const incorrectAnswers = userProgress.filter(p => p.completed && (p.score || 0) <= 0.3).length;
+
+        const percentage = totalQuestions > 0 ? (completedQuestions / totalQuestions) * 100 : 0;
+
+        // Get reports count for admins
+        let reportsCount = 0;
+        if (user.role === 'admin') {
+          const reports = await prisma.report.findMany({
+            where: {
+              lectureId: lecture.id
+            }
+          });
+          reportsCount = reports.length;
+        }
+
+        return {
+          ...lecture,
+          progress: {
+            totalQuestions,
+            completedQuestions,
+            percentage: Math.round(percentage),
+            correctAnswers,
+            incorrectAnswers,
+            partialAnswers,
+            lastAccessed: userProgress.length > 0 ? 
+              userProgress.reduce((latest, p) => 
+                p.lastAccessed > latest ? p.lastAccessed : latest, 
+                userProgress[0].lastAccessed
+              ) : undefined
+          },
+          reportsCount: user.role === 'admin' ? reportsCount : undefined
+        };
+      })
+    );
     
-    return NextResponse.json(lectures);
+    return NextResponse.json(lecturesWithProgress);
   } catch (error) {
     console.error('Error fetching lectures:', error);
     return NextResponse.json(

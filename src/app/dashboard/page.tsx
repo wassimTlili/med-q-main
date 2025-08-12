@@ -2,7 +2,9 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { AppLayout } from '@/components/layout/AppLayout';
+import { UniversalHeader } from '@/components/layout/UniversalHeader';
+import { AppSidebar, AppSidebarProvider } from '@/components/layout/AppSidebar';
+import { SidebarInset } from '@/components/ui/sidebar';
 import { UpsellBanner } from '@/components/subscription/UpsellBanner';
 import { UpgradeDialog } from '@/components/subscription/UpgradeDialog';
 import { useTranslation } from 'react-i18next';
@@ -44,8 +46,19 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <ProfileCompletionGuard>
-        <AppLayout>
-          <div className="space-y-4 sm:space-y-6">
+        <AppSidebarProvider>
+          <div className="flex min-h-screen w-full">
+            <AppSidebar />
+            <SidebarInset className="flex-1 flex flex-col">
+              {/* Universal Header */}
+              <UniversalHeader
+                title="Dashboard"
+              />
+
+              {/* Main Content */}
+              <div className="flex-1 bg-gray-50 dark:bg-gray-900">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <div className="space-y-4 sm:space-y-6">
             {/* Upsell Banner for Free Users */}
             {shouldShowUpsell && (
               <UpsellBanner
@@ -53,15 +66,6 @@ export default function DashboardPage() {
                 onDismiss={() => setIsUpsellDismissed(true)}
               />
             )}
-
-            <div className="text-center md:text-left">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent animate-fade-in">
-                {t('dashboard.title')}
-              </h1>
-              <p className="text-sm sm:text-base md:text-lg text-muted-foreground mt-2 animate-slide-up">
-                {t('dashboard.welcome', { name: user?.name || user?.email })}
-              </p>
-            </div>
 
             {/* Error Alert */}
             {error && (
@@ -122,8 +126,12 @@ export default function DashboardPage() {
               onOpenChange={setIsUpgradeDialogOpen}
               onUpgrade={handleUpgradeComplete}
             />
+                  </div>
+                </div>
+              </div>
+            </SidebarInset>
           </div>
-        </AppLayout>
+        </AppSidebarProvider>
       </ProfileCompletionGuard>
     </ProtectedRoute>
   );

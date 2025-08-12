@@ -41,7 +41,7 @@ export function SpecialtyCard({ specialty }: SpecialtyCardProps) {
 
   const handleUpgrade = async () => {
     // Here you would integrate with your payment provider
-    // For now, we'll just close the dialog
+    // For now, we&apos;ll just close the dialog
     setShowUpgradeDialog(false);
     // You could redirect to a payment page or handle the upgrade flow
   };

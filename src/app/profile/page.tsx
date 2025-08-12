@@ -1,7 +1,9 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
-import { AppLayout } from '@/components/layout/AppLayout'
+import { UniversalHeader } from '@/components/layout/UniversalHeader';
+import { AppSidebar, AppSidebarProvider } from '@/components/layout/AppSidebar';
+import { SidebarInset } from '@/components/ui/sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -17,14 +19,19 @@ export default function ProfilePageRoute() {
   return (
     <ProtectedRoute>
       <ProfileCompletionGuard>
-        <AppLayout>
-          <div className="space-y-4 sm:space-y-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">{t('profile.title')}</h1>
-              <p className="text-sm sm:text-base md:text-lg mt-2 text-muted-foreground">
-                {t('profile.description')}
-              </p>
-            </div>
+        <AppSidebarProvider>
+          <div className="flex min-h-screen w-full">
+            <AppSidebar />
+            <SidebarInset className="flex-1 flex flex-col">
+              {/* Universal Header */}
+              <UniversalHeader
+                title="Profile"
+              />
+
+              {/* Main Content */}
+              <div className="flex-1 bg-gray-50 dark:bg-gray-900">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  <div className="space-y-4 sm:space-y-6">
 
             <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
               {/* Personal Information Card */}
@@ -208,8 +215,12 @@ export default function ProfilePageRoute() {
                 )}
               </CardContent>
             </Card>
+                  </div>
+                </div>
+              </div>
+            </SidebarInset>
           </div>
-        </AppLayout>
+        </AppSidebarProvider>
       </ProfileCompletionGuard>
     </ProtectedRoute>
   )

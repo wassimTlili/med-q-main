@@ -15,7 +15,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   const pathname = usePathname();
 
   useEffect(() => {
-    // Only redirect if we're not loading and we have a definitive answer about auth status
+    // Only redirect if we&apos;re not loading and we have a definitive answer about auth status
     if (!isLoading) {
       if (!user) {
         // Store the current path to redirect back after login
@@ -36,7 +36,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <AuthLoadingScreen />;
   }
 
-  // Don't render anything if user is not authenticated or doesn't have required role
+  // Don&apos;t render anything if user is not authenticated or doesn&apos;t have required role
   if (!user || (requireAdmin && !isAdmin)) {
     return null;
   }
