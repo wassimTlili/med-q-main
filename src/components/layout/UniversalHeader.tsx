@@ -154,7 +154,7 @@ export function UniversalHeader({
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={user?.picture} alt={user?.name || user?.email || 'User'} />
+                    <AvatarImage src={user?.image} alt={user?.name || user?.email || 'User'} />
                     <AvatarFallback className="bg-blue-600 text-white">
                       {user?.name ? getInitials(user.name) : <UserCircle className="h-5 w-5" />}
                     </AvatarFallback>

@@ -133,7 +133,7 @@ export function UsersTab() {
       console.error('Error updating user role:', error);
       toast({
         title: t('common.error'),
-        description: error.message || t('admin.errorUpdatingRole'),
+        description: (error instanceof Error ? error.message : String(error)) || t('admin.errorUpdatingRole'),
         variant: "destructive",
       });
     }

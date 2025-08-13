@@ -58,7 +58,18 @@ export async function PUT(request: NextRequest) {
     });
 
     // Remove sensitive data
-    const { password, verificationToken, passwordResetToken, ...userWithoutSensitiveData } = updatedUser;
+    const userWithoutSensitiveData = {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      sexe: updatedUser.sexe,
+      role: updatedUser.role,
+      niveauId: updatedUser.niveauId,
+      niveau: updatedUser.niveau,
+      profileCompleted: updatedUser.profileCompleted,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt
+    };
 
     return NextResponse.json({
       user: userWithoutSensitiveData,
@@ -72,4 +83,4 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

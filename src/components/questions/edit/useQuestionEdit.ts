@@ -171,7 +171,7 @@ export function useQuestionEdit({
       console.error('Error updating question:', error);
       let errorMessage = t('common.tryAgain');
       
-      if (error.message) {
+      if (error instanceof Error && error.message) {
         errorMessage = error.message;
       }
       

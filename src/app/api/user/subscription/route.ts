@@ -1,10 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
 
 async function getHandler(request: AuthenticatedRequest) {
   try {
-    const userId = request.user!.userId;
+    const userId = request.user?.userId;
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -40,7 +47,14 @@ async function getHandler(request: AuthenticatedRequest) {
 
 async function putHandler(request: AuthenticatedRequest) {
   try {
-    const userId = request.user!.userId;
+    const userId = request.user?.userId;
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const { hasActiveSubscription, subscriptionExpiresAt } = await request.json();
 
     const user = await prisma.user.update({

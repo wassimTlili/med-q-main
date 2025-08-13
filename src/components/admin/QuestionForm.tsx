@@ -110,11 +110,14 @@ export function QuestionForm({ lectureId, editQuestionId, onComplete }: Question
             
             onComplete?.();
             
-          } catch (error: any) {
+                    } catch (error: unknown) {
             console.error('Error creating question:', error);
+            const errorMessage = error instanceof Error && error.message 
+              ? error.message 
+              : "Failed to create question";
             toast({
               title: "Error",
-              description: error.message || "Failed to create question",
+              description: errorMessage,
               variant: "destructive",
             });
           } finally {

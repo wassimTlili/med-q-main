@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let whereClause: any = { userId };
+    const whereClause: Record<string, unknown> = { userId };
 
     if (lectureId) {
       whereClause.lectureId = lectureId;

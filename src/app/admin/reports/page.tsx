@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { AdminLayout } from '@/components/admin/AdminLayout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -91,16 +91,8 @@ export default function AdminReportsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
-  useEffect(() => {
-    if (!isAdmin) return
-    fetchReports()
-  }, [isAdmin, lectureId])
-
-  useEffect(() => {
-    filterReports()
-  }, [reports, searchQuery, statusFilter])
-
-  const fetchReports = async () => {
+  // Define callbacks before effects
+  const fetchReports = useCallback(async () => {
     try {
       setIsLoading(true)
       const url = lectureId ? `/api/reports?lectureId=${lectureId}` : '/api/reports'
@@ -122,9 +114,9 @@ export default function AdminReportsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [lectureId])
 
-  const filterReports = () => {
+  const filterReports = useCallback(() => {
     let filtered = reports
 
     if (searchQuery) {
@@ -144,7 +136,17 @@ export default function AdminReportsPage() {
     }
 
     setFilteredReports(filtered)
-  }
+  }, [reports, searchQuery, statusFilter])
+
+  // Effects that use the callbacks
+  useEffect(() => {
+    if (!isAdmin) return
+    fetchReports()
+  }, [isAdmin, lectureId, fetchReports])
+
+  useEffect(() => {
+    filterReports()
+  }, [reports, searchQuery, statusFilter, filterReports])
 
   const updateReportStatus = async (reportId: string, newStatus: string) => {
     try {
@@ -160,7 +162,7 @@ export default function AdminReportsPage() {
         setReports(prev => 
           prev.map(report => 
             report.id === reportId 
-              ? { ...report, status: newStatus as any }
+              ? { ...report, status: newStatus as Report['status'] }
               : report
           )
         )

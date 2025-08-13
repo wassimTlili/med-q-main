@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAuth, AuthenticatedRequest } from '../../../../lib/auth-middleware';
 import { prisma } from '../../../../lib/prisma';
 
 async function handler(request: AuthenticatedRequest) {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: request.user!.userId },
+      where: { id: request.user?.userId },
       select: {
         id: true,
         email: true,

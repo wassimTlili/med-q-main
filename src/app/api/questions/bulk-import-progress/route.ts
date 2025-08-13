@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { read, utils } from 'xlsx';
 import { prisma } from '@/lib/prisma';
-import { requireAuth, requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import type { Prisma } from '@prisma/client';
 
 // Store active imports with their progress
 const activeImports = new Map();
@@ -57,7 +58,7 @@ function extractImageUrlAndCleanText(text: string): { cleanedText: string; media
 }
 
 // Function to parse MCQ options from Excel columns
-function parseMCQOptions(rowData: any): { options: string[], correctAnswers: string[] } {
+function parseMCQOptions(rowData: Record<string, unknown>): { options: string[], correctAnswers: string[] } {
   const options: string[] = [];
   const correctAnswers: string[] = [];
   
@@ -79,7 +80,7 @@ function parseMCQOptions(rowData: any): { options: string[], correctAnswers: str
   // Parse correct answer (e.g., "A, C, E" or "A" or "A,C,E")
   if (rowData['reponse']) {
     const answerStr = String(rowData['reponse']).toUpperCase();
-    const answers = answerStr.split(/[,\s]+/).filter((a: string) => a.trim());
+    const answers = answerStr.split(/[\,\s]+/).filter((a: string) => a.trim());
     
     answers.forEach((answer: string) => {
       const index = answer.charCodeAt(0) - 65; // Convert A=0, B=1, etc.
@@ -158,9 +159,9 @@ async function processFile(file: File, importId: string) {
         try {
           // Convert row to object with column headers
           const headers = jsonData[0] as string[];
-          const rowData: any = {};
+          const rowData: Record<string, string> = {};
           headers.forEach((header: string, index: number) => {
-            rowData[header] = (row as any[])[index];
+            rowData[header] = String((row as unknown[])[index] || '');
           });
 
           // Find or create specialty and lecture
@@ -242,31 +243,49 @@ async function processFile(file: File, importId: string) {
           }
 
           // Prepare question data based on sheet type
-          let questionData: any = {
+          type MutableQuestionData = {
+            lectureId: string;
+            text: string;
+            courseReminder: string | null;
+            number: number | null;
+            session?: string | null;
+            mediaUrl?: string | null;
+            mediaType?: string | null;
+            type?: string;
+            options?: string[] | null;
+            correctAnswers?: string[];
+            caseNumber?: number | null;
+            caseText?: string | null;
+            caseQuestionNumber?: number | null;
+          };
+
+          let questionData: MutableQuestionData = {
             lectureId: lecture.id,
             text: cleanedText,
             courseReminder: null,
-            number: parseInt(rowData['question n']) || null,
-            session: rowData['source'],
+            number: Number.isFinite(parseInt(rowData['question n'])) ? parseInt(rowData['question n']) : null,
+            session: rowData['source'] || null,
             mediaUrl: mediaUrl,
             mediaType: mediaType
           };
 
           // Set question type and specific fields
           switch (sheetName) {
-            case 'qcm':
+            case 'qcm': {
               const { options, correctAnswers } = parseMCQOptions(rowData);
               questionData.type = 'mcq';
               questionData.options = options;
               questionData.correctAnswers = correctAnswers;
               break;
+            }
 
-            case 'qroc':
+            case 'qroc': {
               questionData.type = 'qroc';
               questionData.correctAnswers = [rowData['reponse']];
               break;
+            }
 
-            case 'cas_qcm':
+            case 'cas_qcm': {
               const casQcmOptions = parseMCQOptions(rowData);
               questionData.type = 'clinic_mcq';
               questionData.options = casQcmOptions.options;
@@ -275,19 +294,42 @@ async function processFile(file: File, importId: string) {
               questionData.caseText = caseText;
               questionData.caseQuestionNumber = caseQuestionNumber;
               break;
+            }
 
-            case 'cas_qroc':
+            case 'cas_qroc': {
               questionData.type = 'clinic_croq';
               questionData.correctAnswers = [rowData['reponse']];
               questionData.caseNumber = caseNumber;
               questionData.caseText = caseText;
               questionData.caseQuestionNumber = caseQuestionNumber;
               break;
+            }
           }
+
+          if (!questionData.type || !questionData.correctAnswers) {
+            throw new Error('Invalid question data: missing type or correct answers');
+          }
+
+          const data: Prisma.QuestionUncheckedCreateInput = {
+            lectureId: questionData.lectureId,
+            text: questionData.text,
+            type: questionData.type,
+            options: questionData.options ?? undefined,
+            correctAnswers: questionData.correctAnswers,
+            explanation: undefined,
+            courseReminder: questionData.courseReminder,
+            number: questionData.number,
+            session: questionData.session ?? undefined,
+            mediaUrl: questionData.mediaUrl ?? undefined,
+            mediaType: questionData.mediaType ?? undefined,
+            caseNumber: questionData.caseNumber ?? undefined,
+            caseText: questionData.caseText ?? undefined,
+            caseQuestionNumber: questionData.caseQuestionNumber ?? undefined
+          };
 
           // Create the question
           await prisma.question.create({
-            data: questionData
+            data
           });
 
           importStats.imported++;
@@ -400,7 +442,7 @@ async function getHandler(request: AuthenticatedRequest) {
       // Return SSE response
       const stream = new ReadableStream({
         start(controller) {
-          const sendEvent = (data: any) => {
+          const sendEvent = (data: unknown) => {
             const eventData = `data: ${JSON.stringify(data)}\n\n`;
             controller.enqueue(new TextEncoder().encode(eventData));
           };
@@ -456,4 +498,4 @@ export const POST = requireAuth(postHandler);
 // Test endpoint to verify route is working
 export async function OPTIONS() {
   return new NextResponse(null, { status: 200 });
-} 
+}

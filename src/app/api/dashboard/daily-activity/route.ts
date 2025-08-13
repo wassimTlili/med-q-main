@@ -1,10 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
 
 async function getHandler(request: AuthenticatedRequest) {
   try {
-    const userId = request.user!.userId;
+    const userId = request.user?.userId;
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
     // Get user with their niveau information
     const user = await prisma.user.findUnique({
@@ -24,7 +31,7 @@ async function getHandler(request: AuthenticatedRequest) {
     }
 
     // Build where clause for user's niveau
-    let whereClause: any = { userId };
+    const whereClause: Record<string, unknown> = { userId };
 
     if (user.role !== 'admin' && user.niveauId) {
       whereClause.lecture = {

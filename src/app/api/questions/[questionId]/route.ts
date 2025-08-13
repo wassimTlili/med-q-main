@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
 
@@ -7,7 +7,14 @@ async function getHandler(
   { params }: { params: Promise<{ questionId: string }> }
 ) {
   try {
-    const userId = request.user!.userId;
+    const userId = request.user?.userId;
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const { questionId } = await params;
 
     // Get user with their niveau information
@@ -28,19 +35,22 @@ async function getHandler(
     }
 
     // Build the where clause for the question
-    let whereClause: any = { id: questionId };
+    let whereClause: unknown = { id: questionId };
     
     // If user is not admin and has a niveau, filter by specialty niveau
     if (user.role !== 'admin' && user.niveauId) {
-      whereClause.lecture = {
-        specialty: {
-          niveauId: user.niveauId
+      whereClause = {
+        ...whereClause as Record<string, unknown>,
+        lecture: {
+          specialty: {
+            niveauId: user.niveauId
+          }
         }
       };
     }
 
     const question = await prisma.question.findUnique({
-      where: whereClause,
+      where: whereClause as { id: string },
       select: {
         id: true,
         lectureId: true,

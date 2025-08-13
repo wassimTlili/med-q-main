@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { NextResponse } from 'next/server';
+import { requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
 
 async function postHandler(request: AuthenticatedRequest) {
@@ -78,7 +78,7 @@ async function postHandler(request: AuthenticatedRequest) {
           continue;
         }
 
-        const rowData: any = {};
+        const rowData: Record<string, string> = {};
         header.forEach((h, index) => {
           rowData[h] = values[index]?.trim() || '';
         });

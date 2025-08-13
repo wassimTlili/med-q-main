@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export default function AuthPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const { t } = useTranslation();
+  // const { t } = useTranslation();
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot' | 'reset'>('register');
 
   useEffect(() => {

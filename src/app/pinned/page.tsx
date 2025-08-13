@@ -27,7 +27,7 @@ interface PinnedQuestion {
 
 export default function PinnedQuestionsPage() {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  // const { t } = useTranslation();
   const [pinnedQuestions, setPinnedQuestions] = useState<PinnedQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 

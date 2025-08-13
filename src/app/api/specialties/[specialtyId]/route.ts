@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
 
@@ -8,7 +8,14 @@ async function getHandler(
 ) {
   try {
     const { specialtyId } = await params;
-    const userId = request.user!.userId;
+    const userId = request.user?.userId;
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
     console.log('Fetching specialty:', specialtyId, 'for user:', userId);
 

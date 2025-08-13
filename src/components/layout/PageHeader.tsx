@@ -33,7 +33,7 @@ export function PageHeader({
   searchPlaceholder = 'Search...',
   actions
 }: PageHeaderProps) {
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const { t } = useTranslation();
   const [notifications] = useState([
@@ -43,7 +43,7 @@ export function PageHeader({
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await logout();
       router.push('/auth');
     } catch (error) {
       console.error('Error signing out:', error);

@@ -1,10 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
 
 async function getHandler(request: AuthenticatedRequest) {
   try {
-    const userId = request.user!.userId;
+    const userId = request.user?.userId;
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const specialtyId = searchParams.get('specialtyId');
 
@@ -26,7 +33,7 @@ async function getHandler(request: AuthenticatedRequest) {
     }
 
     // Build the where clause for lectures
-    let where: any = {};
+    const where: Record<string, unknown> = {};
     
     if (specialtyId) {
       where.specialtyId = specialtyId;

@@ -6,11 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, FileText, AlertCircle, CheckCircle, XCircle, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle, XCircle, ChevronDown, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -126,13 +125,25 @@ interface ImportProgress {
   phase: 'validating' | 'importing' | 'complete';
   message: string;
   logs: string[];
-  stats?: any;
+  stats?: Record<string, unknown>;
 }
 
 interface SheetError {
   sheet: string;
   missingHeaders?: string[];
   message: string;
+}
+
+// Define the shape of import results coming from the backend
+interface ImportStats {
+  total: number;
+  imported: number;
+  failed: number;
+  createdSpecialties: number;
+  createdLectures: number;
+  createdCases: number;
+  questionsWithImages: number;
+  errors?: string[];
 }
 
 export default function ImportPage() {
@@ -143,10 +154,11 @@ export default function ImportPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [importResult, setImportResult] = useState<any>(null);
+  // Replace unknown with a concrete type
+  const [importResult, setImportResult] = useState<ImportStats | null>(null);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [lectures, setLectures] = useState<Lecture[]>([]);
-  const [specialties, setSpecialties] = useState<any[]>([]);
+  const [specialties, setSpecialties] = useState<{ id: string; name: string }[]>([]);
   const [sheetErrors, setSheetErrors] = useState<SheetError[]>([]);
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activeImportRef = useRef<boolean>(false);
@@ -180,7 +192,7 @@ export default function ImportPage() {
   // Debug progress state changes
   useEffect(() => {
     if (progress) {
-      console.log('Progress state changed:', progress);
+      // ...existing code...
     }
   }, [progress]);
 
@@ -244,7 +256,24 @@ export default function ImportPage() {
       const workbook = read(arrayBuffer, { type: 'array' });
 
       const sheets = ['qcm', 'qroc', 'cas_qcm', 'cas_qroc'] as const;
-      const sheetsData: any = {};
+      const sheetsData: Record<string, {
+        totalQuestions: number;
+        questionType: string;
+        previewData: Array<{
+          matiere: string;
+          cours: string;
+          questionNumber: number;
+          questionText: string;
+          matchedLecture?: Lecture;
+          mediaUrl?: string | null;
+          mediaType?: string | null;
+          caseNumber?: number;
+          caseText?: string;
+          caseQuestionNumber?: number;
+          options?: string[];
+          correctAnswers?: string[];
+        }>;
+      }> = {};
       const uniqueSpecialties = new Set<string>();
       const matchedLectures = new Set<string>();
       const unmatchedLectures = new Set<string>();
@@ -289,11 +318,24 @@ export default function ImportPage() {
           continue; // Skip this sheet
         }
 
-        const previewData: any[] = [];
+        const previewData: Array<{
+          matiere: string;
+          cours: string;
+          questionNumber: number;
+          questionText: string;
+          matchedLecture?: Lecture;
+          mediaUrl?: string | null;
+          mediaType?: string | null;
+          caseNumber?: number;
+          caseText?: string;
+          caseQuestionNumber?: number;
+          options?: string[];
+          correctAnswers?: string[];
+        }> = [];
         let validQuestionCount = 0;
 
         for (let i = 1; i < jsonData.length; i++) {
-          const row = jsonData[i] as any[];
+          const row = jsonData[i] as unknown[];
           if (!row || row.length === 0) continue;
           const values = row.map(cell => cell?.toString().trim() || '');
 
@@ -316,19 +358,32 @@ export default function ImportPage() {
           if (previewData.length < PREVIEW_LIMIT) {
             const { cleanedText, mediaUrl, mediaType } = extractImageUrlAndCleanText(rowData[questionTextColumn]);
             const questionNumber = safeParseInt(rowData['question n']);
-            const previewItem: any = {
+            const previewItem: {
+              matiere: string;
+              cours: string;
+              questionNumber: number;
+              questionText: string;
+              matchedLecture?: Lecture;
+              mediaUrl?: string | null;
+              mediaType?: string | null;
+              caseNumber?: number;
+              caseText?: string;
+              caseQuestionNumber?: number;
+              options?: string[];
+              correctAnswers?: string[];
+            } = {
               matiere: rowData['matiere'],
               cours: rowData['cours'],
-              questionNumber: questionNumber ?? undefined,
+              questionNumber: questionNumber ?? 0,
               questionText: cleanedText,
               matchedLecture,
               mediaUrl,
               mediaType
             };
             if (sheetName === 'cas_qcm' || sheetName === 'cas_qroc') {
-              previewItem.caseNumber = safeParseInt(rowData['cas n']);
-              previewItem.caseText = rowData['texte du cas'] || null;
-              previewItem.caseQuestionNumber = questionNumber ?? null;
+              previewItem.caseNumber = safeParseInt(rowData['cas n']) ?? undefined;
+              previewItem.caseText = rowData['texte du cas'] || undefined;
+              previewItem.caseQuestionNumber = questionNumber ?? undefined;
             }
             if (sheetName === 'qcm' || sheetName === 'cas_qcm') {
               const options: string[] = [];
@@ -364,7 +419,9 @@ export default function ImportPage() {
 
       setSheetErrors(newSheetErrors);
       setImportPreview({
-        totalQuestions: Object.values(sheetsData).reduce((sum: number, sheet: any) => sum + sheet.totalQuestions, 0),
+        totalQuestions: Object.values(sheetsData).reduce((sum: number, sheet) => {
+          return sum + sheet.totalQuestions;
+        }, 0),
         matchedLectures: matchedLectures.size,
         unmatchedLectures: unmatchedLectures.size,
         specialties: Array.from(uniqueSpecialties),
@@ -413,9 +470,9 @@ export default function ImportPage() {
         const txt = await response.text();
         throw new Error(txt || 'Upload failed');
       }
-      let responseData: any = {};
+      let responseData: Record<string, unknown> = {};
       try { responseData = await response.json(); } catch { throw new Error('Invalid JSON response'); }
-      const backendImportId = responseData?.importId;
+      const backendImportId = responseData?.importId as string;
       if (!backendImportId) throw new Error('Missing importId in response');
 
       await new Promise(r => setTimeout(r, 400));
@@ -434,7 +491,8 @@ export default function ImportPage() {
             pollingTimeoutRef.current = setTimeout(poll, 1000);
           } else {
             activeImportRef.current = false;
-            setImportResult(data.stats);
+            // ensure stats are typed correctly
+            setImportResult(data.stats as ImportStats);
             setIsUploading(false);
             if (data.stats?.failed > 0) {
               toast({ title: t('admin.importWithErrors'), description: `${t('admin.questionsImportedOf')} ${data.stats.imported}/${data.stats.total}`, variant: 'default' });
@@ -451,10 +509,13 @@ export default function ImportPage() {
         }
       };
       poll();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Import error:', error.message);
+      }
       activeImportRef.current = false;
       setIsUploading(false);
-      toast({ title: t('common.error'), description: error?.message || t('admin.failedToUploadFile'), variant: 'destructive' });
+      toast({ title: t('common.error'), description: (error instanceof Error ? error.message : String(error)) || t('admin.failedToUploadFile'), variant: 'destructive' });
     }
   };
 
@@ -560,9 +621,9 @@ export default function ImportPage() {
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      {sheetErrors.map((e, idx) => (
+                      {sheetErrors.map((e: SheetError, idx: number) => (
                         <div key={idx} className="text-[11px] sm:text-xs">
-                          <strong>{e.sheet}</strong>: {e.message}
+                          <strong>{String(e.sheet)}</strong>: {String(e.message)}
                         </div>
                       ))}
                     </AlertDescription>
@@ -578,16 +639,36 @@ export default function ImportPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4 sm:space-y-6">
-                        {Object.entries(importPreview.sheets).map(([sheetName, sheetData]) => (
+                        {Object.entries(importPreview.sheets).map(([sheetName, sheetData]) => {
+                          const typedSheetData = sheetData as {
+                            totalQuestions: number;
+                            questionType: string;
+                            previewData: Array<{
+                              matiere: string;
+                              cours: string;
+                              questionNumber: number;
+                              questionText: string;
+                              matchedLecture?: Lecture;
+                              mediaUrl?: string | null;
+                              mediaType?: string | null;
+                              caseNumber?: number;
+                              caseText?: string;
+                              caseQuestionNumber?: number;
+                              options?: string[];
+                              correctAnswers?: string[];
+                            }>;
+                          };
+                          
+                          return (
                           <div key={sheetName} className="space-y-3 sm:space-y-4">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="text-base sm:text-lg font-semibold capitalize">{sheetName.replace('_', ' ')}</h3>
-                              <Badge variant="outline">{sheetData.questionType}</Badge>
-                              <Badge variant="secondary">{sheetData.totalQuestions} questions</Badge>
+                              <Badge variant="outline">{typedSheetData.questionType}</Badge>
+                              <Badge variant="secondary">{typedSheetData.totalQuestions} questions</Badge>
                             </div>
                             
                             <div className="space-y-2 sm:space-y-3">
-                              {sheetData.previewData.map((item, index) => (
+                              {typedSheetData.previewData.map((item, index) => (
                                 <div key={index} className="flex items-start gap-3 sm:gap-4 p-3 border rounded-lg">
                                   <div className="flex-shrink-0">
                                     {item.matchedLecture ? (
@@ -599,43 +680,43 @@ export default function ImportPage() {
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                                       <Badge variant={item.matchedLecture ? 'default' : 'secondary'}>
-                                        {item.matiere}
+                                        {String(item.matiere)}
                                       </Badge>
                                       <Badge variant={item.matchedLecture ? 'default' : 'secondary'}>
-                                        {item.cours}
+                                        {String(item.cours)}
                                       </Badge>
                                       <Badge variant="outline">
-                                        #{item.questionNumber}
+                                        #{String(item.questionNumber)}
                                       </Badge>
                                       {item.caseNumber && (
                                         <Badge variant="outline">
-                                          Case #{item.caseNumber}
+                                          Case #{String(item.caseNumber)}
                                         </Badge>
                                       )}
                                     </div>
                                     
-                                    {item.caseText && (
+                                    {item.caseText && typeof item.caseText === 'string' && (
                                       <div className="mb-2 p-2 bg-muted rounded text-[11px] sm:text-xs">
                                         <strong>Case:</strong> {item.caseText.substring(0, 100)}...
                                       </div>
                                     )}
                                     
                                     <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
-                                      {item.questionText}
+                                      {String(item.questionText)}
                                     </p>
                                     
-                                    {item.options && item.options.length > 0 && (
+                                    {item.options && Array.isArray(item.options) && item.options.length > 0 && (
                                       <div className="mt-2 space-y-1">
                                         <p className="text-[11px] sm:text-xs font-semibold">Options:</p>
                                         {item.options.map((option, optIndex) => (
                                           <p key={optIndex} className="text-[11px] sm:text-xs text-muted-foreground ml-2">
-                                            {String.fromCharCode(65 + optIndex)}. {option}
+                                            {String.fromCharCode(65 + optIndex)}. {String(option)}
                                           </p>
                                         ))}
                                       </div>
                                     )}
                                     
-                                    {item.mediaUrl && (
+                                    {item.mediaUrl && typeof item.mediaUrl === 'string' && (
                                       <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                                         <span className="font-semibold">{t('admin.image')}:</span> {item.mediaUrl}
                                       </p>
@@ -649,7 +730,8 @@ export default function ImportPage() {
                               ))}
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                       
                       {importPreview.unmatchedLectures > 0 && (
@@ -710,7 +792,7 @@ export default function ImportPage() {
                 )}
 
                 {/* Import Results */}
-                {importResult && (
+                {!!importResult && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-base sm:text-lg">

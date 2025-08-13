@@ -63,7 +63,7 @@ export function MediaUpload({ mediaUrl, mediaType, onMediaChange }: MediaUploadP
       console.error('Error uploading file:', error);
       toast({
         title: t('common.error'),
-        description: error.message || t('admin.mediaUploadFailed'),
+        description: (error instanceof Error ? error.message : String(error)) || t('admin.mediaUploadFailed'),
         variant: "destructive",
       });
     } finally {
@@ -87,7 +87,7 @@ export function MediaUpload({ mediaUrl, mediaType, onMediaChange }: MediaUploadP
             <div className="aspect-video relative bg-muted rounded-md overflow-hidden">
               <img 
                 src={mediaUrl} 
-                alt="Question media" 
+                alt="Question media preview" 
                 className="w-full h-full object-contain"
               />
             </div>
@@ -96,6 +96,7 @@ export function MediaUpload({ mediaUrl, mediaType, onMediaChange }: MediaUploadP
               <video 
                 src={mediaUrl} 
                 controls 
+                aria-label="Question media video"
                 className="w-full h-full object-contain"
               />
             </div>

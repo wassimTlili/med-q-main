@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
@@ -63,8 +63,8 @@ async function postHandler(request: AuthenticatedRequest) {
     };
 
     // Track what we've already created during this import session
-    const createdSpecialties = new Map<string, any>(); // specialty name -> specialty object
-    const createdLectures = new Map<string, any>(); // "specialtyName:lectureTitle" -> lecture object
+    const createdSpecialties = new Map<string, { id: string; name: string; niveauId: string | null; description: string | null; icon: string | null; isFree: boolean; createdAt: Date }>(); // specialty name -> specialty object
+    const createdLectures = new Map<string, { id: string; title: string; specialtyId: string; description: string | null; isFree: boolean; createdAt: Date }>(); // "specialtyName:lectureTitle" -> lecture object
 
     // Process each data row
     for (let i = 1; i < jsonData.length; i++) {
@@ -81,7 +81,7 @@ async function postHandler(request: AuthenticatedRequest) {
           continue;
         }
 
-        const rowData: any = {};
+        const rowData: Record<string, string> = {};
         header.forEach((h, index) => {
           rowData[h] = values[index] || '';
         });
@@ -153,9 +153,9 @@ async function postHandler(request: AuthenticatedRequest) {
                 specialtyId: specialty.id
               }
             });
-            console.log(`✓ Created lecture: ${matchedLecture.title} (ID: ${matchedLecture.id})`);
-            lectures.push(matchedLecture); // Add to local cache
-            createdLectures.set(lectureKey, matchedLecture); // Track created lecture
+            console.log(`✓ Created lecture: ${(matchedLecture as { title: string; id: string }).title} (ID: ${(matchedLecture as { title: string; id: string }).id})`);
+            lectures.push(matchedLecture as never); // Add to local cache
+            createdLectures.set(lectureKey, matchedLecture as never); // Track created lecture
             
             importStats.matchedLectures++;
             importStats.createdLectures++;
@@ -171,7 +171,7 @@ async function postHandler(request: AuthenticatedRequest) {
         }
 
         const questionData = {
-          lectureId: matchedLecture.id,
+          lectureId: (matchedLecture as { id: string }).id,
           type: 'qroc',
           text: rowData['texte de la question'],
           correctAnswers: [rowData['reponse']],
@@ -222,12 +222,12 @@ async function postHandler(request: AuthenticatedRequest) {
   }
 }
 
-function findMatchingLecture(matiere: string, cours: string, lectures: any[], specialties: any[]) {
+function findMatchingLecture(matiere: string, cours: string, lectures: unknown[], specialties: unknown[]): unknown {
   // First, find the specialty
   const specialty = specialties.find(s => 
-    s.name.toLowerCase().includes(matiere.toLowerCase()) ||
-    matiere.toLowerCase().includes(s.name.toLowerCase())
-  );
+    (s as { name: string }).name.toLowerCase().includes(matiere.toLowerCase()) ||
+    matiere.toLowerCase().includes((s as { name: string }).name.toLowerCase())
+  ) as { id: string; name: string } | undefined;
 
   if (!specialty) {
     return null;
@@ -235,9 +235,9 @@ function findMatchingLecture(matiere: string, cours: string, lectures: any[], sp
 
   // Then find the lecture within that specialty
   return lectures.find(l => 
-    l.specialtyId === specialty.id && 
-    (l.title.toLowerCase().includes(cours.toLowerCase()) ||
-     cours.toLowerCase().includes(l.title.toLowerCase()))
+    (l as { specialtyId: string }).specialtyId === specialty.id && 
+    ((l as { title: string }).title.toLowerCase().includes(cours.toLowerCase()) ||
+     cours.toLowerCase().includes((l as { title: string }).title.toLowerCase()))
   );
 }
 

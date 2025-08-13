@@ -1,14 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 
 async function getHandler(
   request: AuthenticatedRequest,
-  { params }: { params: Promise<{ lectureId: string }> }
+  context: any
 ) {
   try {
-    const userId = request.user!.userId;
-    const { lectureId } = await params;
+    const { params } = context as { params: { lectureId: string } };
+    const userId = request.user?.userId;
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const { lectureId } = params;
     const { searchParams } = new URL(request.url);
     const includeQuestions = searchParams.get('includeQuestions') === 'true';
 
@@ -29,19 +38,15 @@ async function getHandler(
       );
     }
 
-    // Build the where clause for the lecture
-    let whereClause: any = { id: lectureId };
-    
-    // If user is not admin and has a niveau, filter by specialty niveau
-    if (user.role !== 'admin' && user.niveauId) {
-      whereClause.specialty = {
-        niveauId: user.niveauId
-      };
-    }
+    // Build the where clause for the lecture using Prisma type
+    const whereClause: Prisma.LectureWhereInput =
+      user.role !== 'admin' && user.niveauId
+        ? { id: lectureId, specialty: { niveauId: user.niveauId } }
+        : { id: lectureId };
 
     if (includeQuestions) {
       // Optimized query: fetch lecture with questions in a single request
-      const lectureWithQuestions = await prisma.lecture.findUnique({
+      const lectureWithQuestions = await prisma.lecture.findFirst({
         where: whereClause,
         include: {
           specialty: {
@@ -57,14 +62,14 @@ async function getHandler(
               }
             }
           },
-                      questions: {
-              orderBy: [
-                { caseNumber: 'asc' },
-                { caseQuestionNumber: 'asc' },
-                { number: 'asc' },
-                { type: 'asc' },
-                { id: 'asc' }
-              ],
+          questions: {
+            orderBy: [
+              { caseNumber: 'asc' },
+              { caseQuestionNumber: 'asc' },
+              { number: 'asc' },
+              { type: 'asc' },
+              { id: 'asc' }
+            ],
             select: {
               id: true,
               type: true,
@@ -109,7 +114,7 @@ async function getHandler(
       return NextResponse.json(lectureWithQuestions);
     } else {
       // Original query: fetch lecture only
-      const lecture = await prisma.lecture.findUnique({
+      const lecture = await prisma.lecture.findFirst({
         where: whereClause,
         include: {
           specialty: {
@@ -153,10 +158,11 @@ async function getHandler(
 
 async function putHandler(
   request: AuthenticatedRequest,
-  { params }: { params: Promise<{ lectureId: string }> }
+  context: any
 ) {
   try {
-    const { lectureId } = await params;
+    const { params } = context as { params: { lectureId: string } };
+    const { lectureId } = params;
     const { title, description, specialtyId, isFree } = await request.json();
 
     console.log('Updating lecture:', { lectureId, title, description, specialtyId, isFree });
@@ -193,10 +199,11 @@ async function putHandler(
 
 async function deleteHandler(
   request: AuthenticatedRequest,
-  { params }: { params: Promise<{ lectureId: string }> }
+  context: any
 ) {
   try {
-    const { lectureId } = await params;
+    const { params } = context as { params: { lectureId: string } };
+    const { lectureId } = params;
 
     await prisma.lecture.delete({
       where: { id: lectureId }
@@ -214,4 +221,4 @@ async function deleteHandler(
 
 export const GET = requireAuth(getHandler);
 export const PUT = requireAdmin(putHandler);
-export const DELETE = requireAdmin(deleteHandler); 
+export const DELETE = requireAdmin(deleteHandler);

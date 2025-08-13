@@ -246,7 +246,7 @@ export default function LectureRevisionPage() {
                   
                   <div className="p-6">
                     {/* Multiple Choice Options */}
-                    {question.type === 'mcq' && question.options && (
+                    {question.type === 'mcq' && question.options && question.options.length !== 2 && (
                       <div className="space-y-3 mb-6">
                         {question.options.map((option, optionIndex) => {
                           const isCorrect = question.correct_answers?.includes(option.id)
@@ -280,14 +280,19 @@ export default function LectureRevisionPage() {
                       </div>
                     )}
 
-                    {/* True/False Question */}
-                    {question.type === 'true_false' && (
+                    {/* True/False style MCQ (2 options) */}
+                    {question.type === 'mcq' && question.options && question.options.length === 2 && (
                       <div className="space-y-3 mb-6">
-                        {['True', 'False'].map((option, optionIndex) => {
-                          const isCorrect = (option.toLowerCase() === 'true') === (question.correct_answers?.[0] === 'true')
+                        {question.options.map((option, optionIndex) => {
+                          const isCorrect = question.correct_answers?.includes(option.id)
+                          const label = option.text?.toLowerCase().startsWith('t')
+                            ? 'T'
+                            : option.text?.toLowerCase().startsWith('f')
+                              ? 'F'
+                              : String.fromCharCode(65 + optionIndex)
                           return (
                             <div
-                              key={option}
+                              key={option.id}
                               className={`relative p-4 rounded-lg border-2 transition-all duration-200 ${
                                 showAnswers[question.id] && isCorrect
                                   ? 'bg-green-50 border-green-300 dark:bg-green-900/20 dark:border-green-600'
@@ -300,10 +305,10 @@ export default function LectureRevisionPage() {
                                     ? 'bg-green-600 border-green-600 text-white'
                                     : 'bg-white border-gray-300 text-gray-600 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-200'
                                 }`}>
-                                  {option === 'True' ? 'T' : 'F'}
+                                  {label}
                                 </div>
                                 <span className="flex-1 text-gray-900 dark:text-gray-100">
-                                  {option}
+                                  {option.text}
                                 </span>
                                 {showAnswers[question.id] && isCorrect && (
                                   <CheckCircle className="w-6 h-6 text-green-600" />
@@ -328,10 +333,7 @@ export default function LectureRevisionPage() {
                             </h4>
                             <div className="bg-white dark:bg-gray-700 rounded-lg p-4 mb-4 border border-emerald-100 dark:border-emerald-800">
                               <p className="text-emerald-800 dark:text-emerald-200 font-medium">
-                                {question.type === 'true_false' 
-                                  ? (question.correct_answers?.[0] === 'true' ? 'True' : 'False')
-                                  : question.options?.find(opt => question.correct_answers?.includes(opt.id))?.text || 'N/A'
-                                }
+                                {question.options?.filter(opt => question.correct_answers?.includes(opt.id)).map(opt => opt.text).join(', ') || 'N/A'}
                               </p>
                             </div>
                             {question.explanation && (

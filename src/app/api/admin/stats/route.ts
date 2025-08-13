@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
 
-async function getHandler(request: AuthenticatedRequest) {
+async function getHandler() {
   try {
     // Get current date for time-based queries
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const thisWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // ...existing code...
 
     // Fetch all stats in parallel for better performance
     const [

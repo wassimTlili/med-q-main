@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAuth, AuthenticatedRequest } from '../../../../lib/auth-middleware';
 import { prisma } from '../../../../lib/prisma';
 import bcrypt from 'bcryptjs';
@@ -24,9 +24,18 @@ async function putHandler(request: AuthenticatedRequest) {
       );
     }
     
+    const userId = request.user?.userId;
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
     // Get current user with password
     const user = await prisma.user.findUnique({
-      where: { id: request.user!.userId },
+      where: { id: userId },
       select: { password: true }
     });
     
@@ -53,7 +62,7 @@ async function putHandler(request: AuthenticatedRequest) {
     
     // Update password
     await prisma.user.update({
-      where: { id: request.user!.userId },
+      where: { id: userId },
       data: { 
         password: hashedPassword,
         passwordUpdatedAt: new Date()

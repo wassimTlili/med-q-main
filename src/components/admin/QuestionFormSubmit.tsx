@@ -71,11 +71,11 @@ export function QuestionFormSubmit({
       
       onSuccess?.();
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating question:', error);
       let errorMessage = t('common.tryAgain');
       
-      if (error.message) {
+      if (error instanceof Error && error.message) {
         errorMessage = error.message;
       }
       

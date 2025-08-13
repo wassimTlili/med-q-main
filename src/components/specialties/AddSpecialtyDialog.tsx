@@ -95,7 +95,7 @@ export function AddSpecialtyDialog({
       console.error('Error creating specialty:', error);
       let errorMessage = t('common.tryAgain');
       
-      if (error.message) {
+      if (error instanceof Error && error.message) {
         errorMessage = error.message;
       }
       

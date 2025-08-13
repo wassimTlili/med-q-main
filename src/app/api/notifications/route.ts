@@ -62,7 +62,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    const whereClause: any = { userId }
+    const whereClause: Record<string, unknown> = { userId }
     if (notificationIds && notificationIds.length > 0) {
       whereClause.id = { in: notificationIds }
     }

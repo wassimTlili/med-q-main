@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { NextResponse } from 'next/server';
+import { requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
 
 async function getHandler(request: AuthenticatedRequest) {
@@ -13,7 +13,7 @@ async function getHandler(request: AuthenticatedRequest) {
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (search) {
       where.OR = [
         { email: { contains: search, mode: 'insensitive' } },
@@ -92,7 +92,7 @@ async function putHandler(request: AuthenticatedRequest) {
     }
 
     // Prevent admin from removing their own admin role
-    if (request.user!.userId === userId && role === 'student') {
+    if (request.user && request.user.userId === userId && role === 'student') {
       return NextResponse.json(
         { error: 'You cannot remove your own admin role' },
         { status: 400 }
