@@ -38,6 +38,31 @@ export function ExerciseCard({ specialty, onEdit, onDelete, isPinned = false, on
   // Check if specialty is accessible (free or user has subscription)
   const canAccess = specialty.isFree || hasActiveSubscription || isAdmin;
 
+  // Generate different colors for each specialty based on name hash
+  const getIconColor = (name: string) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    const colors = [
+      'from-blue-400 to-blue-500',
+      'from-emerald-400 to-emerald-500',
+      'from-purple-400 to-purple-500',
+      'from-orange-400 to-orange-500',
+      'from-rose-400 to-rose-500',
+      'from-cyan-400 to-cyan-500',
+      'from-lime-400 to-lime-500',
+      'from-fuchsia-400 to-fuchsia-500',
+      'from-indigo-400 to-indigo-500',
+      'from-teal-400 to-teal-500',
+    ];
+    
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  const iconColor = getIconColor(specialty.name);
+
   const handleCardClick = () => {
     if (canAccess) {
       router.push(`/specialty/${specialty.id}`);
@@ -56,7 +81,7 @@ export function ExerciseCard({ specialty, onEdit, onDelete, isPinned = false, on
 
   return (
     <Card 
-      className={`relative overflow-hidden cursor-pointer transition-all duration-300 ${
+      className={`relative overflow-hidden cursor-pointer transition-all duration-300 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 ${
         canAccess 
           ? 'hover:shadow-lg hover:shadow-blue-500/25 hover:-translate-y-1' 
           : 'opacity-75 cursor-not-allowed'
@@ -130,10 +155,10 @@ export function ExerciseCard({ specialty, onEdit, onDelete, isPinned = false, on
         {/* Centered Icon */}
         <div className="flex flex-col items-center text-center mb-6">
           <div className="relative">
-            {/* Medical Icon - Made Larger with Better Visibility */}
-            <div className={`flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br border-2 ${
+            {/* Medical Icon - Circular with Different Colors */}
+            <div className={`flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br border-2 ${
               canAccess 
-                ? 'from-sky-400 to-sky-500 border-sky-200 dark:border-sky-800 shadow-lg shadow-sky-500/20' 
+                ? `${iconColor} border-white/20 shadow-lg` 
                 : 'from-gray-400 to-gray-500 border-gray-200 dark:border-gray-600'
             } mb-4`}>
               <IconComponent className="w-10 h-10 text-white" />
