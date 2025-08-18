@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { AdminRoute } from '@/components/auth/AdminRoute'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,10 +26,12 @@ import {
   Filter,
   MessageSquare,
   User,
-  BookOpen
+  BookOpen,
+  BarChart3
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { formatDistanceToNow } from 'date-fns'
+import { useTranslation } from 'react-i18next'
 
 interface Report {
   id: string
@@ -82,6 +86,7 @@ const getStatusColor = (status: string) => {
 
 export default function AdminReportsPage() {
   const { isAdmin } = useAuth()
+  const { t } = useTranslation()
   const searchParams = useSearchParams()
   const lectureId = searchParams.get('lectureId')
   
@@ -185,24 +190,42 @@ export default function AdminReportsPage() {
 
   if (!isAdmin) {
     return (
-      <AdminLayout>
-        <div className="p-8 text-center">
-          <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
-          <p className="text-gray-600 mt-2">You don&apos;t have permission to access this page.</p>
-        </div>
-      </AdminLayout>
+      <ProtectedRoute requireAdmin>
+        <AdminRoute>
+          <AdminLayout>
+            <div className="p-8 text-center">
+              <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
+              <p className="text-gray-600 mt-2">You don&apos;t have permission to access this page.</p>
+            </div>
+          </AdminLayout>
+        </AdminRoute>
+      </ProtectedRoute>
     )
   }
 
   return (
-    <AdminLayout>
-      <div className="p-8 space-y-6">
+    <ProtectedRoute requireAdmin>
+      <AdminRoute>
+        <AdminLayout>
+          <div className="space-y-8">
+            {/* Modern Page Header */}
+            <div className="text-center">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
+              </div>
+              <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-2 sm:mb-4">{t('admin.reports')}</h1>
+              <p className="text-base sm:text-xl text-muted-foreground max-w-2xl mx-auto">
+                View and manage user reports
+              </p>
+            </div>
+
+            <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
               Reports Management
-            </h1>
+            </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               {lectureId ? 'Lecture-specific reports' : 'All system reports'}
               {filteredReports.length > 0 && ` - ${filteredReports.length} reports`}
@@ -410,7 +433,10 @@ export default function AdminReportsPage() {
             ))}
           </div>
         )}
-      </div>
-    </AdminLayout>
+            </div>
+          </div>
+        </AdminLayout>
+      </AdminRoute>
+    </ProtectedRoute>
   )
 }

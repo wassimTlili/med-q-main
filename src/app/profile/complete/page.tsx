@@ -20,6 +20,7 @@ const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   sexe: z.enum(['M', 'F'], { required_error: 'Please select your gender' }),
   niveauId: z.string().min(1, 'Please select your level'),
+  semesterId: z.string().optional().nullable(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -30,12 +31,20 @@ interface Niveau {
   order: number;
 }
 
+interface Semester {
+  id: string;
+  name: string;
+  order: number;
+  niveauId: string;
+}
+
 export default function CompleteProfilePage() {
   const { user, updateUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
   const [niveaux, setNiveaux] = useState<Niveau[]>([]);
+  const [semesters, setSemesters] = useState<Semester[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingNiveaux, setIsLoadingNiveaux] = useState(true);
 
@@ -46,7 +55,8 @@ export default function CompleteProfilePage() {
     watch,
     formState: { errors },
   } = useForm<ProfileFormData>({
-    resolver: zodResolver(profileSchema),
+  resolver: zodResolver(profileSchema),
+  mode: 'onChange',
     defaultValues: {
       name: user?.name || '',
     },
@@ -94,6 +104,38 @@ export default function CompleteProfilePage() {
     }
   }, [user, router]);
 
+  // Load semesters for selected niveau
+  const selectedNiveauId = watch('niveauId');
+  const selectedSemesterId = watch('semesterId');
+  const nameVal = watch('name');
+  const sexeVal = watch('sexe');
+  const requireSemester = semesters.length > 0;
+  const isFormReady = Boolean(
+    (nameVal || '').trim().length >= 2 &&
+    !!sexeVal &&
+    !!selectedNiveauId &&
+    (!requireSemester || !!selectedSemesterId)
+  );
+  useEffect(() => {
+    async function loadSemesters(niveauId?: string) {
+  // Clear previous semester selection whenever niveau changes
+  setValue('semesterId', null as any);
+      if (!niveauId) { setSemesters([]); setValue('semesterId', null as any); return; }
+      try {
+        const res = await fetch(`/api/semesters?niveauId=${niveauId}`);
+        if (!res.ok) { setSemesters([]); setValue('semesterId', null as any); return; }
+        const data: Semester[] = await res.json();
+        setSemesters(data);
+        // If no semesters for this niveau, ensure semesterId is null
+        if (!data.length) setValue('semesterId', null as any);
+      } catch {
+        setSemesters([]);
+        setValue('semesterId', null as any);
+      }
+    }
+    loadSemesters(selectedNiveauId);
+  }, [selectedNiveauId, setValue]);
+
   // Don't show the form if user is not authenticated
   if (!user) {
     return null;
@@ -107,7 +149,13 @@ export default function CompleteProfilePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          name: data.name,
+          sexe: data.sexe,
+          niveauId: data.niveauId,
+          // Only send semesterId if we actually have semesters for this niveau
+          semesterId: semesters.length ? (data.semesterId || null) : null,
+        }),
       });
 
       if (response.ok) {
@@ -199,7 +247,7 @@ export default function CompleteProfilePage() {
             {/* Niveau Field */}
             <div className="space-y-2">
               <Label htmlFor="niveau">{t('profile.level')}</Label>
-              <Select onValueChange={(value) => setValue('niveauId', value)} disabled={isLoadingNiveaux}>
+              <Select value={selectedNiveauId || ''} onValueChange={(value) => setValue('niveauId', value)} disabled={isLoadingNiveaux}>
                 <SelectTrigger>
                   <SelectValue placeholder={isLoadingNiveaux ? 'Loading levels...' : t('profile.selectLevel')} />
                 </SelectTrigger>
@@ -222,12 +270,35 @@ export default function CompleteProfilePage() {
               )}
             </div>
 
+            {/* Semester Field (optional) */}
+      {!!semesters.length && (
+              <div className="space-y-2">
+                <Label htmlFor="semester">Semester (optional)</Label>
+                <Select
+                  value={(selectedSemesterId as string | null | undefined) ?? 'none'}
+                  onValueChange={(value) => setValue('semesterId', value === 'none' ? (null as any) : (value as any))}
+                >
+                  <SelectTrigger>
+        <SelectValue placeholder={requireSemester ? 'Select a semester (required)' : 'Select a semester (optional)'} />
+                  </SelectTrigger>
+                  <SelectContent>
+        <SelectItem value="none">No semester</SelectItem>
+                    {semesters.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} {typeof s.order === 'number' ? `(S${s.order})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
 
 
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || !isFormReady}
             >
               {isLoading ? (
                 <>

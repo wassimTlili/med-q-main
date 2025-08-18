@@ -263,9 +263,9 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
 
   const handleBackToSpecialty = useCallback(() => {
     if (lecture && lecture.specialtyId) {
-      router.push(`/specialty/${lecture.specialtyId}`);
+      router.push(`/exercices/${lecture.specialtyId}`);
     } else {
-      router.push('/dashboard');
+      router.push('/exercices');
     }
   }, [lecture, router]);
 

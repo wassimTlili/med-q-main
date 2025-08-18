@@ -8,7 +8,7 @@ async function getHandler(
   context: any
 ) {
   try {
-    const { params } = context as { params: { lectureId: string } };
+    const { params } = context as { params: Promise<{ lectureId: string }> };
     const userId = request.user?.userId;
     
     if (!userId) {
@@ -17,7 +17,7 @@ async function getHandler(
         { status: 401 }
       );
     }
-    const { lectureId } = params;
+    const { lectureId } = await params;
     const { searchParams } = new URL(request.url);
     const includeQuestions = searchParams.get('includeQuestions') === 'true';
 
@@ -161,8 +161,8 @@ async function putHandler(
   context: any
 ) {
   try {
-    const { params } = context as { params: { lectureId: string } };
-    const { lectureId } = params;
+    const { params } = context as { params: Promise<{ lectureId: string }> };
+    const { lectureId } = await params;
     const { title, description, specialtyId, isFree } = await request.json();
 
     console.log('Updating lecture:', { lectureId, title, description, specialtyId, isFree });
@@ -172,7 +172,7 @@ async function putHandler(
       data: {
         title,
         description,
-        specialtyId,
+        specialty: { connect: { id: specialtyId } },
         isFree
       },
       include: {
@@ -202,9 +202,15 @@ async function deleteHandler(
   context: any
 ) {
   try {
-    const { params } = context as { params: { lectureId: string } };
-    const { lectureId } = params;
+    const { params } = context as { params: Promise<{ lectureId: string }> };
+    const { lectureId } = await params;
 
+    // First delete all questions in this lecture
+    await prisma.question.deleteMany({
+      where: { lectureId: lectureId }
+    });
+
+    // Then delete the lecture
     await prisma.lecture.delete({
       where: { id: lectureId }
     });

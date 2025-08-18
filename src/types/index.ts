@@ -8,7 +8,7 @@ export type Niveau = {
 export type User = {
   id: string;
   email: string;
-  role: 'student' | 'admin';
+  role: 'student' | 'maintainer' | 'admin';
   name?: string;
   image?: string;
   password?: string;
@@ -16,6 +16,7 @@ export type User = {
   // Profile fields
   sexe?: 'M' | 'F';
   niveauId?: string;
+  semesterId?: string;
   profileCompleted?: boolean;
   // Subscription fields
   hasActiveSubscription?: boolean;
@@ -25,6 +26,12 @@ export type User = {
     name: string;
     order: number;
   };
+  semester?: {
+    id: string;
+    name: string;
+    order: number;
+    niveauId: string;
+  };
 };
 
 export type Specialty = {
@@ -33,16 +40,30 @@ export type Specialty = {
   icon?: string;
   description?: string;
   niveauId?: string;
+  semesterId?: string;
   isFree?: boolean;
   niveau?: {
     id: string;
     name: string;
+  };
+  semester?: {
+    id: string;
+    name: string;
+    order: number;
+    niveauId: string;
   };
   progress?: SpecialtyProgress;
   _count?: {
     lectures?: number;
     questions?: number;
   };
+};
+
+export type Semester = {
+  id: string;
+  name: string;
+  order: number;
+  niveauId: string;
 };
 
 export type SpecialtyProgress = {
@@ -116,6 +137,8 @@ export type Question = {
   caseNumber?: number; // Case number for clinical cases
   caseText?: string; // Case description text
   caseQuestionNumber?: number; // Question number within the case
+  parent_question_id?: string; // Link to parent case question
+  children?: Question[]; // For UI convenience when grouping
 };
 
 // New type for grouped clinical cases

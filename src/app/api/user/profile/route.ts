@@ -13,10 +13,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { name, sexe, niveauId } = await request.json();
+  const { name, sexe, niveauId, semesterId } = await request.json();
     
     // Validate input
-    if (!name || !sexe || !niveauId) {
+  if (!name || !sexe || !niveauId) {
       return NextResponse.json(
         { error: 'All fields are required' },
         { status: 400 }
@@ -32,15 +32,20 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verify niveau exists
-    const niveau = await prisma.niveau.findUnique({
-      where: { id: niveauId },
-    });
+  const niveau = await prisma.niveau.findUnique({ where: { id: niveauId } });
 
     if (!niveau) {
-      return NextResponse.json(
-        { error: 'Invalid niveau selected' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid niveau selected' }, { status: 400 });
+    }
+
+    // If semesterId is provided, validate it belongs to the chosen niveau
+    let validSemesterId: string | null = null;
+    if (semesterId) {
+      const semester = await prisma.semester.findFirst({ where: { id: semesterId, niveauId } });
+      if (!semester) {
+        return NextResponse.json({ error: 'Invalid semester for selected level' }, { status: 400 });
+      }
+      validSemesterId = semester.id;
     }
 
     // Update user profile
@@ -50,11 +55,10 @@ export async function PUT(request: NextRequest) {
         name,
         sexe,
         niveauId,
+        semesterId: validSemesterId, // null if not provided or no semesters
         profileCompleted: true,
       },
-      include: {
-        niveau: true,
-      },
+  include: { niveau: true },
     });
 
     // Remove sensitive data
@@ -65,7 +69,8 @@ export async function PUT(request: NextRequest) {
       sexe: updatedUser.sexe,
       role: updatedUser.role,
       niveauId: updatedUser.niveauId,
-      niveau: updatedUser.niveau,
+  niveau: (updatedUser as any).niveau,
+  semesterId: (updatedUser as any).semesterId ?? null,
       profileCompleted: updatedUser.profileCompleted,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt

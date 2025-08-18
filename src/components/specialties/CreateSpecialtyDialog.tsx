@@ -27,9 +27,11 @@ export function CreateSpecialtyDialog({
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('');
   const [niveauId, setNiveauId] = useState<string>('');
+  const [semesterId, setSemesterId] = useState<string>('');
   const [isFree, setIsFree] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [niveaux, setNiveaux] = useState<Niveau[]>([]);
+  const [semesters, setSemesters] = useState<Array<{ id: string; name: string; order: number; niveauId: string }>>([]);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -51,12 +53,31 @@ export function CreateSpecialtyDialog({
   }, [isOpen]);
 
   useEffect(() => {
+    const fetchSemesters = async () => {
+      try {
+        const url = niveauId ? `/api/semesters?niveauId=${niveauId}` : '/api/semesters';
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          setSemesters(data);
+        }
+      } catch (error) {
+        console.error('Error fetching semesters:', error);
+      }
+    };
+    if (isOpen) {
+      fetchSemesters();
+    }
+  }, [isOpen, niveauId]);
+
+  useEffect(() => {
     if (!isOpen) {
       // Reset form when dialog closes
       setName('');
       setDescription('');
       setIcon('');
       setNiveauId('');
+  setSemesterId('');
       setIsFree(true);
     }
   }, [isOpen]);
@@ -78,22 +99,28 @@ export function CreateSpecialtyDialog({
       // Auto-suggest icon if none selected
       const finalIcon = icon || getIconBySpecialtyName(name).name;
       
+      const payload = {
+        name: name.trim(),
+        description: description.trim() || null,
+        icon: finalIcon,
+        niveauId: niveauId || null,
+        semesterId: semesterId || null,
+        isFree,
+      };
+
+      console.log('Creating specialty with payload:', payload);
+      
       const response = await fetch('/api/specialties', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || null,
-          icon: finalIcon,
-          niveauId: niveauId || null,
-          isFree,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Server error:', errorData);
         throw new Error(errorData.error || 'Failed to create specialty');
       }
 
@@ -119,8 +146,8 @@ export function CreateSpecialtyDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto backdrop-blur-sm bg-white/95 dark:bg-gray-900/95 border-blue-200 dark:border-blue-800">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+        <DialogHeader className="border-b border-blue-100/80 dark:border-blue-900/40 bg-gradient-to-b from-blue-50/60 to-transparent dark:from-blue-950/30">
+          <DialogTitle className="text-2xl font-bold text-blue-700 dark:text-blue-400">
             {t('specialties.addSpecialty')}
           </DialogTitle>
         </DialogHeader>
@@ -172,6 +199,23 @@ export function CreateSpecialtyDialog({
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="semester">Semester</Label>
+            <Select value={semesterId || "none"} onValueChange={(value) => setSemesterId(value === "none" ? "" : value)}>
+              <SelectTrigger className="border-blue-200 dark:border-blue-800 focus:border-blue-500 focus:ring-blue-500">
+                <SelectValue placeholder="Select semester" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No semester</SelectItem>
+                {semesters.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name} (#{s.order})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="flex items-center space-x-2">
             <Switch
               id="isFree"
@@ -194,7 +238,7 @@ export function CreateSpecialtyDialog({
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
             >
               {isLoading ? t('common.creating') : t('common.create')}
             </Button>

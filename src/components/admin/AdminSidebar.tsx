@@ -65,21 +65,21 @@ export function AdminSidebar() {
       description: t('admin.manageContent')
     },
     { 
-      label: t('admin.specialties'), 
+      label: t('admin.management') || 'Management', 
       icon: BookOpen, 
-      href: '/admin?tab=specialties',
-      description: 'Manage specialties'
+      href: '/admin/management',
+      description: 'Manage specialties, courses, and questions'
     },
-    { 
-      label: t('admin.lectures'), 
-      icon: FileText, 
-      href: '/admin?tab=lectures',
-      description: 'Manage lectures'
+    {
+      label: 'Sessions',
+      icon: FileText,
+      href: '/admin/sessions',
+      description: 'Manage/import sessions'
     },
     { 
       label: t('admin.users'), 
       icon: Users, 
-      href: '/admin?tab=users',
+      href: '/admin/users',
       description: 'Manage users'
     },
     { 
@@ -91,7 +91,7 @@ export function AdminSidebar() {
     { 
       label: t('admin.reports'), 
       icon: AlertTriangle, 
-      href: '/admin?tab=reports',
+      href: '/admin/reports',
       description: 'View reports'
     },
     studentPanelItem
@@ -166,18 +166,11 @@ export function AdminSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu className={`space-y-2 ${state === 'expanded' ? 'px-2 sm:px-3' : 'px-0'}`}>
                   {adminMenuItems.slice(0, -1).map((item) => {
-                    // Derive target tab if present
-                    let itemTab: string | null = null;
-                    if (item.href.startsWith('/admin?tab=')) {
-                      itemTab = item.href.split('=')[1];
-                    }
-
-                    const isDashboard = item.href === '/admin' && currentTab === 'dashboard' && pathname === '/admin';
-                    const isTabMatch = itemTab && pathname === '/admin' && currentTab === itemTab;
-                    const isImport = item.href === '/admin/import' && pathname.startsWith('/admin/import');
-                    const isLectureChild = itemTab === 'lectures' && pathname.startsWith('/admin/lecture/');
-                    const isStudentPanel = item.href === '/dashboard' && pathname.startsWith('/dashboard');
-                    const isActive = isDashboard || isTabMatch || isImport || isLectureChild || isStudentPanel;
+                    // Check if current page matches the item
+                    const isActive = pathname === item.href || 
+                                   (item.href === '/admin/management' && pathname.startsWith('/admin/management')) ||
+                                   (item.href === '/admin' && pathname === '/admin');
+                    
                     return (
                       <SidebarMenuItem key={item.href}>
                         <SidebarMenuButton 

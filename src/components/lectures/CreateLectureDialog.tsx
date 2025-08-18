@@ -14,12 +14,14 @@ interface CreateLectureDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onLectureCreated: () => void;
+  preselectedSpecialty?: Specialty;
 }
 
 export function CreateLectureDialog({ 
   isOpen, 
   onOpenChange, 
-  onLectureCreated 
+  onLectureCreated,
+  preselectedSpecialty
 }: CreateLectureDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -30,32 +32,38 @@ export function CreateLectureDialog({
   const { t } = useTranslation();
 
   useEffect(() => {
-    const fetchSpecialties = async () => {
-      try {
-        const response = await fetch('/api/specialties');
-        if (response.ok) {
-          const data = await response.json();
-          setSpecialties(data);
+    if (preselectedSpecialty) {
+      setSpecialtyId(preselectedSpecialty.id);
+    } else {
+      const fetchSpecialties = async () => {
+        try {
+          const response = await fetch('/api/specialties');
+          if (response.ok) {
+            const data = await response.json();
+            setSpecialties(data);
+          }
+        } catch (error) {
+          console.error('Error fetching specialties:', error);
         }
-      } catch (error) {
-        console.error('Error fetching specialties:', error);
-      }
-    };
+      };
 
-    if (isOpen) {
-      fetchSpecialties();
+      if (isOpen) {
+        fetchSpecialties();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, preselectedSpecialty]);
 
   useEffect(() => {
     if (!isOpen) {
       // Reset form when dialog closes
       setTitle('');
       setDescription('');
-      setSpecialtyId('');
+      if (!preselectedSpecialty) {
+        setSpecialtyId('');
+      }
       setIsFree(true);
     }
-  }, [isOpen]);
+  }, [isOpen, preselectedSpecialty]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,21 +88,26 @@ export function CreateLectureDialog({
 
     setIsLoading(true);
     try {
+      const payload = {
+        title: title.trim(),
+        description: description.trim() || null,
+        specialtyId,
+        isFree,
+      };
+
+      console.log('Creating lecture with payload:', payload);
+
       const response = await fetch('/api/lectures', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || null,
-          specialtyId,
-          isFree,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Server error:', errorData);
         throw new Error(errorData.error || 'Failed to create lecture');
       }
 
@@ -119,9 +132,9 @@ export function CreateLectureDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{t('lectures.addLecture')}</DialogTitle>
+      <DialogContent className="sm:max-w-[500px] border-blue-200/60 dark:border-blue-900/40">
+        <DialogHeader className="border-b border-blue-100/80 dark:border-blue-900/40 bg-gradient-to-b from-blue-50/60 to-transparent dark:from-blue-950/30">
+          <DialogTitle className="text-blue-700 dark:text-blue-400">{t('lectures.addLecture')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -146,22 +159,31 @@ export function CreateLectureDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="specialty">{t('common.specialty')} *</Label>
-            <Select value={specialtyId || "none"} onValueChange={(value) => setSpecialtyId(value === "none" ? "" : value)}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('lectures.selectSpecialty')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{t('lectures.selectSpecialty')}</SelectItem>
-                {specialties.map((specialty) => (
-                  <SelectItem key={specialty.id} value={specialty.id}>
-                    {specialty.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {preselectedSpecialty ? (
+            <div className="space-y-2">
+              <Label>{t('common.specialty')}</Label>
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                <span className="text-blue-700 dark:text-blue-300 font-medium">{preselectedSpecialty.name}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="specialty">{t('common.specialty')} *</Label>
+              <Select value={specialtyId || "none"} onValueChange={(value) => setSpecialtyId(value === "none" ? "" : value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t('lectures.selectSpecialty')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t('lectures.selectSpecialty')}</SelectItem>
+                  {specialties.map((specialty) => (
+                    <SelectItem key={specialty.id} value={specialty.id}>
+                      {specialty.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex items-center space-x-2">
             <Switch
@@ -172,16 +194,17 @@ export function CreateLectureDialog({
             <Label htmlFor="isFree">{t('lectures.isFree')}</Label>
           </div>
 
-          <div className="flex justify-end space-x-2">
+          <div className="flex justify-end space-x-2 border-t pt-4 border-blue-100/80 dark:border-blue-900/40">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
+              className="border-blue-200 dark:border-blue-800"
             >
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
               {isLoading ? t('common.creating') : t('common.create')}
             </Button>
           </div>

@@ -35,6 +35,7 @@ interface UniversalHeaderProps {
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
   actions?: React.ReactNode;
+  hideSeparator?: boolean;
 }
 
 export function UniversalHeader({
@@ -43,7 +44,8 @@ export function UniversalHeader({
   searchValue = '',
   onSearchChange,
   searchPlaceholder = 'Search...',
-  actions
+  actions,
+  hideSeparator = false
 }: UniversalHeaderProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -215,7 +217,7 @@ export function UniversalHeader({
       
       {/* Actions Row - Below Header */}
       {actions && (
-        <div className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+        <div className={`bg-gray-50 dark:bg-gray-900 ${hideSeparator ? '' : 'border-t border-gray-200 dark:border-gray-700'}`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
             <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
               {actions}

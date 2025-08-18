@@ -3,23 +3,84 @@ import { read, utils } from 'xlsx';
 import { prisma } from '@/lib/prisma';
 import { requireAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 import type { Prisma } from '@prisma/client';
+import { rehostImageIfConfigured } from '@/lib/services/media';
 
 // Store active imports with their progress
-const activeImports = new Map();
+type ImportStats = {
+  total: number;
+  imported: number;
+  failed: number;
+  createdSpecialties: number;
+  createdLectures: number;
+  questionsWithImages: number;
+  createdCases: number;
+  errors?: string[];
+};
+
+type Phase = 'validating' | 'importing' | 'complete';
+
+type ImportSession = {
+  progress: number;
+  phase: Phase;
+  message: string;
+  logs: string[];
+  stats?: ImportStats;
+};
+
+const activeImports = new Map<string, ImportSession>();
+
+// --- Header normalization helpers ---
+const normalizeHeader = (h: string): string =>
+  String(h || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove accents
+    .replace(/[^\w\s]/g, ' ') // punctuation to spaces
+    .replace(/\s+/g, ' ') // collapse
+    .trim();
+
+const headerAliases: Record<string, string> = {
+  // canonical keys
+  'matiere': 'matiere',
+  'cours': 'cours',
+  'question n': 'question n',
+  'question no': 'question n',
+  'question n°': 'question n',
+  'source': 'source',
+  'texte de la question': 'texte de la question',
+  'texte question': 'texte de la question',
+  'texte de question': 'texte de la question',
+  'texte du cas': 'texte du cas',
+  'texte cas': 'texte du cas',
+  'option a': 'option a',
+  'option b': 'option b',
+  'option c': 'option c',
+  'option d': 'option d',
+  'option e': 'option e',
+  'reponse': 'reponse',
+  'reponse(s)': 'reponse',
+  'cas n': 'cas n',
+  'cas no': 'cas n',
+  'cas n°': 'cas n'
+};
+
+const canonicalizeHeader = (h: string): string => {
+  const n = normalizeHeader(h);
+  return headerAliases[n] ?? n;
+};
 
 // Function to extract image URLs from text and clean the text
 function extractImageUrlAndCleanText(text: string): { cleanedText: string; mediaUrl: string | null; mediaType: string | null } {
-  // Regular expression to match URLs that start with http or https and end with common image extensions
-  const imageUrlRegex = /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp|svg|bmp|tiff|ico))(\s|$)/gi;
+  // Regular expression to match URLs and allow trailing punctuation/paren
+  const imageUrlRegex = /(https?:\/\/[^\s)]+?\.(?:jpg|jpeg|png|gif|webp|svg|bmp|tiff|ico))(?:[)\s.,;:!?]|$)/i;
   
   let cleanedText = text;
   let mediaUrl: string | null = null;
   let mediaType: string | null = null;
-  
-  const match = imageUrlRegex.exec(text);
+  const match = text.match(imageUrlRegex);
   if (match) {
     mediaUrl = match[1];
-    cleanedText = text.replace(match[0], '').trim();
+    cleanedText = text.replace(match[0], ' ').trim();
     
     // Determine media type based on file extension
     const extension = mediaUrl.split('.').pop()?.toLowerCase();
@@ -57,14 +118,14 @@ function extractImageUrlAndCleanText(text: string): { cleanedText: string; media
   return { cleanedText, mediaUrl, mediaType };
 }
 
-// Function to parse MCQ options from Excel columns
+// Function to parse MCQ options from canonicalized Excel row
 function parseMCQOptions(rowData: Record<string, unknown>): { options: string[], correctAnswers: string[] } {
   const options: string[] = [];
   const correctAnswers: string[] = [];
   
-  // Check for options A through E
+  // Check for options a through e (canonical lower-case)
   for (let i = 0; i < 5; i++) {
-    const optionKey = `option ${String.fromCharCode(65 + i)}`; // A, B, C, D, E
+    const optionKey = `option ${String.fromCharCode(97 + i)}`; // a, b, c, d, e
     const optionValue = rowData[optionKey];
     if (optionValue && typeof optionValue === 'string' && optionValue.trim()) {
       options.push(optionValue.trim());
@@ -80,7 +141,7 @@ function parseMCQOptions(rowData: Record<string, unknown>): { options: string[],
   // Parse correct answer (e.g., "A, C, E" or "A" or "A,C,E")
   if (rowData['reponse']) {
     const answerStr = String(rowData['reponse']).toUpperCase();
-    const answers = answerStr.split(/[\,\s]+/).filter((a: string) => a.trim());
+    const answers = answerStr.split(/[;,\s]+/).filter((a: string) => a.trim());
     
     answers.forEach((answer: string) => {
       const index = answer.charCodeAt(0) - 65; // Convert A=0, B=1, etc.
@@ -94,19 +155,20 @@ function parseMCQOptions(rowData: Record<string, unknown>): { options: string[],
 }
 
 // Function to update progress for an import session
-function updateProgress(importId: string, progress: number, message: string, log?: string) {
-  const current = activeImports.get(importId) || { progress: 0, message: '', logs: [] };
+function updateProgress(importId: string, progress: number, message: string, log?: string, phase?: Phase) {
+  const current = activeImports.get(importId) || { progress: 0, phase: 'validating', message: '', logs: [] } as ImportSession;
   activeImports.set(importId, {
     ...current,
     progress,
     message,
+    phase: phase ?? current.phase,
     logs: log ? [...current.logs, log] : current.logs
   });
 }
 
 async function processFile(file: File, importId: string) {
   try {
-    updateProgress(importId, 5, 'Reading Excel file...');
+  updateProgress(importId, 5, 'Reading Excel file...', undefined, 'validating');
     
     const buffer = await file.arrayBuffer();
     const workbook = read(buffer);
@@ -126,50 +188,97 @@ async function processFile(file: File, importId: string) {
     const createdCases = new Map(); // Track cases by lectureId + caseNumber
 
     // Process each sheet
-    const sheets = ['qcm', 'qroc', 'cas_qcm', 'cas_qroc'];
+    const sheets = ['qcm', 'qroc', 'cas_qcm', 'cas_qroc'] as const;
+
+    // Build a map of canonical sheet names to actual sheet names present in the workbook,
+    // accepting common variants like hyphens, spaces, or clinic phrasing
+    const normalizeSheet = (name: string) =>
+      String(name || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+
+    const sheetAliases: Record<(typeof sheets)[number], string[]> = {
+      qcm: ['qcm', 'questions qcm'],
+      qroc: ['qroc', 'croq', 'questions qroc', 'questions croq'],
+      cas_qcm: ['cas qcm', 'cas-qcm', 'cas_qcm', 'cas clinique qcm', 'cas clinic qcm'],
+      cas_qroc: ['cas qroc', 'cas-qroc', 'cas_qroc', 'cas clinique qroc', 'cas clinic qroc', 'cas croq', 'cas clinic croq']
+    };
+
+    const presentMap = new Map<string, string>(); // normalized -> actual
+    for (const actual of Object.keys(workbook.Sheets)) {
+      presentMap.set(normalizeSheet(actual), actual);
+    }
+
+    const canonicalToActual = new Map<string, string>();
+    for (const key of sheets) {
+      const variants = sheetAliases[key];
+      for (const v of variants) {
+        const norm = normalizeSheet(v);
+        const actual = presentMap.get(norm);
+        if (actual) {
+          canonicalToActual.set(key, actual);
+          break;
+        }
+      }
+    }
     
     for (const sheetName of sheets) {
-      if (!workbook.Sheets[sheetName]) {
+      const actualName = canonicalToActual.get(sheetName);
+      if (!actualName || !workbook.Sheets[actualName]) {
         updateProgress(importId, 10, `Sheet '${sheetName}' not found, skipping...`);
         continue;
       }
 
-      updateProgress(importId, 15, `Processing sheet: ${sheetName}...`);
+      updateProgress(importId, 15, `Processing sheet: ${sheetName}...`, undefined, 'importing');
       
-      const sheet = workbook.Sheets[sheetName];
-      const jsonData = utils.sheet_to_json(sheet, { header: 1 });
+  const sheet = workbook.Sheets[actualName];
+  const jsonData = utils.sheet_to_json(sheet, { header: 1 });
       
       if (jsonData.length < 2) {
         updateProgress(importId, 20, `Sheet '${sheetName}' is empty, skipping...`);
         continue;
       }
 
-      // Skip header row
-      const dataRows = jsonData.slice(1);
+  // Canonicalize headers
+  const rawHeader = (jsonData[0] as string[]).map(h => String(h ?? ''));
+  const header = rawHeader.map(canonicalizeHeader);
+
+  // Skip header row
+  const dataRows = jsonData.slice(1);
       importStats.total += dataRows.length;
 
-      updateProgress(importId, 25, `Found ${dataRows.length} rows in ${sheetName}...`);
+  updateProgress(importId, 25, `Found ${dataRows.length} rows in ${sheetName}...`);
 
       // Process each row
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
-        const progress = 25 + (i / dataRows.length) * 60;
+  const progress = 25 + (i / dataRows.length) * 60;
         updateProgress(importId, progress, `Processing row ${i + 1} in ${sheetName}...`);
 
         try {
-          // Convert row to object with column headers
-          const headers = jsonData[0] as string[];
+          // Build rowData with canonical headers
           const rowData: Record<string, string> = {};
-          headers.forEach((header: string, index: number) => {
-            rowData[header] = String((row as unknown[])[index] || '');
+          header.forEach((h, idx) => {
+            rowData[h] = String((row as unknown[])[idx] ?? '').trim();
           });
 
-          // Find or create specialty and lecture
+          // Build basic fields
           const specialtyName = rowData['matiere'];
           const lectureTitle = rowData['cours'];
 
+          // Determine question text and extract image URL
+          // Note: headers are canonicalized, and 'texte de question' maps to 'texte de la question'
+          const questionText = rowData['texte de la question'] || '';
+          const { cleanedText, mediaUrl, mediaType } = extractImageUrlAndCleanText(questionText);
+
           if (!specialtyName || !lectureTitle) {
             throw new Error('Missing specialty or lecture information');
+          }
+          if (!cleanedText || cleanedText.trim().length === 0) {
+            throw new Error('Missing question text');
           }
 
           // Find or create specialty
@@ -234,12 +343,15 @@ async function processFile(file: File, importId: string) {
             }
           }
 
-          // Extract image URL from question text - use correct column name
-          const questionTextColumn = sheetName === 'cas_qcm' || sheetName === 'cas_qroc' ? 'texte de question' : 'texte de la question';
-          const { cleanedText, mediaUrl, mediaType } = extractImageUrlAndCleanText(rowData[questionTextColumn]);
+          let hostedUrl: string | null = mediaUrl;
+          let hostedType: string | null = mediaType;
           if (mediaUrl) {
+            // Rehost if configured (currently no-op returning same url)
+            const hosted = await rehostImageIfConfigured(mediaUrl);
+            hostedUrl = hosted.url;
+            hostedType = hosted.type;
             importStats.questionsWithImages++;
-            updateProgress(importId, progress, `Extracted image from question`, `🖼️ Extracted image: ${mediaUrl}`);
+            updateProgress(importId, progress, `Extracted image from question`, `🖼️ Extracted image: ${hostedUrl}`);
           }
 
           // Prepare question data based on sheet type
@@ -265,8 +377,8 @@ async function processFile(file: File, importId: string) {
             courseReminder: null,
             number: Number.isFinite(parseInt(rowData['question n'])) ? parseInt(rowData['question n']) : null,
             session: rowData['source'] || null,
-            mediaUrl: mediaUrl,
-            mediaType: mediaType
+            mediaUrl: hostedUrl,
+            mediaType: hostedType
           };
 
           // Set question type and specific fields
@@ -276,12 +388,18 @@ async function processFile(file: File, importId: string) {
               questionData.type = 'mcq';
               questionData.options = options;
               questionData.correctAnswers = correctAnswers;
+              if (!options || options.length === 0) throw new Error('MCQ missing options');
+              if (!correctAnswers || correctAnswers.length === 0) throw new Error('MCQ missing correct answers');
               break;
             }
 
             case 'qroc': {
               questionData.type = 'qroc';
-              questionData.correctAnswers = [rowData['reponse']];
+              {
+                const ans = String(rowData['reponse'] || '').trim();
+                if (!ans) throw new Error('QROC missing answer');
+                questionData.correctAnswers = [ans];
+              }
               break;
             }
 
@@ -293,12 +411,18 @@ async function processFile(file: File, importId: string) {
               questionData.caseNumber = caseNumber;
               questionData.caseText = caseText;
               questionData.caseQuestionNumber = caseQuestionNumber;
+              if (!casQcmOptions.options || casQcmOptions.options.length === 0) throw new Error('Clinical MCQ missing options');
+              if (!casQcmOptions.correctAnswers || casQcmOptions.correctAnswers.length === 0) throw new Error('Clinical MCQ missing correct answers');
               break;
             }
 
             case 'cas_qroc': {
               questionData.type = 'clinic_croq';
-              questionData.correctAnswers = [rowData['reponse']];
+              {
+                const ans = String(rowData['reponse'] || '').trim();
+                if (!ans) throw new Error('Clinical QROC missing answer');
+                questionData.correctAnswers = [ans];
+              }
               questionData.caseNumber = caseNumber;
               questionData.caseText = caseText;
               questionData.caseQuestionNumber = caseQuestionNumber;
@@ -306,7 +430,7 @@ async function processFile(file: File, importId: string) {
             }
           }
 
-          if (!questionData.type || !questionData.correctAnswers) {
+          if (!questionData.type || !questionData.correctAnswers || questionData.correctAnswers.length === 0) {
             throw new Error('Invalid question data: missing type or correct answers');
           }
 
@@ -344,13 +468,17 @@ async function processFile(file: File, importId: string) {
       }
     }
 
-    // Update final stats
+    // Update final stats (preserve latest progress/message/logs)
+    const currentSession = activeImports.get(importId) || { progress: 0, phase: 'importing', message: '', logs: [] } as ImportSession;
     activeImports.set(importId, {
-      ...activeImports.get(importId),
+      progress: currentSession.progress,
+      phase: 'complete',
+      message: currentSession.message,
+      logs: currentSession.logs,
       stats: importStats
     });
 
-    updateProgress(importId, 100, 'Import completed!', `🎉 Import completed! Total: ${importStats.total}, Imported: ${importStats.imported}, Failed: ${importStats.failed}, Created: ${importStats.createdSpecialties} specialties, ${importStats.createdLectures} lectures, ${importStats.createdCases} cases, ${importStats.questionsWithImages} questions with images`);
+    updateProgress(importId, 100, 'Import completed!', `🎉 Import completed! Total: ${importStats.total}, Imported: ${importStats.imported}, Failed: ${importStats.failed}, Created: ${importStats.createdSpecialties} specialties, ${importStats.createdLectures} lectures, ${importStats.createdCases} cases, ${importStats.questionsWithImages} questions with images`, 'complete');
 
   } catch (error) {
     console.error('File processing error:', error);
@@ -375,8 +503,9 @@ async function postHandler(request: AuthenticatedRequest) {
     console.log('Creating import session with ID:', importId);
     
     // Initialize import session
-    const initialSession = {
+    const initialSession: ImportSession = {
       progress: 0,
+      phase: 'validating',
       message: 'Starting import...',
       logs: [],
       stats: {

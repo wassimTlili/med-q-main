@@ -29,6 +29,7 @@ async function getHandler(
             name: true
           }
         },
+  // semester relation not selected to align with schema access; we can use semesterId scalar if needed
         lectures: {
           include: {
             _count: {
@@ -57,7 +58,7 @@ async function getHandler(
     console.log('Specialty found:', specialty.name);
 
     // Calculate total questions across all lectures
-    const totalQuestions = specialty.lectures.reduce((sum, lecture) => {
+  const totalQuestions = (specialty as any).lectures.reduce((sum: number, lecture: any) => {
       return sum + lecture._count.questions;
     }, 0);
 
@@ -83,7 +84,7 @@ async function getHandler(
 
     // Calculate lecture progress
     const lectureProgressMap = new Map();
-    specialty.lectures.forEach(lecture => {
+    (specialty as any).lectures.forEach((lecture: any) => {
       const lectureQuestions = lecture._count.questions;
       const lectureUserProgress = userProgress.filter(p => p.lectureId === lecture.id);
       const completedLectureQuestions = lectureUserProgress.filter(p => p.completed).length;
@@ -95,17 +96,17 @@ async function getHandler(
       });
     });
 
-    const completedLectures = specialty.lectures.filter(lecture => {
+  const completedLectures = (specialty as any).lectures.filter((lecture: any) => {
       const progress = lectureProgressMap.get(lecture.id);
       return progress && progress.percentage === 100;
     }).length;
 
-    const lectureProgress = specialty.lectures.length > 0 ? (completedLectures / specialty.lectures.length) * 100 : 0;
+  const lectureProgress = ((specialty as any).lectures.length > 0) ? (completedLectures / (specialty as any).lectures.length) * 100 : 0;
 
     const specialtyWithProgress = {
       ...specialty,
       progress: {
-        totalLectures: specialty._count.lectures,
+  totalLectures: (specialty as any)._count.lectures,
         completedLectures: completedLectures,
         totalQuestions: totalQuestions,
         completedQuestions: completedQuestions,
@@ -140,18 +141,23 @@ async function putHandler(
 ) {
   try {
     const { specialtyId } = await params;
-    const { name, description, icon, niveauId, isFree } = await request.json();
+    const { name, description, icon, niveauId, semesterId, isFree } = await request.json();
 
-    const specialty = await prisma.specialty.update({
-      where: { id: specialtyId },
-      data: {
-        name,
-        description,
-        icon,
-        niveauId,
-        isFree
-      }
-    });
+    const data: any = { name, description, icon, isFree };
+    
+    // Handle niveau relation
+    if (niveauId) {
+      data.niveau = { connect: { id: niveauId } };
+    }
+    
+    // Handle semester relation
+    if (semesterId === null) {
+      data.semester = { disconnect: true };
+    } else if (typeof semesterId === 'string' && semesterId) {
+      data.semester = { connect: { id: semesterId } };
+    }
+
+    const specialty = await prisma.specialty.update({ where: { id: specialtyId }, data });
 
     return NextResponse.json(specialty);
   } catch (error) {
@@ -170,6 +176,26 @@ async function deleteHandler(
   try {
     const { specialtyId } = await params;
 
+    // First, get all lectures in this specialty
+    const lectures = await prisma.lecture.findMany({
+      where: { specialtyId: specialtyId },
+      select: { id: true }
+    });
+
+    // Delete all questions for all lectures in this specialty
+    if (lectures.length > 0) {
+      const lectureIds = lectures.map(lecture => lecture.id);
+      await prisma.question.deleteMany({
+        where: { lectureId: { in: lectureIds } }
+      });
+
+      // Delete all lectures in this specialty
+      await prisma.lecture.deleteMany({
+        where: { specialtyId: specialtyId }
+      });
+    }
+
+    // Finally, delete the specialty
     await prisma.specialty.delete({
       where: { id: specialtyId }
     });
@@ -186,4 +212,4 @@ async function deleteHandler(
 
 export const GET = requireAuth(getHandler);
 export const PUT = requireAdmin(putHandler);
-export const DELETE = requireAdmin(deleteHandler); 
+export const DELETE = requireAdmin(deleteHandler);

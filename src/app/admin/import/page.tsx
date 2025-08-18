@@ -152,6 +152,7 @@ export default function ImportPage() {
   const { t } = useTranslation();
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   // Replace unknown with a concrete type
@@ -437,6 +438,39 @@ export default function ImportPage() {
     }
   };
 
+  // Drag & Drop handlers
+  const onDragOver: React.DragEventHandler = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+    if (!isDragging) setIsDragging(true);
+  };
+  const onDragEnter: React.DragEventHandler = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+  const onDragLeave: React.DragEventHandler = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+  const onDrop: React.DragEventHandler = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const file = dt.files && dt.files.length > 0 ? dt.files[0] : null;
+    if (file) {
+      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        // Delegate to existing selector
+        // Note: handleFileSelect is async but we don't await here to keep UI snappy
+        void handleFileSelect(file);
+      }
+    }
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) {
       toast({ title: t('common.error'), description: t('admin.pleaseSelectFileFirst'), variant: 'destructive' });
@@ -563,13 +597,23 @@ export default function ImportPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/80 transition-colors">
+                    <label
+                      className={
+                        `flex flex-col items-center justify-center w-full h-48 sm:h-64 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                          isDragging ? 'bg-primary/10 border-primary' : 'bg-muted/50 hover:bg-muted/80'
+                        }`
+                      }
+                      onDragOver={onDragOver}
+                      onDragEnter={onDragEnter}
+                      onDragLeave={onDragLeave}
+                      onDrop={onDrop}
+                    >
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
                         <p className="mb-2 text-sm text-muted-foreground">
                           <span className="font-semibold">{t('admin.selectExcelFile')}</span>
                         </p>
-                        <p className="text-xs text-muted-foreground">XLSX or XLS</p>
+                        <p className="text-xs text-muted-foreground">XLSX or XLS — Drag & Drop or Click</p>
                       </div>
                       <input
                         type="file"
@@ -630,15 +674,24 @@ export default function ImportPage() {
                   </Alert>
                 )}
 
-                {/* Preview */}
+                {/* Preview (collapsible to reduce scrolling) */}
                 {importPreview && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{t('admin.importPreview')}</CardTitle>
-                      <CardDescription className="text-sm">{t('admin.previewFirst10')}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4 sm:space-y-6">
+                  <Collapsible defaultOpen={false}>
+                    <Card>
+                      <CardHeader>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                            <div className="text-left">
+                              <CardTitle className="text-lg">{t('admin.importPreview')}</CardTitle>
+                              <CardDescription className="text-sm">{t('admin.previewFirst10')}</CardDescription>
+                            </div>
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </CollapsibleTrigger>
+                      </CardHeader>
+                      <CollapsibleContent>
+                        <CardContent>
+                          <div className="space-y-4 sm:space-y-6">
                         {Object.entries(importPreview.sheets).map(([sheetName, sheetData]) => {
                           const typedSheetData = sheetData as {
                             totalQuestions: number;
@@ -732,21 +785,23 @@ export default function ImportPage() {
                           </div>
                         );
                         })}
-                      </div>
-                      
-                      {importPreview.unmatchedLectures > 0 && (
-                        <Alert className="mt-4">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>
-                            {t('admin.someLecturesNotMatched')}
-                            {importPreview.unmatchedLectures > 0 && (
-                              <span className="font-medium"> {t('admin.willCreateLectures')}</span>
-                            )}
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                    </CardContent>
-                  </Card>
+                          </div>
+                          
+                          {importPreview.unmatchedLectures > 0 && (
+                            <Alert className="mt-4">
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertDescription>
+                                {t('admin.someLecturesNotMatched')}
+                                {importPreview.unmatchedLectures > 0 && (
+                                  <span className="font-medium"> {t('admin.willCreateLectures')}</span>
+                                )}
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
                 )}
 
                 {/* Progress */}

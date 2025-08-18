@@ -88,7 +88,12 @@ export function LectureCard({ lecture }: LectureCardProps) {
   }, [lecture?.id, user]);
 
   const handleClick = () => {
-    router.push(`/lecture/${lecture.id}`);
+    if (lecture.specialtyId) {
+      router.push(`/exercices/${lecture.specialtyId}/lecture/${lecture.id}`);
+    } else {
+      // Fallback to old route if specialtyId is not available
+      router.push(`/lecture/${lecture.id}`);
+    }
   };
 
   return (

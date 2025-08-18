@@ -201,9 +201,9 @@ export function EditQuestionDialog({ question, isOpen, onOpenChange, onQuestionU
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="flex-shrink-0 p-6 pb-4">
-          <DialogTitle>Edit Question</DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-blue-200/60 dark:border-blue-900/40">
+        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-blue-100/80 dark:border-blue-900/40 bg-gradient-to-b from-blue-50/60 to-transparent dark:from-blue-950/30">
+          <DialogTitle className="text-blue-700 dark:text-blue-400">Edit Question</DialogTitle>
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-6 min-h-0" style={{ maxHeight: 'calc(95vh - 180px)' }}>
@@ -332,11 +332,11 @@ export function EditQuestionDialog({ question, isOpen, onOpenChange, onQuestionU
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end space-x-2 p-6 pt-4 border-t bg-background flex-shrink-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+        <div className="flex justify-end space-x-2 p-6 pt-4 border-t bg-background flex-shrink-0 border-blue-100/80 dark:border-blue-900/40">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="border-blue-200 dark:border-blue-800">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
             <Save className="h-4 w-4 mr-2" />
             {isSubmitting ? 'Updating...' : 'Update Question'}
           </Button>

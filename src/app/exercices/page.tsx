@@ -7,7 +7,7 @@ import { AppSidebar, AppSidebarProvider } from '@/components/layout/AppSidebar';
 import { SidebarInset } from '@/components/ui/sidebar';
 import { ExerciseCard } from '@/components/exercices/ExerciseCard';
 import { Button } from '@/components/ui/button';
-import { Specialty } from '@/types';
+import { Specialty, Semester } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { CreateSpecialtyDialog } from '@/components/specialties/CreateSpecialtyDialog';
 import { EditSpecialtyDialog } from '@/components/specialties/EditSpecialtyDialog';
@@ -16,6 +16,8 @@ import { UpgradeDialog } from '@/components/subscription/UpgradeDialog';
 import { useTranslation } from 'react-i18next';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { PlusCircle, Pin } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Niveau } from '@/types';
 
 // Disable static generation to prevent SSR issues with useAuth
 export const dynamic = 'force-dynamic';
@@ -32,6 +34,10 @@ export default function ExercicesPage() {
   const [filteredSpecialties, setFilteredSpecialties] = useState<Specialty[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [niveaux, setNiveaux] = useState<Niveau[]>([]);
+  const [niveauFilter, setNiveauFilter] = useState<string>('all');
+  const [semesterFilter, setSemesterFilter] = useState<string>('all'); // Only used by admins
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | null>(null);
@@ -63,6 +69,31 @@ export default function ExercicesPage() {
       loadPinnedSpecialties();
     }
   }, [user?.id]);
+
+  // Load semesters and niveaux for admin filtering
+  useEffect(() => {
+    const loadFilters = async () => {
+      try {
+        // Load semesters
+        const semesterRes = await fetch('/api/semesters');
+        if (semesterRes.ok) {
+          const semesterData: Semester[] = await semesterRes.json();
+          setSemesters(semesterData || []);
+        }
+
+        // Load niveaux
+        const niveauRes = await fetch('/api/niveaux');
+        if (niveauRes.ok) {
+          const niveauData: Niveau[] = await niveauRes.json();
+          setNiveaux(niveauData || []);
+        }
+      } catch (error) {
+        console.error('Error loading filters:', error);
+      }
+    };
+    
+    if (user && isAdmin) loadFilters();
+  }, [user, isAdmin]);
 
   // Pin/Unpin handlers - database only
   const handlePin = useCallback(async (specialty: Specialty) => {
@@ -193,7 +224,7 @@ export default function ExercicesPage() {
     try {
       // Check cache first
       const now = Date.now();
-      if (!forceRefresh && specialtiesCache && (now - cacheTimestamp) < CACHE_DURATION) {
+      if (niveauFilter === 'all' && semesterFilter === 'all' && !forceRefresh && specialtiesCache && (now - cacheTimestamp) < CACHE_DURATION) {
         setSpecialties(specialtiesCache);
         setFilteredSpecialties(specialtiesCache);
         setIsLoading(false);
@@ -201,7 +232,13 @@ export default function ExercicesPage() {
       }
 
       setIsLoading(true);
-      const response = await fetch('/api/specialties', {
+      const params = new URLSearchParams();
+      if (isAdmin) {
+        if (niveauFilter && niveauFilter !== 'all') params.set('niveau', niveauFilter);
+        if (semesterFilter && semesterFilter !== 'all') params.set('semester', semesterFilter);
+      }
+      
+      const response = await fetch(`/api/specialties${params.toString() ? `?${params.toString()}` : ''}`, {
         headers: {
           'Cache-Control': 'no-cache',
         }
@@ -215,9 +252,11 @@ export default function ExercicesPage() {
       setSpecialties(data || []);
       setFilteredSpecialties(data || []);
       
-      // Update cache
-      specialtiesCache = data || [];
-      cacheTimestamp = now;
+      // Update cache only for unfiltered case
+      if (niveauFilter === 'all' && semesterFilter === 'all') {
+        specialtiesCache = data || [];
+        cacheTimestamp = now;
+      }
     } catch (error) {
       console.error('Error fetching specialties:', error);
       toast({
@@ -228,7 +267,7 @@ export default function ExercicesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [t]);
+  }, [t, niveauFilter, semesterFilter, isAdmin]);
 
   useEffect(() => {
     if (user) {
@@ -329,8 +368,53 @@ export default function ExercicesPage() {
               searchValue={searchQuery}
               onSearchChange={setSearchQuery}
               searchPlaceholder="Search specialties..."
-              actions={
-                isAdmin ? (
+              hideSeparator
+              actions={isAdmin ? (
+                <div className="flex items-center gap-3">
+                  {/* Niveau Filter */}
+                  {niveaux.length > 0 && (
+                    <Select value={niveauFilter} onValueChange={(v) => { 
+                      setNiveauFilter(v); 
+                      // Reset semester filter when niveau changes
+                      if (v !== 'all') {
+                        setSemesterFilter('all');
+                      }
+                      fetchSpecialties(true); 
+                    }}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by niveau" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All niveaux</SelectItem>
+                        {niveaux.map((n) => (
+                          <SelectItem key={n.id} value={n.id}>
+                            {n.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  
+                  {/* Semester Filter */}
+                  {semesters.length > 0 && (
+                    <Select value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); fetchSpecialties(true); }}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by semester" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All semesters</SelectItem>
+                        <SelectItem value="none">No semester</SelectItem>
+                        {semesters
+                          .filter(s => niveauFilter === 'all' || s.niveauId === niveauFilter)
+                          .map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name} {typeof s.order === 'number' ? `(S${s.order})` : ''}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  
                   <Button 
                     onClick={handleAddSpecialty}
                     className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
@@ -338,8 +422,8 @@ export default function ExercicesPage() {
                     <PlusCircle className="h-4 w-4 mr-2" />
                     Add Specialty
                   </Button>
-                ) : null
-              }
+                </div>
+              ) : undefined}
             />
 
             {/* Main Content */}

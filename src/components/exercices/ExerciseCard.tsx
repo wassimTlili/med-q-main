@@ -65,7 +65,7 @@ export function ExerciseCard({ specialty, onEdit, onDelete, isPinned = false, on
 
   const handleCardClick = () => {
     if (canAccess) {
-      router.push(`/specialty/${specialty.id}`);
+      router.push(`/exercices/${specialty.id}`);
     }
   };
 

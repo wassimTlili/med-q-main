@@ -198,9 +198,10 @@ async function deleteHandler(
   try {
     const { questionId } = await params;
 
-    await prisma.question.delete({
-      where: { id: questionId }
-    });
+    // Clean related data to avoid FK issues
+    await prisma.userProgress.deleteMany({ where: { questionId } });
+    await prisma.report.deleteMany({ where: { questionId } });
+    await prisma.question.delete({ where: { id: questionId } });
 
     return NextResponse.json({ message: 'Question deleted successfully' });
   } catch (error) {

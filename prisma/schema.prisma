@@ -7,10 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  student
+  maintainer
+  admin
+}
+
 model User {
   id                    String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                 String         @unique(map: "profiles_email_idx")
-  role                  String         @default("student")
+  role                  Role           @default(student)
   createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt             DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   password              String?
@@ -26,10 +32,12 @@ model User {
   passwordUpdatedAt     DateTime?      @map("password_updated_at") @db.Timestamptz(6)
   sexe                  String?
   niveauId              String?        @map("niveau_id") @db.Uuid
+  semesterId            String?        @map("semester_id") @db.Uuid
   profileCompleted      Boolean        @default(false) @map("profile_completed")
   hasActiveSubscription Boolean        @default(false) @map("has_active_subscription")
   subscriptionExpiresAt DateTime?      @map("subscription_expires_at") @db.Timestamptz(6)
   niveau                Niveau?        @relation(fields: [niveauId], references: [id])
+  semester              Semester?      @relation(fields: [semesterId], references: [id])
   reports               Report[]
   progress              UserProgress[]
   courseGroups          CourseGroup[]
@@ -47,10 +55,12 @@ model Specialty {
   description String?
   icon        String?
   niveauId    String?   @map("niveau_id") @db.Uuid
+  semesterId  String?   @map("semester_id") @db.Uuid
   isFree      Boolean   @default(false) @map("is_free")
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   lectures    Lecture[]
   niveau      Niveau?   @relation(fields: [niveauId], references: [id])
+  semester    Semester? @relation(fields: [semesterId], references: [id])
   courseGroups CourseGroup[]
   pinnedSpecialties PinnedSpecialty[]
 
@@ -171,12 +181,16 @@ model Question {
   caseNumber         Int?     @map("case_number")
   caseText           String?  @map("case_text")
   caseQuestionNumber Int?     @map("case_question_number")
+  parentQuestionId   String?  @map("parent_question_id") @db.Uuid
   lecture            Lecture  @relation(fields: [lectureId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parent             Question? @relation("QuestionToQuestion", fields: [parentQuestionId], references: [id])
+  children           Question[] @relation("QuestionToQuestion")
   reports            Report[]
   pinnedQuestions    PinnedQuestion[]
 
   @@index([number], map: "idx_questions_number")
   @@index([caseNumber, caseQuestionNumber], map: "idx_questions_case")
+  @@index([parentQuestionId], map: "idx_questions_parent")
   @@map("questions")
 }
 
@@ -221,6 +235,37 @@ model Niveau {
   createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   users     User[]
   Specialty Specialty[]
+  semesters Semester[]
+  sessions  Session[]
 
   @@map("niveaux")
+}
+
+model Semester {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  order     Int
+  niveauId  String    @map("niveau_id") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  niveau    Niveau    @relation(fields: [niveauId], references: [id])
+  specialties Specialty[]
+  sessions   Session[]
+  users      User[]
+
+  @@unique([niveauId, order], map: "unique_niveau_semester_order")
+  @@map("semesters")
+}
+
+model Session {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String
+  niveauId       String?  @map("niveau_id") @db.Uuid
+  semesterId     String?  @map("semester_id") @db.Uuid
+  pdfUrl         String?  @map("pdf_url")
+  correctionUrl  String?  @map("correction_url")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  niveau         Niveau?  @relation(fields: [niveauId], references: [id])
+  semester       Semester? @relation(fields: [semesterId], references: [id])
+
+  @@map("sessions")
 }

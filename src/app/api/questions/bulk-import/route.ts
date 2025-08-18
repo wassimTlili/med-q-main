@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
+import type { Specialty, Lecture } from '@prisma/client';
 import * as XLSX from 'xlsx';
 
 async function postHandler(request: AuthenticatedRequest) {
@@ -63,8 +64,9 @@ async function postHandler(request: AuthenticatedRequest) {
     };
 
     // Track what we've already created during this import session
-    const createdSpecialties = new Map<string, { id: string; name: string; niveauId: string | null; description: string | null; icon: string | null; isFree: boolean; createdAt: Date }>(); // specialty name -> specialty object
-    const createdLectures = new Map<string, { id: string; title: string; specialtyId: string; description: string | null; isFree: boolean; createdAt: Date }>(); // "specialtyName:lectureTitle" -> lecture object
+  // Track created entities using Prisma model types to ensure parity with schema (includes semesterId)
+  const createdSpecialties = new Map<string, Specialty>(); // specialty name -> specialty object
+  const createdLectures = new Map<string, Lecture>(); // "specialtyName:lectureTitle" -> lecture object
 
     // Process each data row
     for (let i = 1; i < jsonData.length; i++) {
@@ -141,8 +143,8 @@ async function postHandler(request: AuthenticatedRequest) {
                 }
               });
               console.log(`✓ Created specialty: ${specialty.name} (ID: ${specialty.id})`);
-              specialties.push(specialty); // Add to local cache
-              createdSpecialties.set(specialtyName, specialty); // Track created specialty
+              specialties.push(specialty as never); // Add to local cache
+              createdSpecialties.set(specialtyName, specialty as Specialty); // Track created specialty
               importStats.createdSpecialties++;
             }
 
@@ -155,7 +157,7 @@ async function postHandler(request: AuthenticatedRequest) {
             });
             console.log(`✓ Created lecture: ${(matchedLecture as { title: string; id: string }).title} (ID: ${(matchedLecture as { title: string; id: string }).id})`);
             lectures.push(matchedLecture as never); // Add to local cache
-            createdLectures.set(lectureKey, matchedLecture as never); // Track created lecture
+            createdLectures.set(lectureKey, matchedLecture as Lecture); // Track created lecture
             
             importStats.matchedLectures++;
             importStats.createdLectures++;

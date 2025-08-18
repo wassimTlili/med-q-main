@@ -131,9 +131,9 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="flex-shrink-0 p-6 pb-4">
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-blue-200/60 dark:border-blue-900/40">
+        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-blue-100/80 dark:border-blue-900/40 bg-gradient-to-b from-blue-50/60 to-transparent dark:from-blue-950/30">
+          <DialogTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
             Questions for "{lecture.title}"
           </DialogTitle>
         </DialogHeader>
@@ -177,6 +177,7 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
             {/* Add Question Button */}
             <Button
               onClick={() => setIsCreateDialogOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Question
@@ -259,7 +260,7 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
                         variant="outline" 
                         size="sm"
                         onClick={() => handleEditQuestion(question)}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        className="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300"
                       >
                         <Edit className="h-3 w-3" />
                       </Button>

@@ -36,7 +36,7 @@ export function SpecialtyCard({ specialty }: SpecialtyCardProps) {
       setShowUpgradeDialog(true);
       return;
     }
-    router.push(`/specialty/${specialty.id}`);
+    router.push(`/exercices/${specialty.id}`);
   };
 
   const handleUpgrade = async () => {

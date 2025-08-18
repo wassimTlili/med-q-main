@@ -24,6 +24,7 @@ import { Card, CardContent } from '@/components/ui/card';
 interface LecturesListViewProps {
   lectures: Lecture[];
   isLoading: boolean;
+  specialtyId?: string;  // Add specialtyId prop for nested routing
 }
 
 interface LectureProgressData {
@@ -34,7 +35,7 @@ interface LectureProgressData {
   incomplete: number;
 }
 
-export function LecturesListView({ lectures, isLoading }: LecturesListViewProps) {
+export function LecturesListView({ lectures, isLoading, specialtyId }: LecturesListViewProps) {
   const router = useRouter();
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -245,7 +246,12 @@ export function LecturesListView({ lectures, isLoading }: LecturesListViewProps)
             setShowUpgradeDialog(true);
             return;
           }
-          router.push(`/lecture/${lecture.id}`);
+          // Use nested route if specialtyId is available, otherwise fallback to old route
+          if (specialtyId) {
+            router.push(`/exercices/${specialtyId}/lecture/${lecture.id}`);
+          } else {
+            router.push(`/lecture/${lecture.id}`);
+          }
         };
 
         return (
@@ -335,7 +341,12 @@ export function LecturesListView({ lectures, isLoading }: LecturesListViewProps)
                           setShowUpgradeDialog(true);
                           return;
                         }
-                        router.push(`/lecture/${lecture.id}`);
+                        // Use nested route if specialtyId is available, otherwise fallback to old route
+                        if (specialtyId) {
+                          router.push(`/exercices/${specialtyId}/lecture/${lecture.id}`);
+                        } else {
+                          router.push(`/lecture/${lecture.id}`);
+                        }
                       }}
                     >
                       <ExternalLink className="h-4 w-4" />

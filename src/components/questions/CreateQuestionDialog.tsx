@@ -34,6 +34,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
     { id: '4', text: '' },
   ]);
   const [correctAnswers, setCorrectAnswers] = useState<string[]>([]);
+  const [qrocAnswer, setQrocAnswer] = useState('');
 
   const resetForm = () => {
     setFormData({
@@ -49,6 +50,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
       { id: '4', text: '' },
     ]);
     setCorrectAnswers([]);
+    setQrocAnswer('');
   };
 
   const handleOptionChange = (index: number, text: string) => {
@@ -63,12 +65,12 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
   const handleQuestionTypeChange = (newType: QuestionType) => {
     setFormData(prev => ({ ...prev, type: newType }));
     
-    // Reset options and correct answers when changing to/from MCQ
-    if (newType !== 'mcq') {
+    // Reset options and correct answers when changing to/from MCQ types
+    if (newType !== 'mcq' && newType !== 'clinic_mcq') {
       setOptions([]);
       setCorrectAnswers([]);
     } else if (options.length === 0) {
-      // Initialize with default options when switching to MCQ
+      // Initialize with default options when switching to MCQ types
       setOptions([
         { id: '1', text: '' },
         { id: '2', text: '' },
@@ -76,6 +78,11 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
         { id: '4', text: '' },
       ]);
       setCorrectAnswers([]);
+    }
+    
+    // Reset QROC answer when not QROC type
+    if (newType !== 'qroc' && newType !== 'clinic_croq') {
+      setQrocAnswer('');
     }
   };
 
@@ -122,7 +129,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
       return;
     }
 
-    if (formData.type === 'mcq') {
+    if (formData.type === 'mcq' || formData.type === 'clinic_mcq') {
       const validOptions = options.filter(opt => opt.text.trim());
       if (validOptions.length < 2) {
         toast({
@@ -143,6 +150,17 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
       }
     }
 
+    if (formData.type === 'qroc' || formData.type === 'clinic_croq') {
+      if (!qrocAnswer.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Correct answer is required for QROC questions.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -153,10 +171,14 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
         type: formData.type,
         explanation: formData.explanation.trim() || null,
         difficulty: formData.difficulty,
-        options: formData.type === 'mcq' ? options.filter(opt => opt.text.trim()) : [],
-        correctAnswers: formData.type === 'mcq' ? correctAnswers : [],
-        correct_answers: formData.type === 'mcq' ? correctAnswers : [],
+        options: (formData.type === 'mcq' || formData.type === 'clinic_mcq') ? options.filter(opt => opt.text.trim()) : [],
+        correctAnswers: (formData.type === 'mcq' || formData.type === 'clinic_mcq') ? correctAnswers : 
+                       (formData.type === 'qroc' || formData.type === 'clinic_croq') ? [qrocAnswer.trim()] : [],
+        correct_answers: (formData.type === 'mcq' || formData.type === 'clinic_mcq') ? correctAnswers : 
+                        (formData.type === 'qroc' || formData.type === 'clinic_croq') ? [qrocAnswer.trim()] : [],
       };
+
+      console.log('Creating question with data:', questionData);
 
       const response = await fetch('/api/questions', {
         method: 'POST',
@@ -168,6 +190,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Server error creating question:', errorData);
         throw new Error(errorData.error || 'Failed to create question');
       }
 
@@ -183,7 +206,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
       console.error('Error creating question:', error);
       toast({
         title: "Error",
-        description: "Failed to create question. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to create question. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -193,9 +216,9 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="flex-shrink-0 p-6 pb-4">
-          <DialogTitle>Add Question to "{lecture.title}"</DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-blue-200/60 dark:border-blue-900/40">
+        <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-blue-100/80 dark:border-blue-900/40 bg-gradient-to-b from-blue-50/60 to-transparent dark:from-blue-950/30">
+          <DialogTitle className="text-blue-700 dark:text-blue-400">Add Question to "{lecture.title}"</DialogTitle>
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-6 min-h-0" style={{ maxHeight: 'calc(95vh - 180px)' }}>
@@ -222,12 +245,10 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
                 <SelectValue placeholder="Select question type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="mcq">Multiple Choice (MCQ)</SelectItem>
-                <SelectItem value="open">Open Question</SelectItem>
+                <SelectItem value="mcq">QCM</SelectItem>
                 <SelectItem value="qroc">QROC</SelectItem>
-                <SelectItem value="clinic_mcq">Clinical MCQ</SelectItem>
-                <SelectItem value="clinic_croq">Clinical CROQ</SelectItem>
-                <SelectItem value="clinical_case">Clinical Case</SelectItem>
+                <SelectItem value="clinic_mcq">CAS QCM</SelectItem>
+                <SelectItem value="clinic_croq">CAS QROC</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -251,7 +272,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
           </div>
 
           {/* Options (only for MCQ) */}
-          {formData.type === 'mcq' && (
+          {(formData.type === 'mcq' || formData.type === 'clinic_mcq') && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm">Answer Options</CardTitle>
@@ -307,6 +328,37 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
             </Card>
           )}
 
+          {/* QROC Answer (only for QROC types) */}
+          {(formData.type === 'qroc' || formData.type === 'clinic_croq') && (
+            <div className="space-y-2">
+              <Label htmlFor="qroc-answer">Correct Answer *</Label>
+              <Input
+                id="qroc-answer"
+                placeholder="Enter the correct answer..."
+                value={qrocAnswer}
+                onChange={(e) => setQrocAnswer(e.target.value)}
+                className="w-full"
+              />
+            </div>
+          )}
+
+          {/* QROC Answer Input (only for QROC types) */}
+          {(formData.type === 'qroc' || formData.type === 'clinic_croq') && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Correct Answer</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Input
+                  placeholder="Enter the correct answer..."
+                  value={qrocAnswer}
+                  onChange={(e) => setQrocAnswer(e.target.value)}
+                  className="w-full"
+                />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Explanation */}
           <div className="space-y-2">
             <Label htmlFor="explanation">Explanation (Optional)</Label>
@@ -321,11 +373,11 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end space-x-2 p-6 pt-4 border-t bg-background flex-shrink-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+        <div className="flex justify-end space-x-2 p-6 pt-4 border-t bg-background flex-shrink-0 border-blue-100/80 dark:border-blue-900/40">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="border-blue-200 dark:border-blue-800">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
             <Save className="h-4 w-4 mr-2" />
             {isSubmitting ? 'Creating...' : 'Create Question'}
           </Button>

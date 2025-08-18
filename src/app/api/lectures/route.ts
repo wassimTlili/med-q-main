@@ -12,16 +12,17 @@ async function getHandler(request: AuthenticatedRequest) {
         { status: 401 }
       );
     }
-    const { searchParams } = new URL(request.url);
-    const specialtyId = searchParams.get('specialtyId');
+  const { searchParams } = new URL(request.url);
+  const specialtyId = searchParams.get('specialtyId');
+  const semesterParam = searchParams.get('semester'); // 'none' | <semesterId>
 
     // Get user with their niveau information
-    const user = await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { 
         id: true, 
         role: true, 
-        niveauId: true
+    niveauId: true,
       }
     });
 
@@ -33,7 +34,7 @@ async function getHandler(request: AuthenticatedRequest) {
     }
 
     // Build the where clause for lectures
-    const where: Record<string, unknown> = {};
+  const where: Record<string, any> = {};
     
     if (specialtyId) {
       where.specialtyId = specialtyId;
@@ -46,10 +47,21 @@ async function getHandler(request: AuthenticatedRequest) {
       };
     }
 
+    // Optional semester filter
+    if (semesterParam) {
+      where.specialty = where.specialty || {};
+      if (semesterParam === 'none') {
+        where.specialty.semesterId = null;
+      } else if (semesterParam !== 'all') {
+        where.specialty.semesterId = semesterParam;
+      }
+  }
+
     const lectures = await prisma.lecture.findMany({
       where,
       orderBy: [
-        { isFree: 'desc' }, // Free content first (true comes before false)
+        { isFree: 'desc' }, // Free content first
+        { specialty: { niveau: { order: 'asc' } } },
         { title: 'asc' }
       ],
       select: {
@@ -73,11 +85,7 @@ async function getHandler(request: AuthenticatedRequest) {
             }
           }
         },
-        _count: {
-          select: {
-            questions: true
-          }
-        }
+  _count: { select: { questions: true } }
       }
     });
 
@@ -92,7 +100,7 @@ async function getHandler(request: AuthenticatedRequest) {
           }
         });
 
-        const totalQuestions = lecture._count.questions;
+  const totalQuestions = (lecture as any)._count?.questions ?? 0;
         const completedQuestions = userProgress.filter(p => p.completed).length;
         const correctAnswers = userProgress.filter(p => p.completed && (p.score || 0) > 0.7).length;
         const partialAnswers = userProgress.filter(p => p.completed && (p.score || 0) > 0.3 && (p.score || 0) <= 0.7).length;
@@ -143,7 +151,7 @@ async function getHandler(request: AuthenticatedRequest) {
 
 async function postHandler(request: AuthenticatedRequest) {
   try {
-    const { title, description, specialtyId } = await request.json();
+  const { title, description, specialtyId, isFree } = await request.json();
 
     if (!title || !specialtyId) {
       return NextResponse.json(
@@ -152,11 +160,13 @@ async function postHandler(request: AuthenticatedRequest) {
       );
     }
 
-    const lecture = await prisma.lecture.create({
+  const lecture = await prisma.lecture.create({
       data: {
         title,
         description,
-        specialtyId
+        specialty: { connect: { id: specialtyId } },
+        // default to false if not provided
+        isFree: Boolean(isFree)
       },
       include: {
         specialty: {
@@ -168,7 +178,7 @@ async function postHandler(request: AuthenticatedRequest) {
       }
     });
 
-    return NextResponse.json(lecture, { status: 201 });
+  return NextResponse.json(lecture, { status: 201 });
   } catch (error) {
     console.error('Error creating lecture:', error);
     return NextResponse.json(

@@ -19,6 +19,7 @@ async function handler(request: AuthenticatedRequest) {
         // Profile fields
         sexe: true,
         niveauId: true,
+        semesterId: true,
         profileCompleted: true,
         // Subscription fields
         hasActiveSubscription: true,
@@ -28,6 +29,14 @@ async function handler(request: AuthenticatedRequest) {
             id: true,
             name: true,
             order: true,
+          }
+        },
+        semester: {
+          select: {
+            id: true,
+            name: true,
+            order: true,
+            niveauId: true,
           }
         }
       }

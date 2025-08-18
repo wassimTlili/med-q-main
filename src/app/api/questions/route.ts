@@ -12,9 +12,10 @@ async function getHandler(request: AuthenticatedRequest) {
         { status: 401 }
       );
     }
-    const { searchParams } = new URL(request.url);
-    const lectureId = searchParams.get('lectureId');
-    const type = searchParams.get('type');
+  const { searchParams } = new URL(request.url);
+  const lectureId = searchParams.get('lectureId');
+  const type = searchParams.get('type');
+  const semesterParam = searchParams.get('semester'); // 'none' | <semesterId> | null
 
     // Get user with their niveau information
     const user = await prisma.user.findUnique({
@@ -33,7 +34,7 @@ async function getHandler(request: AuthenticatedRequest) {
       );
     }
 
-    const where: Record<string, unknown> = {};
+  const where: Record<string, any> = {};
     if (lectureId) where.lectureId = lectureId;
     if (type) where.type = type;
 
@@ -44,6 +45,17 @@ async function getHandler(request: AuthenticatedRequest) {
           niveauId: user.niveauId
         }
       };
+    }
+
+    // Optional semester filter
+    if (semesterParam) {
+      where.lecture = where.lecture || {};
+      where.lecture.specialty = where.lecture.specialty || {};
+      if (semesterParam === 'none') {
+        where.lecture.specialty.semesterId = null;
+      } else if (semesterParam !== 'all') {
+        where.lecture.specialty.semesterId = semesterParam;
+      }
     }
 
     const questions = await prisma.question.findMany({
@@ -130,7 +142,7 @@ async function postHandler(request: AuthenticatedRequest) {
 
     const question = await prisma.question.create({
       data: {
-        lectureId,
+        lecture: { connect: { id: lectureId } },
         type,
         text,
         options,
@@ -230,7 +242,7 @@ async function putHandler(request: AuthenticatedRequest) {
     const question = await prisma.question.update({
       where: { id },
       data: {
-        lectureId,
+        lecture: { connect: { id: lectureId } },
         type,
         text,
         options,
