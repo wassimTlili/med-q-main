@@ -38,6 +38,11 @@ async function getHandler(request: AuthenticatedRequest) {
     if (lectureId) where.lectureId = lectureId;
     if (type) where.type = type;
 
+    // If user is not admin, never return hidden questions
+    if (user.role !== 'admin') {
+      where.hidden = false;
+    }
+
     // If user is not admin and has a niveau, filter by specialty niveau
     if (user.role !== 'admin' && user.niveauId) {
       where.lecture = {
@@ -222,7 +227,8 @@ async function putHandler(request: AuthenticatedRequest) {
       mediaType,
       caseNumber,
       caseText,
-      caseQuestionNumber
+      caseQuestionNumber,
+      hidden
     } = await request.json();
 
     if (!id) {
@@ -255,7 +261,8 @@ async function putHandler(request: AuthenticatedRequest) {
         mediaType,
         caseNumber,
         caseText,
-        caseQuestionNumber
+  caseQuestionNumber,
+  ...(typeof hidden === 'boolean' ? { hidden } : {})
       },
       include: {
         lecture: {

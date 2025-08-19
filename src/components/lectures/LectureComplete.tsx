@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ListOrdered, CheckCircle, XCircle, MinusCircle, Clock, Target } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { LectureComments } from '@/components/lectures/LectureComments';
+// import { LectureComments } from '@/components/lectures/LectureComments';
 
 interface LectureCompleteProps {
   onRestart: () => void;
@@ -147,14 +147,7 @@ export function LectureComplete({
         </div>
       </motion.div>
 
-      {/* Comments Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <LectureComments lectureId={lectureId} />
-      </motion.div>
+  {/* Comments Section removed */}
     </div>
   );
 }

@@ -12,9 +12,11 @@ import { MCQQuestion } from '@/components/questions/MCQQuestion'
 import { OpenQuestion } from '@/components/questions/OpenQuestion'
 import { ClinicalCaseQuestion } from '@/components/questions/ClinicalCaseQuestion'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Dumbbell } from 'lucide-react'
+import { ArrowLeft, BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ClinicalCase, Question } from '@/types'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+// import { LectureComments } from '@/components/lectures/LectureComments'
 
 export default function LecturePageRoute() {
   const params = useParams()
@@ -203,6 +205,8 @@ export default function LecturePageRoute() {
           onSubmit={handleClinicalCaseComplete}
           onNext={handleNext}
           lectureId={lectureId}
+          lectureTitle={lecture?.title}
+          specialtyName={lecture?.specialty?.name}
           isAnswered={isAnswered}
           answerResult={caseAnswerResult}
           userAnswers={caseUserAnswers}
@@ -226,6 +230,8 @@ export default function LecturePageRoute() {
           onSubmit={handleMCQSubmit}
           onNext={handleNext}
           lectureId={lectureId}
+          lectureTitle={lecture?.title}
+          specialtyName={lecture?.specialty?.name}
           isAnswered={isAnswered}
           answerResult={answerResult}
           userAnswer={userAnswer}
@@ -238,6 +244,8 @@ export default function LecturePageRoute() {
           onSubmit={handleOpenSubmit}
           onNext={handleNext}
           lectureId={lectureId}
+          lectureTitle={lecture?.title}
+          specialtyName={lecture?.specialty?.name}
           isAnswered={isAnswered}
           answerResult={answerResult}
           userAnswer={userAnswer}
@@ -268,6 +276,33 @@ export default function LecturePageRoute() {
               {currentQuestion && (
                 <div className="space-y-4 sm:space-y-6">
                   {renderCurrentQuestion()}
+
+                  {/* Rappel du cours section */}
+                  {(() => {
+                    if ('caseNumber' in currentQuestion) return null;
+                    const q = currentQuestion as Question;
+                    const text = q.course_reminder || q.explanation;
+                    if (!text) return null;
+                    return (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                            <BookOpen className="h-4 w-4" />
+                            Rappel du cours
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="prose dark:prose-invert max-w-none text-sm sm:text-base">
+                            <div className="whitespace-pre-wrap text-foreground">
+                              {text}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })()}
+
+                  {/* Comments section removed per request */}
                 </div>
               )}
             </div>

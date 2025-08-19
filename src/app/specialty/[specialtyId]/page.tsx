@@ -67,7 +67,7 @@ import {
 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { useTranslation } from 'react-i18next'
-import { LectureComments } from '@/components/lectures/LectureComments'
+// import { LectureComments } from '@/components/lectures/LectureComments'
 import { getMedicalIcon, getIconBySpecialtyName } from '@/lib/medical-icons'
 
 export default function SpecialtyPageRoute() {
@@ -78,7 +78,7 @@ export default function SpecialtyPageRoute() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [selectedLecture, setSelectedLecture] = useState<any>(null)
-  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false)
+  // const [commentsDialogOpen, setCommentsDialogOpen] = useState(false)
   const [questionTypeDialogOpen, setQuestionTypeDialogOpen] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   
@@ -462,10 +462,10 @@ export default function SpecialtyPageRoute() {
     }))
   }
 
-  const handleCommentsOpen = (lecture: any) => {
-    setSelectedLecture(lecture)
-    setCommentsDialogOpen(true)
-  }
+  // const handleCommentsOpen = (lecture: any) => {
+  //   setSelectedLecture(lecture)
+  //   setCommentsDialogOpen(true)
+  // }
 
   const handleQuestionTypeOpen = (lecture: any) => {
     setSelectedLecture(lecture)
@@ -733,7 +733,7 @@ export default function SpecialtyPageRoute() {
                       <TableRow>
                         <TableHead>Course</TableHead>
                         {isAdmin && <TableHead>Reports</TableHead>}
-                        <TableHead>Comments</TableHead>
+                        {/* Comments column removed */}
                         <TableHead>Notes</TableHead>
                         <TableHead>Progress</TableHead>
                         {isAdmin && <TableHead>Group</TableHead>}
@@ -790,17 +790,7 @@ export default function SpecialtyPageRoute() {
                                 </Button>
                               </TableCell>
                             )}
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCommentsOpen(lecture)}
-                                className="flex items-center gap-1"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                                Comments
-                              </Button>
-                            </TableCell>
+                            {/* Comments cell removed */}
                             <TableCell>
                               <span className="text-sm text-gray-500">
                                 No notes available
@@ -897,19 +887,7 @@ export default function SpecialtyPageRoute() {
             </div>
           </div>
 
-          {/* Comments Dialog */}
-          <Dialog open={commentsDialogOpen} onOpenChange={setCommentsDialogOpen}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-              <DialogHeader>
-                <DialogTitle>Comments - {selectedLecture?.title}</DialogTitle>
-              </DialogHeader>
-              <div className="flex-1 overflow-hidden">
-                {selectedLecture && (
-                  <LectureComments lectureId={selectedLecture.id} />
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
+          {/* Comments Dialog removed */}
 
           {/* Question Type Dialog */}
           <Dialog open={questionTypeDialogOpen} onOpenChange={setQuestionTypeDialogOpen}>

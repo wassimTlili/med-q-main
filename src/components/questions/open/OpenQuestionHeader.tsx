@@ -1,28 +1,51 @@
 
-import { PenLine } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { HighlightableQuestionText } from '../HighlightableQuestionText';
 
 interface OpenQuestionHeaderProps {
   questionText: string;
   questionNumber?: number;
   session?: string;
+  lectureTitle?: string;
+  specialtyName?: string;
+  questionId?: string;
 }
 
-export function OpenQuestionHeader({ questionText, questionNumber, session }: OpenQuestionHeaderProps) {
+export function OpenQuestionHeader({ questionText, questionNumber, session, lectureTitle, specialtyName, questionId }: OpenQuestionHeaderProps) {
   const { t } = useTranslation();
+  const typeLabel = t('questions.openQuestion');
+  const sessionLabel = (() => {
+    if (!session) return '';
+    const hasWord = /session/i.test(session);
+    return hasWord ? session : `Session ${session}`;
+  })();
+  const firstLineParts: string[] = [];
+  firstLineParts.push(typeLabel);
+  if (questionNumber !== undefined) firstLineParts.push(`Question ${questionNumber}`);
+  if (session) firstLineParts.push(sessionLabel);
+  const firstLine = firstLineParts.join(' / ');
   
   return (
     <div className="space-y-2">
-      <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-sm font-medium">
-        <PenLine className="h-4 w-4 mr-1" />
-        {t('questions.openQuestion')} {questionNumber ? `#${questionNumber}` : ''}
+      <div className="text-sm sm:text-base font-semibold text-foreground dark:text-gray-100">
+        {firstLine}
       </div>
-      {session && (
-        <div className="text-xs text-muted-foreground dark:text-gray-400 font-medium">
-          {session}
+      {(specialtyName || lectureTitle) && (
+        <div className="text-xs sm:text-sm text-muted-foreground">
+          {[specialtyName, lectureTitle].filter(Boolean).join(' • ')}
         </div>
       )}
-      <h3 className="text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words">{questionText}</h3>
+  {questionId ? (
+        <div data-question-text={questionId}>
+          <HighlightableQuestionText
+            questionId={questionId}
+            text={questionText}
+            className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words"
+          />
+        </div>
+      ) : (
+        <h3 className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words">{questionText}</h3>
+      )}
     </div>
   );
 }

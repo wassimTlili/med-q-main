@@ -37,15 +37,20 @@ async function getHandler(
     // Build the where clause for the question
     let whereClause: unknown = { id: questionId };
     
-    // If user is not admin and has a niveau, filter by specialty niveau
-    if (user.role !== 'admin' && user.niveauId) {
+    // If user is not admin, forbid hidden and restrict by niveau if present
+    if (user.role !== 'admin') {
       whereClause = {
         ...whereClause as Record<string, unknown>,
-        lecture: {
-          specialty: {
-            niveauId: user.niveauId
-          }
-        }
+        hidden: false,
+        ...(user.niveauId
+          ? {
+              lecture: {
+                specialty: {
+                  niveauId: user.niveauId,
+                },
+              },
+            }
+          : {}),
       };
     }
 
@@ -126,7 +131,8 @@ async function putHandler(
       mediaType,
       caseNumber,
       caseText,
-      caseQuestionNumber
+      caseQuestionNumber,
+      hidden
     } = await request.json();
 
     const question = await prisma.question.update({
@@ -144,7 +150,8 @@ async function putHandler(
         mediaType,
         caseNumber,
         caseText,
-        caseQuestionNumber
+  caseQuestionNumber,
+  ...(typeof hidden === 'boolean' ? { hidden } : {})
       },
       select: {
         id: true,
@@ -161,7 +168,7 @@ async function putHandler(
         mediaType: true,
         caseNumber: true,
         caseText: true,
-        caseQuestionNumber: true,
+  caseQuestionNumber: true,
         createdAt: true,
         lecture: {
           select: {

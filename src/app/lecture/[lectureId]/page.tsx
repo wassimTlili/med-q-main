@@ -43,6 +43,7 @@ export default function LecturePageRoute() {
     handleNext,
     handleRestart,
     handleBackToSpecialty,
+    handleQuestionUpdate,
   } = useLecture(lectureId, mode); // Pass mode to the hook
 
   if (!lectureId) {
@@ -226,6 +227,7 @@ export default function LecturePageRoute() {
           isAnswered={isAnswered}
           answerResult={answerResult}
           userAnswer={userAnswer}
+          onQuestionUpdate={handleQuestionUpdate}
         />
       );
     } else {
@@ -238,6 +240,7 @@ export default function LecturePageRoute() {
           isAnswered={isAnswered}
           answerResult={answerResult}
           userAnswer={userAnswer}
+          onQuestionUpdate={handleQuestionUpdate}
         />
       );
     }

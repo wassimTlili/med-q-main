@@ -15,7 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
+// import { Progress } from '@/components/ui/progress'
 import { 
   Table,
   TableBody,
@@ -29,7 +29,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   DropdownMenu,
@@ -47,10 +46,6 @@ import {
 import { 
   Search, 
   Filter, 
-  MessageCircle, 
-  BookOpen, 
-  CheckCircle, 
-  Dumbbell, 
   ChevronDown, 
   ChevronRight, 
   Settings, 
@@ -63,11 +58,11 @@ import {
   ExternalLink,
   ArrowLeft,
   AlertTriangle,
-  PinOff,
-  Pin
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/hooks/use-toast'
+import { Checkbox } from '@/components/ui/checkbox'
+// import { LectureComments } from '@/components/lectures/LectureComments'
 
 // Disable static generation to prevent SSR issues with useAuth
 export const dynamic = 'force-dynamic'
@@ -79,29 +74,29 @@ export default function SpecialtyPageRoute() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedFilter, setSelectedFilter] = useState('all')
-  const [selectedLecture, setSelectedLecture] = useState<any>(null)
-  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false)
-  const [questionTypeDialogOpen, setQuestionTypeDialogOpen] = useState(false)
+  // const [selectedLecture, setSelectedLecture] = useState<any>(null)
+  // const [commentsDialogOpen, setCommentsDialogOpen] = useState(false)
+  // const [questionTypeDialogOpen, setQuestionTypeDialogOpen] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
-  
-  // Group management state - using database persistence
-  const [courseGroups, setCourseGroups] = useState<Record<string, string[]>>({
-    'General Courses': []
-  })
+
+  // Per-lecture selected mode for the Start button
+  type ModeKey = 'study' | 'revision' | 'pinned'
+  const [selectedModes, setSelectedModes] = useState<Record<string, ModeKey>>({})
+
+  // Group management state - DB backed
+  const [courseGroups, setCourseGroups] = useState<Record<string, string[]>>({})
   const [isGroupManagementOpen, setIsGroupManagementOpen] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
   const [editingGroup, setEditingGroup] = useState<string | null>(null)
-  
+  const [selectedCourseIds, setSelectedCourseIds] = useState<Record<string, boolean>>({})
+
   const { isAdmin, user } = useAuth()
-  
   const specialtyId = params?.specialtyId as string
-  
+
   const {
     specialty,
     lectures,
     isLoading,
-    selectedLectureId,
-    setSelectedLectureId,
   } = useSpecialty(specialtyId)
 
   if (!specialtyId) {
@@ -112,226 +107,160 @@ export default function SpecialtyPageRoute() {
   useEffect(() => {
     const loadCourseGroups = async () => {
       if (!user?.id || !specialtyId) return
-      
       try {
         const response = await fetch(`/api/course-groups?userId=${user.id}&specialtyId=${specialtyId}`)
         if (response.ok) {
           const groups = await response.json()
-          const groupsMap: Record<string, string[]> = { 'General Courses': [] }
-          
-          // Process groups and their lecture assignments
+          const groupsMap: Record<string, string[]> = {}
           groups.forEach((group: any) => {
             if (group.lectureGroups) {
               groupsMap[group.name] = group.lectureGroups.map((lg: any) => lg.lectureId)
             }
           })
-          
           setCourseGroups(groupsMap)
+          // Expand all groups initially
+          const exp: Record<string, boolean> = {}
+          Object.keys(groupsMap).forEach((gn) => { exp[gn] = true })
+          setExpandedGroups(exp)
         }
       } catch (error) {
         console.error('Error loading course groups:', error)
       }
     }
-
     loadCourseGroups()
   }, [user?.id, specialtyId])
 
-  // Group management functions - using database persistence
+  // Create, delete, and assignment helpers
   const createGroup = async () => {
     if (!newGroupName.trim() || !user?.id || !specialtyId) return
-    
     try {
       const response = await fetch('/api/course-groups', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newGroupName.trim(),
-          userId: user.id,
-          specialtyId: specialtyId,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newGroupName.trim(), userId: user.id, specialtyId }),
       })
-
       if (response.ok) {
-        setCourseGroups(prev => ({
-          ...prev,
-          [newGroupName.trim()]: []
-        }))
+        const name = newGroupName.trim()
+        setCourseGroups(prev => ({ ...prev, [name]: [] }))
+        setExpandedGroups(prev => ({ ...prev, [name]: true }))
         setNewGroupName('')
-        toast({
-          title: "Group created",
-          description: `Course group "${newGroupName.trim()}" has been created.`,
-        })
+        toast({ title: 'Group created', description: `Course group "${name}" has been created.` })
       }
     } catch (error) {
       console.error('Error creating group:', error)
-      toast({
-        title: "Error",
-        description: "Failed to create group",
-        variant: "destructive",
-      })
+      toast({ title: 'Error', description: 'Failed to create group', variant: 'destructive' })
     }
   }
 
   const deleteGroup = async (groupName: string) => {
-    if (!user?.id || !specialtyId || groupName === 'General Courses') return
-    
+    if (!user?.id || !specialtyId) return
     try {
-      // Get group data first to find the group ID
       const groupsResponse = await fetch(`/api/course-groups?userId=${user.id}&specialtyId=${specialtyId}`)
       if (!groupsResponse.ok) return
-      
       const groups = await groupsResponse.json()
       const groupToDelete = groups.find((g: any) => g.name === groupName)
       if (!groupToDelete) return
 
-      const response = await fetch(`/api/course-groups/${groupToDelete.id}`, {
-        method: 'DELETE'
-      })
-
+      const response = await fetch(`/api/course-groups/${groupToDelete.id}`, { method: 'DELETE' })
       if (response.ok) {
         setCourseGroups(prev => {
           const updated = { ...prev }
-          // Move courses back to General Courses
-          if (updated[groupName]?.length > 0) {
-            updated['General Courses'] = [...(updated['General Courses'] || []), ...updated[groupName]]
-          }
           delete updated[groupName]
           return updated
         })
-        
         setExpandedGroups(prev => {
           const updated = { ...prev }
           delete updated[groupName]
           return updated
         })
-        
-        toast({
-          title: "Group deleted",
-          description: `Course group "${groupName}" has been deleted.`,
-        })
+        toast({ title: 'Group deleted', description: `Course group "${groupName}" has been deleted.` })
       }
     } catch (error) {
       console.error('Error deleting group:', error)
-      toast({
-        title: "Error",
-        description: "Failed to delete group",
-        variant: "destructive",
-      })
+      toast({ title: 'Error', description: 'Failed to delete group', variant: 'destructive' })
     }
   }
 
   const moveCourseToGroup = async (courseId: string, newGroupName: string) => {
     if (!user?.id || !specialtyId) return
-    
     try {
-      // First, remove course from any existing group
+      // Remove from any group first
       await fetch('/api/lecture-groups', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          lectureId: courseId,
-          userId: user.id,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lectureId: courseId }),
       })
 
-      // If not moving to General Courses, add to the new group
-      if (newGroupName !== 'General Courses') {
-        // Get the group ID first
+      if (newGroupName !== '__none__') {
+        // Assign to selected group
         const groupsResponse = await fetch(`/api/course-groups?userId=${user.id}&specialtyId=${specialtyId}`)
         if (groupsResponse.ok) {
           const groups = await groupsResponse.json()
           const targetGroup = groups.find((g: any) => g.name === newGroupName)
-          
           if (targetGroup) {
             await fetch('/api/lecture-groups', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                lectureId: courseId,
-                courseGroupId: targetGroup.id,
-              }),
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lectureId: courseId, courseGroupId: targetGroup.id }),
             })
           }
         }
       }
 
-      // Update local state
+      // Update local
       setCourseGroups(prev => {
         const updated = { ...prev }
-        
-        // Remove course from current group
-        Object.keys(updated).forEach(groupName => {
-          updated[groupName] = updated[groupName].filter(id => id !== courseId)
-        })
-        
-        // Add course to new group
-        if (!updated[newGroupName]) {
-          updated[newGroupName] = []
+        Object.keys(updated).forEach(gn => { updated[gn] = updated[gn].filter(id => id !== courseId) })
+        if (newGroupName !== '__none__') {
+          if (!updated[newGroupName]) updated[newGroupName] = []
+          updated[newGroupName].push(courseId)
         }
-        updated[newGroupName].push(courseId)
-        
         return updated
       })
-      
-      toast({
-        title: "Course moved",
-        description: `Course moved to ${newGroupName}`,
-      })
+      toast({ title: 'Course updated', description: newGroupName === '__none__' ? 'Course removed from group' : `Course moved to ${newGroupName}` })
     } catch (error) {
       console.error('Error moving course:', error)
-      toast({
-        title: "Error", 
-        description: "Failed to move course",
-        variant: "destructive",
+      toast({ title: 'Error', description: 'Failed to move course', variant: 'destructive' })
+    }
+  }
+
+  const bulkAssignToGroup = async (targetGroupName: string) => {
+    if (!user?.id || !specialtyId) return
+    const ids = Object.entries(selectedCourseIds).filter(([, v]) => v).map(([id]) => id)
+    if (ids.length === 0) return
+    try {
+      const groupsResponse = await fetch(`/api/course-groups?userId=${user.id}&specialtyId=${specialtyId}`)
+      if (!groupsResponse.ok) return
+      const groups = await groupsResponse.json()
+      const targetGroup = groups.find((g: any) => g.name === targetGroupName)
+      if (!targetGroup) return
+
+      const res = await fetch('/api/lecture-groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lectureIds: ids, courseGroupId: targetGroup.id }),
       })
+      if (!res.ok) throw new Error('Failed bulk assign')
+
+      setCourseGroups(prev => {
+        const updated = { ...prev }
+        Object.keys(updated).forEach(gn => { updated[gn] = updated[gn].filter(id => !ids.includes(id)) })
+        if (!updated[targetGroupName]) updated[targetGroupName] = []
+        updated[targetGroupName] = [...updated[targetGroupName], ...ids]
+        return updated
+      })
+      setSelectedCourseIds({})
+      toast({ title: 'Assigned', description: `Assigned ${ids.length} course(s) to ${targetGroupName}` })
+    } catch (e) {
+      console.error(e)
+      toast({ title: 'Error', description: 'Bulk assign failed', variant: 'destructive' })
     }
   }
 
-  // Expand all groups by default when lectures load
-  useEffect(() => {
-    if (lectures.length > 0) {
-      // Create groups and expand them all
-      const groups = lectures.reduce((acc, lecture) => {
-        // Same grouping logic as above
-        let groupName = 'General Courses'
-        
-        if (lecture.title.toLowerCase().includes('anatomy')) {
-          groupName = 'Anatomy & Physiology'
-        } else if (lecture.title.toLowerCase().includes('pathology')) {
-          groupName = 'Pathology'
-        } else if (lecture.title.toLowerCase().includes('clinical')) {
-          groupName = 'Clinical Practice'
-        } else if (lecture.title.toLowerCase().includes('surgery')) {
-          groupName = 'Surgery'
-        } else if (lecture.title.toLowerCase().includes('medicine')) {
-          groupName = 'Internal Medicine'
-        }
-        
-        acc[groupName] = true
-        return acc
-      }, {} as Record<string, boolean>)
-      setExpandedGroups(groups)
-    }
-  }, [lectures.length])
-
-  const handleEdit = () => {
-    setIsEditDialogOpen(true)
-  }
-
-  const getCourseGroup = (courseId: string): string => {
-    for (const [groupName, courseIds] of Object.entries(courseGroups)) {
-      if (courseIds.includes(courseId)) {
-        return groupName
-      }
-    }
-    return 'General Courses'
-  }
+  const handleEdit = () => setIsEditDialogOpen(true)
+  // const handleCommentsOpen = (lecture: any) => { setSelectedLecture(lecture); setCommentsDialogOpen(true) }
+  // const handleQuestionTypeOpen = (lecture: any) => { setSelectedLecture(lecture); setQuestionTypeDialogOpen(true) }
+  const handleSpecialtyUpdated = () => { window.location.reload() }
 
   if (isLoading) {
     return (
@@ -378,53 +307,42 @@ export default function SpecialtyPageRoute() {
     return matchesSearch && matchesFilter
   })
 
-  // Group lectures by admin-created categories
+  // Build groups -> lectures map from current data
   const groupedLectures = Object.keys(courseGroups).reduce((acc, groupName) => {
-    const groupLectureIds = courseGroups[groupName]
-    const groupLectures = filteredLectures.filter(lecture => 
-      groupLectureIds.includes(lecture.id)
-    )
-    
-    if (groupLectures.length > 0) {
-      acc[groupName] = groupLectures
-    }
-    
+    const ids = courseGroups[groupName]
+    const list = filteredLectures.filter(l => ids.includes(l.id))
+    if (list.length > 0) acc[groupName] = list
     return acc
   }, {} as Record<string, typeof lectures>)
 
-  // Add ungrouped lectures to "General Courses" group (default)
+  // Ungrouped are those not in any group
   const assignedLectureIds = Object.values(courseGroups).flat()
-  const ungroupedLectures = filteredLectures.filter(lecture => 
-    !assignedLectureIds.includes(lecture.id)
-  )
-  
-  if (ungroupedLectures.length > 0) {
-    if (!groupedLectures['General Courses']) {
-      groupedLectures['General Courses'] = []
+  const ungroupedLectures = filteredLectures.filter(l => !assignedLectureIds.includes(l.id))
+
+  const getCourseGroup = (courseId: string): string => {
+    for (const [gn, ids] of Object.entries(courseGroups)) {
+      if (ids.includes(courseId)) return gn
     }
-    groupedLectures['General Courses'] = [...(groupedLectures['General Courses'] || []), ...ungroupedLectures]
+    return '__none__'
   }
 
-  const toggleGroup = (groupName: string) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [groupName]: !prev[groupName]
-    }))
-  }
+  // Header tri-color progress values
+  const headerTotalQuestions = specialty.progress?.totalQuestions || 1
+  const headerCorrect = specialty.progress?.correctQuestions || 0
+  const headerIncorrect = specialty.progress?.incorrectQuestions || 0
+  const headerPartial = specialty.progress?.partialQuestions || 0
+  const headerCorrectPercent = (headerCorrect / headerTotalQuestions) * 100
+  const headerPartialPercent = (headerPartial / headerTotalQuestions) * 100
+  const headerIncorrectPercent = (headerIncorrect / headerTotalQuestions) * 100
 
-  const handleCommentsOpen = (lecture: any) => {
-    setSelectedLecture(lecture)
-    setCommentsDialogOpen(true)
-  }
-
-  const handleQuestionTypeOpen = (lecture: any) => {
-    setSelectedLecture(lecture)
-    setQuestionTypeDialogOpen(true)
-  }
-
-  const handleSpecialtyUpdated = () => {
-    // Refresh the specialty data
-    window.location.reload()
+  // Per-lecture mode helpers
+  const getLectureMode = (lectureId: string): ModeKey => selectedModes[lectureId] || 'study'
+  const getModeLabel = (mode: ModeKey) => mode === 'study' ? 'Study' : mode === 'revision' ? 'Revision' : 'Pinned'
+  const getModePath = (mode: ModeKey) => mode === 'study' ? '' : mode === 'revision' ? '/revision' : '/pinned-test'
+  const setLectureMode = (lectureId: string, mode: ModeKey) => setSelectedModes(prev => ({ ...prev, [lectureId]: mode }))
+  const goToLectureMode = (lectureId: string) => {
+    const mode = getLectureMode(lectureId)
+    router.push(`/exercices/${specialtyId}/lecture/${lectureId}${getModePath(mode)}`)
   }
 
   return (
@@ -433,11 +351,10 @@ export default function SpecialtyPageRoute() {
         <AppSidebar />
         <SidebarInset className="flex-1 flex flex-col">
           <UniversalHeader title={specialty.name} />
-          
+
           <div className="flex-1 bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8">
             <div className="max-w-7xl mx-auto space-y-6">
-              
-              {/* Breadcrumb Navigation */}
+              {/* Breadcrumb */}
               <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <Button
                   variant="ghost"
@@ -452,127 +369,84 @@ export default function SpecialtyPageRoute() {
                 <span className="text-gray-900 dark:text-gray-100 font-medium">{specialty.name}</span>
               </div>
 
-              {/* Specialty Overview Card */}
+              {/* Overview */}
               <Card className="bg-white dark:bg-gray-800 shadow-sm">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                          {specialty.name}
-                        </h1>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{specialty.name}</h1>
                         {isAdmin && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleEdit}
-                            className="flex items-center gap-2"
-                          >
+                          <Button variant="outline" size="sm" onClick={handleEdit} className="flex items-center gap-2">
                             <Edit className="w-4 h-4" />
                             Edit
                           </Button>
                         )}
                       </div>
                       {specialty.description && (
-                        <p className="text-gray-600 dark:text-gray-400 mb-4">
-                          {specialty.description}
-                        </p>
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">{specialty.description}</p>
                       )}
-                      
-                      {/* Progress Overview */}
+
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                          <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                            {specialty.progress?.totalLectures || 0}
-                          </div>
+                          <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{specialty.progress?.totalLectures || 0}</div>
                           <div className="text-sm text-blue-600 dark:text-blue-400">Total Lectures</div>
                         </div>
                         <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                          <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-                            {specialty.progress?.completedLectures || 0}
-                          </div>
+                          <div className="text-2xl font-bold text-green-700 dark:text-green-300">{specialty.progress?.completedLectures || 0}</div>
                           <div className="text-sm text-green-600 dark:text-green-400">Completed</div>
                         </div>
                         <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
-                          <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
-                            {Math.round(specialty.progress?.questionProgress || 0)}%
-                          </div>
+                          <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{Math.round(specialty.progress?.questionProgress || 0)}%</div>
                           <div className="text-sm text-purple-600 dark:text-purple-400">Progress</div>
                         </div>
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Overall Progress Bar */}
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Overall Progress</span>
-                      <span className="font-semibold text-blue-600 dark:text-blue-400">
-                        {Math.round(specialty.progress?.questionProgress || 0)}%
-                      </span>
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">{Math.round(specialty.progress?.questionProgress || 0)}%</span>
                     </div>
-                    <Progress 
-                      value={specialty.progress?.questionProgress || 0} 
-                      className="h-2"
-                    />
+                    <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                      <div className="absolute h-full bg-green-500" style={{ width: `${headerCorrectPercent}%` }} />
+                      <div className="absolute h-full bg-orange-500" style={{ left: `${headerCorrectPercent}%`, width: `${headerPartialPercent}%` }} />
+                      <div className="absolute h-full bg-red-500" style={{ left: `${headerCorrectPercent + headerPartialPercent}%`, width: `${headerIncorrectPercent}%` }} />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Course Group Management - Admin Only */}
+              {/* Group Management */}
               {isAdmin && (
                 <Card className="bg-white dark:bg-gray-800 shadow-sm">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        Course Group Management
-                      </h3>
-                      <Button
-                        onClick={() => setIsGroupManagementOpen(!isGroupManagementOpen)}
-                        variant="outline"
-                        size="sm"
-                      >
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Course Group Management</h3>
+                      <Button onClick={() => setIsGroupManagementOpen(!isGroupManagementOpen)} variant="outline" size="sm">
                         <Settings className="w-4 h-4 mr-2" />
                         {isGroupManagementOpen ? 'Hide' : 'Manage Groups'}
                       </Button>
                     </div>
-                    
+
                     {isGroupManagementOpen && (
                       <div className="space-y-4">
-                        {/* Create New Group */}
                         <div className="flex gap-2">
-                          <Input
-                            placeholder="New group name..."
-                            value={newGroupName}
-                            onChange={(e) => setNewGroupName(e.target.value)}
-                            className="flex-1"
-                          />
+                          <Input placeholder="New group name..." value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} className="flex-1" />
                           <Button onClick={createGroup} disabled={!newGroupName.trim()}>
                             <Plus className="w-4 h-4 mr-2" />
                             Create Group
                           </Button>
                         </div>
-                        
-                        {/* Existing Groups */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {Object.keys(courseGroups).filter(name => name !== 'General Courses').map((groupName) => (
-                            <div
-                              key={groupName}
-                              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                            >
+                          {Object.keys(courseGroups).map((groupName) => (
+                            <div key={groupName} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                               <div className="flex items-center gap-2">
                                 <Folder className="w-4 h-4 text-blue-600" />
                                 <span className="font-medium">{groupName}</span>
-                                <Badge variant="secondary" className="text-xs">
-                                  {courseGroups[groupName].length}
-                                </Badge>
+                                <Badge variant="secondary" className="text-xs">{courseGroups[groupName].length}</Badge>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteGroup(groupName)}
-                                className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => deleteGroup(groupName)} className="h-8 w-8 p-0 text-red-600 hover:bg-red-50">
                                 <Trash className="w-3 h-3" />
                               </Button>
                             </div>
@@ -584,18 +458,12 @@ export default function SpecialtyPageRoute() {
                 </Card>
               )}
 
-              {/* Search and Filter Bar */}
+              {/* Search and Filter */}
               <div className="flex gap-4 items-center">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search courses..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-white dark:bg-gray-800"
-                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input placeholder="Search courses..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-white dark:bg-gray-800" />
                 </div>
-                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="flex items-center gap-2">
@@ -604,64 +472,187 @@ export default function SpecialtyPageRoute() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setSelectedFilter('all')}>
-                      All Courses
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedFilter('completed')}>
-                      Completed
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedFilter('in-progress')}>
-                      In Progress
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedFilter('not-started')}>
-                      Not Started
-                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedFilter('all')}>All Courses</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedFilter('completed')}>Completed</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedFilter('in-progress')}>In Progress</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedFilter('not-started')}>Not Started</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
 
-              {/* Lectures Table with Groups */}
+              {/* Lectures table */}
               <Card className="bg-white dark:bg-gray-800 shadow-sm">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        {isAdmin && (
+                          <TableHead className="w-8">
+                            <Checkbox
+                              aria-label="Select all"
+                              checked={(() => {
+                                const ids = [...ungroupedLectures, ...Object.values(groupedLectures).flat()].map(l => l.id)
+                                return ids.length > 0 && ids.every(id => selectedCourseIds[id])
+                              })()}
+                              onCheckedChange={(checked) => {
+                                const allIds = [...ungroupedLectures, ...Object.values(groupedLectures).flat()].map(l => l.id)
+                                const next: Record<string, boolean> = { ...selectedCourseIds }
+                                allIds.forEach(id => { next[id] = !!checked })
+                                setSelectedCourseIds(next)
+                              }}
+                            />
+                          </TableHead>
+                        )}
                         <TableHead>Course</TableHead>
                         {isAdmin && <TableHead>Reports</TableHead>}
-                        <TableHead>Comments</TableHead>
                         <TableHead>Notes</TableHead>
-                        <TableHead>Progress</TableHead>
-                        {isAdmin && <TableHead>Group</TableHead>}
+                        <TableHead className="w-64">Progress</TableHead>
+                        {/* Comments column removed */}
                         <TableHead>Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {Object.entries(groupedLectures).map(([groupName, groupLectures]) => [
-                        // Group Header Row
+                      {isAdmin && Object.values(selectedCourseIds).some(v => v) && (
+                        <TableRow className="bg-blue-50/40 dark:bg-blue-900/10">
+                          <TableCell colSpan={isAdmin ? 6 : 4}>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-700 dark:text-gray-300 mr-2">Bulk assign selected to group:</span>
+                              <Select onValueChange={(v) => v && bulkAssignToGroup(v)}>
+                                <SelectTrigger className="w-56">
+                                  <SelectValue placeholder="Choose group" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.keys(courseGroups).map((groupName) => (
+                                    <SelectItem key={groupName} value={groupName}>{groupName}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button variant="ghost" size="sm" onClick={() => setSelectedCourseIds({})}>Clear selection</Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+
+                      {/* Ungrouped rows */}
+                      {ungroupedLectures.map((lecture) => (
+                        <TableRow key={`lecture-ungrouped-${lecture.id}`} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          {isAdmin && (
+                            <TableCell className="align-middle">
+                              <Checkbox
+                                checked={!!selectedCourseIds[lecture.id]}
+                                onCheckedChange={(checked) => setSelectedCourseIds(prev => ({ ...prev, [lecture.id]: !!checked }))
+                                }
+                              />
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <File className="w-4 h-4 text-gray-500" />
+                              <div>
+                                <div className="font-medium">{lecture.title}</div>
+                                <div className="text-sm text-gray-500">{lecture.description}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          {isAdmin && (
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => router.push(`/admin/reports?lectureId=${lecture.id}`)}
+                                className="flex items-center gap-2 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                              >
+                                <AlertTriangle className="w-4 h-4 text-orange-600" />
+                                <span className="font-medium">{lecture.reportsCount || 0}</span>
+                                <ExternalLink className="w-3 h-3 text-gray-400" />
+                              </Button>
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            <span className="text-sm text-gray-500">No notes available</span>
+                          </TableCell>
+                          <TableCell className="w-64">
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span>{Math.round(lecture.progress?.percentage || 0)}%</span>
+                                <span className="text-xs text-gray-500">{lecture.progress?.completedQuestions || 0}/{lecture.progress?.totalQuestions || 0}</span>
+                              </div>
+                              <div className="relative h-2 w-56 overflow-hidden rounded-full bg-gray-200">
+                                {(() => {
+                                  const total = lecture.progress?.totalQuestions || 1
+                                  const correct = lecture.progress?.correctAnswers || 0
+                                  const incorrect = lecture.progress?.incorrectAnswers || 0
+                                  const partial = lecture.progress?.partialAnswers || 0
+                                  const correctPercent = (correct / total) * 100
+                                  const incorrectPercent = (incorrect / total) * 100
+                                  const partialPercent = (partial / total) * 100
+                                  return (
+                                    <>
+                                      <div className="absolute top-0 left-0 h-full bg-green-500" style={{ width: `${correctPercent}%` }} />
+                                      <div className="absolute top-0 h-full bg-red-500" style={{ left: `${correctPercent}%`, width: `${incorrectPercent}%` }} />
+                                      <div className="absolute top-0 h-full bg-yellow-500" style={{ left: `${correctPercent + incorrectPercent}%`, width: `${partialPercent}%` }} />
+                                    </>
+                                  )
+                                })()}
+                              </div>
+                            </div>
+                          </TableCell>
+                          {/* Comments cell removed */}
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => goToLectureMode(lecture.id)}
+                                className="h-8 bg-sky-500 hover:bg-sky-600 text-white"
+                              >
+                                <Play className="w-4 h-4 mr-1" />
+                                {getModeLabel(getLectureMode(lecture.id))}
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    aria-label="Change mode"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-md border-sky-200 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                                  >
+                                    <ChevronDown className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'study')}>Study</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'revision')}>Revision</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'pinned')}>Pinned</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+
+                      {/* Grouped rows */}
+                      {Object.entries(groupedLectures).map(([groupName, glist]) => [
                         <TableRow key={`group-${groupName}`} className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                          <TableCell colSpan={isAdmin ? 7 : 6}>
-                            <Button
-                              variant="ghost"
-                              onClick={() => toggleGroup(groupName)}
-                              className="flex items-center gap-2 p-0 h-auto font-medium text-gray-900 dark:text-gray-100"
-                            >
+                          <TableCell colSpan={isAdmin ? 6 : 4}>
+                            <Button variant="ghost" onClick={() => setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }))} className="flex items-center gap-2 p-0 h-auto font-medium text-gray-900 dark:text-gray-100">
                               <Folder className="w-4 h-4 text-blue-600" />
-                              {expandedGroups[groupName] ? (
-                                <ChevronDown className="w-4 h-4" />
-                              ) : (
-                                <ChevronRight className="w-4 h-4" />
-                              )}
+                              {expandedGroups[groupName] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                               {groupName}
-                              <Badge variant="secondary" className="ml-2">
-                                {groupLectures.length} courses
-                              </Badge>
+                              <Badge variant="secondary" className="ml-2">{glist.length} courses</Badge>
                             </Button>
                           </TableCell>
                         </TableRow>,
-                        
-                        // Group Content Rows
-                        ...(expandedGroups[groupName] ? groupLectures.map((lecture) => (
+                        ...(expandedGroups[groupName] ? glist.map((lecture) => (
                           <TableRow key={`lecture-${lecture.id}`} className="border-l-4 border-l-blue-200 dark:border-l-blue-800">
+                            {isAdmin && (
+                              <TableCell className="align-middle">
+                                <Checkbox
+                                  checked={!!selectedCourseIds[lecture.id]}
+                                  onCheckedChange={(checked) => setSelectedCourseIds(prev => ({ ...prev, [lecture.id]: !!checked }))
+                                  }
+                                />
+                               </TableCell>
+                            )}
                             <TableCell>
                               <div className="flex items-center gap-2 pl-6">
                                 <File className="w-4 h-4 text-gray-500" />
@@ -673,12 +664,7 @@ export default function SpecialtyPageRoute() {
                             </TableCell>
                             {isAdmin && (
                               <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => router.push(`/admin/reports?lectureId=${lecture.id}`)}
-                                  className="flex items-center gap-2 hover:bg-orange-50 dark:hover:bg-orange-900/20"
-                                >
+                                <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/reports?lectureId=${lecture.id}`)} className="flex items-center gap-2 hover:bg-orange-50 dark:hover:bg-orange-900/20">
                                   <AlertTriangle className="w-4 h-4 text-orange-600" />
                                   <span className="font-medium">{lecture.reportsCount || 0}</span>
                                   <ExternalLink className="w-3 h-3 text-gray-400" />
@@ -686,31 +672,18 @@ export default function SpecialtyPageRoute() {
                               </TableCell>
                             )}
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCommentsOpen(lecture)}
-                                className="flex items-center gap-1"
-                              >
-                                <MessageCircle className="w-4 h-4" />
-                                Comments
-                              </Button>
-                            </TableCell>
-                            <TableCell>
                               <span className="text-sm text-gray-500">
                                 No notes available
                               </span>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="w-64">
                               <div className="space-y-1">
                                 <div className="flex justify-between text-sm">
                                   <span>{Math.round(lecture.progress?.percentage || 0)}%</span>
-                                  <span className="text-xs text-gray-500">
-                                    {lecture.progress?.completedQuestions || 0}/{lecture.progress?.totalQuestions || 0}
-                                  </span>
+                                  <span className="text-xs text-gray-500">{lecture.progress?.completedQuestions || 0}/{lecture.progress?.totalQuestions || 0}</span>
                                 </div>
                                 {/* Three-color progress bar with real data */}
-                                <div className="relative h-2 w-20 overflow-hidden rounded-full bg-gray-200">
+                                <div className="relative h-2 w-56 overflow-hidden rounded-full bg-gray-200">
                                   {(() => {
                                     const total = lecture.progress?.totalQuestions || 1;
                                     const correct = lecture.progress?.correctAnswers || 0;
@@ -748,41 +721,39 @@ export default function SpecialtyPageRoute() {
                                     );
                                   })()}
                                 </div>
-                              </div>
-                            </TableCell>
-                            {isAdmin && (
-                              <TableCell>
-                                <Select
-                                  value={getCourseGroup(lecture.id)}
-                                  onValueChange={(newGroup) => moveCourseToGroup(lecture.id, newGroup)}
-                                >
-                                  <SelectTrigger className="w-32">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="General Courses">
-                                      General Courses
-                                    </SelectItem>
-                                    {Object.keys(courseGroups).filter(name => name !== 'General Courses').map((groupName) => (
-                                      <SelectItem key={groupName} value={groupName}>
-                                        {groupName}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                            )}
-                            <TableCell>
+                            </div>
+                          </TableCell>
+                          {/* Comments cell removed */}
+                          <TableCell>
+                            <div className="flex items-center gap-2">
                               <Button
                                 size="sm"
-                                onClick={() => handleQuestionTypeOpen(lecture)}
-                                className="bg-sky-500 hover:bg-sky-600 text-white"
+                                onClick={() => goToLectureMode(lecture.id)}
+                                className="h-8 bg-sky-500 hover:bg-sky-600 text-white"
                               >
                                 <Play className="w-4 h-4 mr-1" />
-                                Start
+                                {getModeLabel(getLectureMode(lecture.id))}
                               </Button>
-                            </TableCell>
-                          </TableRow>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    aria-label="Change mode"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-md border-sky-200 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
+                                  >
+                                    <ChevronDown className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'study')}>Study</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'revision')}>Revision</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'pinned')}>Pinned</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
                         )) : [])
                       ].flat())}
                     </TableBody>
@@ -792,101 +763,11 @@ export default function SpecialtyPageRoute() {
             </div>
           </div>
 
-          {/* Question Type Selection Dialog */}
-          <Dialog open={questionTypeDialogOpen} onOpenChange={setQuestionTypeDialogOpen}>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>Choose Study Mode</DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-3">
-                {/* Option 1: Study Lecture */}
-                <div 
-                  className="group rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 p-4 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-all duration-200"
-                  onClick={() => {
-                    if (selectedLecture) {
-                      router.push(`/exercices/${specialtyId}/lecture/${selectedLecture.id}`)
-                      setQuestionTypeDialogOpen(false)
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="bg-blue-100 dark:bg-blue-900/50 rounded-lg p-2">
-                      <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                        📚 Study Lecture
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Full interactive learning experience
-                      </p>
-                    </div>
-                  </div>
-                </div>
+          {/* Comments Dialog removed */}
 
-                {/* Option 2: Revision Mode */}
-                <div 
-                  className="group rounded-lg border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 p-4 cursor-pointer hover:bg-green-50 dark:hover:bg-green-950/50 transition-all duration-200"
-                  onClick={() => {
-                    if (selectedLecture) {
-                      router.push(`/exercices/${specialtyId}/lecture/${selectedLecture.id}/revision`)
-                      setQuestionTypeDialogOpen(false)
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="bg-green-100 dark:bg-green-900/50 rounded-lg p-2">
-                      <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                        ✅ Revision Mode
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Quick review with answers shown
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Option 3: Pinned Questions Test */}
-                <div 
-                  className="group rounded-lg border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 p-4 cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950/50 transition-all duration-200"
-                  onClick={() => {
-                    if (selectedLecture) {
-                      router.push(`/exercices/${specialtyId}/lecture/${selectedLecture.id}/pinned-test`)
-                      setQuestionTypeDialogOpen(false)
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="bg-orange-100 dark:bg-orange-900/50 rounded-lg p-2">
-                      <Dumbbell className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                        📌 Pinned Questions
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Practice your bookmarked questions
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Existing Dialogs */}
-          <EditSpecialtyDialog
-            specialty={specialty}
-            isOpen={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
-            onSpecialtyUpdated={handleSpecialtyUpdated}
-          />
-        </SidebarInset>
-      </AppSidebarProvider>
-    </ProtectedRoute>
-  )
-}
+           <EditSpecialtyDialog specialty={specialty} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSpecialtyUpdated={handleSpecialtyUpdated} />
+         </SidebarInset>
+       </AppSidebarProvider>
+     </ProtectedRoute>
+   )
+ }

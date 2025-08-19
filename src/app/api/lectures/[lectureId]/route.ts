@@ -46,6 +46,17 @@ async function getHandler(
 
     if (includeQuestions) {
       // Optimized query: fetch lecture with questions in a single request
+      // For non-admins, exclude hidden questions
+      const questionsInclude: Prisma.LectureInclude['questions'] = {
+        orderBy: [
+          { caseNumber: 'asc' },
+          { caseQuestionNumber: 'asc' },
+          { number: 'asc' },
+          { type: 'asc' },
+          { id: 'asc' }
+        ]
+      };
+
       const lectureWithQuestions = await prisma.lecture.findFirst({
         where: whereClause,
         include: {
@@ -62,32 +73,7 @@ async function getHandler(
               }
             }
           },
-          questions: {
-            orderBy: [
-              { caseNumber: 'asc' },
-              { caseQuestionNumber: 'asc' },
-              { number: 'asc' },
-              { type: 'asc' },
-              { id: 'asc' }
-            ],
-            select: {
-              id: true,
-              type: true,
-              text: true,
-              options: true,
-              correctAnswers: true,
-              explanation: true,
-              courseReminder: true,
-              number: true,
-              session: true,
-              mediaUrl: true,
-              mediaType: true,
-              caseNumber: true,
-              caseText: true,
-              caseQuestionNumber: true,
-              createdAt: true
-            }
-          },
+          questions: questionsInclude,
           _count: {
             select: {
               questions: true
@@ -106,10 +92,21 @@ async function getHandler(
 
       console.log('Lecture found:', {
         id: lectureWithQuestions.id,
-        title: lectureWithQuestions.title,
-        questionsCount: lectureWithQuestions.questions?.length || 0,
-        hasQuestions: !!lectureWithQuestions.questions
+        title: lectureWithQuestions.title
       });
+
+      // For non-admins, filter out hidden questions and normalize the count
+      if (user.role !== 'admin') {
+        const filteredQuestions = (lectureWithQuestions.questions || []).filter((q: any) => !q.hidden);
+        return NextResponse.json({
+          ...lectureWithQuestions,
+          questions: filteredQuestions,
+          _count: {
+            ...lectureWithQuestions._count,
+            questions: filteredQuestions.length,
+          },
+        });
+      }
 
       return NextResponse.json(lectureWithQuestions);
     } else {

@@ -1,29 +1,53 @@
 
-import { HelpCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { HighlightableQuestionText } from '../HighlightableQuestionText';
 
 interface MCQHeaderProps {
   questionText: string;
   isSubmitted: boolean;
   questionNumber?: number;
   session?: string;
+  lectureTitle?: string;
+  specialtyName?: string;
+  questionId?: string;
 }
 
-export function MCQHeader({ questionText, isSubmitted, questionNumber, session }: MCQHeaderProps) {
+export function MCQHeader({ questionText, isSubmitted, questionNumber, session, lectureTitle, specialtyName, questionId }: MCQHeaderProps) {
   const { t } = useTranslation();
+  const sessionLabel = (() => {
+    if (!session) return '';
+    const hasWord = /session/i.test(session);
+    return hasWord ? session : `Session ${session}`;
+  })();
+  const firstLineParts: string[] = [];
+  firstLineParts.push('QCM');
+  if (questionNumber !== undefined) firstLineParts.push(`Question ${questionNumber}`);
+  if (session) firstLineParts.push(sessionLabel);
+  const firstLine = firstLineParts.join(' / ');
   
   return (
     <div className="space-y-2">
-      <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-sm font-medium">
-        <HelpCircle className="h-4 w-4 mr-1" />
-        {t('questions.multipleChoice')} {questionNumber ? `#${questionNumber}` : ''}
+      {/* Top meta row: QCM / Question N / Session XXXX */}
+      <div className="text-sm sm:text-base font-semibold text-foreground dark:text-gray-100">
+        {firstLine}
       </div>
-      {session && (
-        <div className="text-xs text-muted-foreground dark:text-gray-400 font-medium">
-          {session}
+      {/* Second line: Specialty • Course */}
+      {(specialtyName || lectureTitle) && (
+        <div className="text-xs sm:text-sm text-muted-foreground">
+          {[specialtyName, lectureTitle].filter(Boolean).join(' • ')}
         </div>
       )}
-      <h3 className="text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words">{questionText}</h3>
+  {questionId ? (
+        <div data-question-text={questionId}>
+          <HighlightableQuestionText
+            questionId={questionId}
+            text={questionText}
+            className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words"
+          />
+        </div>
+      ) : (
+        <h3 className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words">{questionText}</h3>
+      )}
       <p className="text-sm text-muted-foreground dark:text-gray-300">
         {isSubmitted ? t('questions.reviewAnswers') : t('questions.selectAllCorrect')}
       </p>

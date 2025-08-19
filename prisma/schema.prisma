@@ -45,6 +45,8 @@ model User {
   pinnedQuestions       PinnedQuestion[]
   comments              Comment[]
   notifications         Notification[]
+  questionUserData      QuestionUserData[]
+  questionComments      QuestionComment[]
 
   @@map("profiles")
 }
@@ -172,6 +174,7 @@ model Question {
   options            Json?
   correctAnswers     String[] @map("correct_answers")
   explanation        String?
+  hidden             Boolean  @default(false)
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   courseReminder     String?  @map("course_reminder")
   number             Int?
@@ -187,11 +190,47 @@ model Question {
   children           Question[] @relation("QuestionToQuestion")
   reports            Report[]
   pinnedQuestions    PinnedQuestion[]
+  userData           QuestionUserData[]
+  questionComments   QuestionComment[]
 
   @@index([number], map: "idx_questions_number")
   @@index([caseNumber, caseQuestionNumber], map: "idx_questions_case")
   @@index([parentQuestionId], map: "idx_questions_parent")
   @@map("questions")
+}
+
+model QuestionUserData {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  questionId  String   @map("question_id") @db.Uuid
+  notes       String?
+  highlights  Json?
+  attempts    Int      @default(0)
+  lastScore   Float?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId], map: "unique_user_question_data")
+  @@index([userId], map: "idx_question_user_data_user")
+  @@index([questionId], map: "idx_question_user_data_question")
+  @@map("question_user_data")
+}
+
+model QuestionComment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionId String   @map("question_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  content    String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([questionId], map: "idx_question_comments_question")
+  @@index([userId], map: "idx_question_comments_user")
+  @@map("question_comments")
 }
 
 model UserProgress {

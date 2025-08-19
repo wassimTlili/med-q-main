@@ -9,23 +9,28 @@ import { MCQActions } from './mcq/MCQActions';
 import { QuestionEditDialog } from './QuestionEditDialog';
 import { ReportQuestionDialog } from './ReportQuestionDialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, Pin, PinOff } from 'lucide-react';
+import { Pencil, Pin, PinOff, Eye, EyeOff, Trash2, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useProgress } from '@/hooks/use-progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 import { QuestionMedia } from './QuestionMedia';
+import { QuestionNotes } from './QuestionNotes';
+import { QuestionComments } from './QuestionComments';
 
 interface MCQQuestionProps {
   question: Question;
   onSubmit: (selectedOptionIds: string[], isCorrect: boolean) => void;
   onNext: () => void;
   lectureId?: string;
+  lectureTitle?: string;
+  specialtyName?: string;
   isAnswered?: boolean;
   answerResult?: boolean | 'partial';
   userAnswer?: string[];
   hideImmediateResults?: boolean;
+  onQuestionUpdate?: (questionId: string, updates: Partial<Question>) => void;
 }
 
 export function MCQQuestion({ 
@@ -33,10 +38,13 @@ export function MCQQuestion({
   onSubmit, 
   onNext, 
   lectureId, 
+  lectureTitle,
+  specialtyName,
   isAnswered, 
   answerResult, 
   userAnswer,
-  hideImmediateResults = false
+  hideImmediateResults = false,
+  onQuestionUpdate
 }: MCQQuestionProps) {
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
@@ -52,6 +60,23 @@ export function MCQQuestion({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { trackQuestionProgress } = useProgress();
+  const isAdmin = user?.role === 'admin';
+  const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
+  // Local override for hidden to ensure instant UI toggle regardless of parent update timing
+  const [localHidden, setLocalHidden] = useState<boolean | undefined>(undefined);
+  // Highlight handled inside HighlightableQuestionText; no inline buttons here
+
+  // Keep local override in sync when question changes
+  useEffect(() => {
+    setLocalHidden(undefined);
+  }, [question.id]);
+
+  // Clear local override once parent prop reflects the new state
+  useEffect(() => {
+    if (localHidden !== undefined && (question.hidden === localHidden)) {
+      setLocalHidden(undefined);
+    }
+  }, [question.hidden, localHidden]);
 
   // Load pinned status from database on mount
   useEffect(() => {
@@ -313,14 +338,46 @@ export function MCQQuestion({
     if (lectureId) {
       trackQuestionProgress(lectureId, question.id, isAnswerCorrect);
     }
+    // Persist attempt + score
+    if (user?.id) {
+      try {
+        await fetch('/api/user-question-state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            questionId: question.id,
+            incrementAttempts: true,
+            lastScore: isAnswerCorrect ? 1 : 0,
+          }),
+        });
+      } catch {}
+    }
     
     onSubmit(selectedOptionIds, isAnswerCorrect);
     // Don't automatically move to next question - let user see the result first
   };
 
-  const handleQuestionUpdated = () => {
-    // Reload the page to refresh the question data
-    window.location.reload();
+  const handleQuestionUpdated = async () => {
+    try {
+      const res = await fetch(`/api/questions/${question.id}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const q = await res.json();
+      // Map API camelCase fields to app types
+      const updates: Partial<Question> = {
+        text: q.text,
+        options: q.options,
+        correctAnswers: q.correctAnswers,
+        correct_answers: q.correctAnswers, // keep both in sync
+        explanation: q.explanation,
+        course_reminder: q.courseReminder,
+        number: q.number,
+        session: q.session,
+        media_url: q.mediaUrl,
+        media_type: q.mediaType,
+      };
+      onQuestionUpdate?.(question.id, updates);
+    } catch {}
   };
 
   // Add keyboard shortcuts for submitting answer and selecting options
@@ -376,41 +433,113 @@ export function MCQQuestion({
             isSubmitted={submitted}
             questionNumber={question.number}
             session={question.session}
+            lectureTitle={lectureTitle}
+            specialtyName={specialtyName}
+            questionId={question.id}
           />
         </div>
         
-        <div className="flex gap-2 flex-shrink-0">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={isPinned ? handleUnpinQuestion : handlePinQuestion}
-            className="flex items-center gap-1"
-          >
-            {isPinned ? (
-              <PinOff className="h-3.5 w-3.5" />
-            ) : (
-              <Pin className="h-3.5 w-3.5" />
-            )}
-            <span className="hidden sm:inline">{isPinned ? 'Unpin' : 'Pin'}</span>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setIsEditDialogOpen(true)}
-            className="flex items-center gap-1"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t('common.edit')}</span>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setIsReportDialogOpen(true)}
-          >
-            <span className="hidden sm:inline">{t('questions.report')}</span>
-          </Button>
+        <div className="flex flex-col gap-1 flex-shrink-0 items-end">
+          <div className="flex gap-2 items-center">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={isPinned ? handleUnpinQuestion : handlePinQuestion}
+              className="flex items-center gap-1"
+            >
+              {isPinned ? (
+                <PinOff className="h-3.5 w-3.5" />
+              ) : (
+                <Pin className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">{isPinned ? 'Unpin' : 'Pin'}</span>
+            </Button>
+
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setIsReportDialogOpen(true)}
+            >
+              <span className="hidden sm:inline">{t('questions.report')}</span>
+            </Button>
+          </div>
+          {isAdmin && (
+            <div className="flex gap-2 items-center mt-1">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsEditDialogOpen(true)}
+                className="flex items-center gap-1"
+                title="Edit"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isTogglingVisibility}
+                onClick={async () => {
+                  try {
+                    setIsTogglingVisibility(true);
+                    // Determine new state based on effective visibility
+                    const effectiveHidden = localHidden ?? !!question.hidden;
+                    const newHiddenState = !effectiveHidden;
+                    // Optimistically update the UI
+                    setLocalHidden(newHiddenState);
+                    onQuestionUpdate?.(question.id, { hidden: newHiddenState });
+                    
+                    // Make API call
+                    const res = await fetch(`/api/questions/${question.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({ hidden: newHiddenState })
+                    });
+                    
+                    if (!res.ok) {
+                      // Revert on error
+                      setLocalHidden(undefined);
+                      onQuestionUpdate?.(question.id, { hidden: question.hidden });
+                      throw new Error('Failed');
+                    }
+                    
+                    toast({ 
+                      title: newHiddenState ? 'Question hidden' : 'Question unhidden', 
+                      description: newHiddenState 
+                        ? 'The question is now hidden from students.' 
+                        : 'The question is now visible to students.'
+                    });
+                  } catch (e) {
+                    toast({ title: 'Error', description: 'Failed to toggle visibility', variant: 'destructive' });
+                  } finally {
+                    setIsTogglingVisibility(false);
+                  }
+                }}
+                className="flex items-center gap-1"
+                title={(localHidden ?? !!question.hidden) ? 'Unhide question' : 'Hide question'}
+              >
+                {(localHidden ?? !!question.hidden) ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (!confirm('Delete this question?')) return;
+                  try {
+                    const res = await fetch(`/api/questions/${question.id}`, { method: 'DELETE', credentials: 'include' });
+                    if (!res.ok) throw new Error('Failed');
+                    window.location.reload(); // Still need reload for delete as it affects the list
+                  } catch (e) {
+                    toast({ title: 'Error', description: 'Failed to delete question', variant: 'destructive' });
+                  }
+                }}
+                className="flex items-center gap-1 text-destructive"
+                title="Delete"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       
@@ -452,6 +581,14 @@ export function MCQQuestion({
          hasSubmitted={hasSubmitted || isSubmitting}
          buttonRef={buttonRef}
        />
+      
+      {/* Notes area under buttons (after submitting) */}
+      {submitted && (
+        <QuestionNotes questionId={question.id} />
+      )}
+
+      {/* Comments (always visible) */}
+      <QuestionComments questionId={question.id} />
       
       <QuestionEditDialog
         question={question}

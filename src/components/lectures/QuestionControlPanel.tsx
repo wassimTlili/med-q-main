@@ -1,13 +1,14 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Question, ClinicalCase } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChevronLeft, ChevronRight, CheckCircle, Circle, XCircle, MinusCircle, Stethoscope } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Circle, XCircle, MinusCircle, Stethoscope, EyeOff, StickyNote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface QuestionControlPanelProps {
   questions: (Question | ClinicalCase)[];
@@ -31,7 +32,9 @@ export function QuestionControlPanel({
   isComplete
 }: QuestionControlPanelProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [notesMap, setNotesMap] = useState<Record<string, boolean>>({});
   
   // Refs to track question buttons for auto-scrolling
   const questionRefs = useRef<Record<number, HTMLButtonElement | null>>({});
@@ -92,6 +95,55 @@ export function QuestionControlPanel({
     }
   }, [questions.length, currentQuestionIndex]); // Include currentQuestionIndex for initial positioning
   
+  // Build list of regular question IDs (exclude clinical case wrappers)
+  const regularQuestionIds = useMemo(() => {
+    const ids: string[] = [];
+    questions.forEach((item) => {
+      if (!('questions' in item)) {
+        ids.push((item as Question).id);
+      }
+    });
+    return ids;
+  }, [questions]);
+
+  // Fetch whether the user has notes for each question (used to show a small notes icon)
+  useEffect(() => {
+    if (!user?.id || regularQuestionIds.length === 0) return;
+
+    const idsToFetch = regularQuestionIds.filter((id) => notesMap[id] === undefined);
+    if (idsToFetch.length === 0) return;
+
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const results = await Promise.all(
+          idsToFetch.map(async (id) => {
+            try {
+              const res = await fetch(`/api/user-question-state?userId=${encodeURIComponent(user.id)}&questionId=${encodeURIComponent(id)}` , { signal: controller.signal });
+              if (!res.ok) return [id, false] as [string, boolean];
+              const data = await res.json();
+              const hasNote = !!(data?.notes && String(data.notes).trim().length > 0);
+              return [id, hasNote] as [string, boolean];
+            } catch {
+              return [id, false] as [string, boolean];
+            }
+          })
+        );
+        setNotesMap((prev) => {
+          const next = { ...prev };
+          results.forEach(([id, has]) => {
+            next[id] = has;
+          });
+          return next;
+        });
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => controller.abort();
+  }, [user?.id, regularQuestionIds]);
 
 
   // Only show on mobile devices using a drawer
@@ -210,6 +262,8 @@ export function QuestionControlPanel({
                   const isAnswered = answers[question.id] !== undefined;
                   const isCurrent = question.originalIndex === currentQuestionIndex && !isComplete;
                   const isCorrect = answerResults[question.id];
+                  const hasNote = notesMap[question.id] === true;
+                  const isHidden = (question as any).hidden === true;
                   
 
                   
@@ -230,19 +284,27 @@ export function QuestionControlPanel({
                     >
                       <div className="flex items-center w-full">
                         <div className="flex flex-col items-start mr-3 flex-1 min-w-0">
-                          <span className="font-medium text-gray-900 dark:text-gray-100">
-                            {question.number ? 
-                              `${getTypeLabel(question.type)} ${question.number}` : 
-                              `${getTypeLabel(question.type)} ${question.originalIndex + 1}`
-                            }
-                          </span>
+                          {/* Session on top, bold/bigger */}
                           {question.session && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              Session: {question.session}
+                            <span className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+                              {question.session}
                             </span>
                           )}
+                          {/* Question label smaller below */}
+                          <span className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                            {question.number ?
+                              `${getTypeLabel(question.type)} ${question.number}` :
+                              `${getTypeLabel(question.type)} ${question.originalIndex + 1}`}
+                          </span>
                         </div>
-                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700">
+                        <div className="flex items-center gap-2">
+                          {hasNote && (
+                            <StickyNote className="h-4 w-4 text-yellow-500" />
+                          )}
+                          {isHidden && (
+                            <EyeOff className="h-4 w-4 text-red-500" />
+                          )}
+                          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700">
                           {isAnswered ? (
                             isCorrect === true ? (
                               <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -254,6 +316,7 @@ export function QuestionControlPanel({
                           ) : (
                             <Circle className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                           )}
+                          </div>
                         </div>
                       </div>
                     </Button>

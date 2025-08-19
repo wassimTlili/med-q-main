@@ -276,6 +276,12 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
     setIsComplete(false);
   }, [setCurrentQuestionIndex]);
 
+  const handleQuestionUpdate = useCallback((questionId: string, updates: Partial<Question>) => {
+    setAllQuestions(prev => prev.map(q => 
+      q.id === questionId ? { ...q, ...updates } : q
+    ));
+  }, []);
+
   const currentQuestion = useMemo(() => {
     const question = groupedQuestions[currentQuestionIndex];
     console.log('Current question:', {
@@ -323,6 +329,7 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
     handleRestart,
     handleBackToSpecialty,
     clearSessionData,
+    handleQuestionUpdate,
     refetch: fetchLectureData
   };
 }

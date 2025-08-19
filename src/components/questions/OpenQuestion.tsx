@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Question } from '@/types';
 import { motion } from 'framer-motion';
 import { OpenQuestionHeader } from './open/OpenQuestionHeader';
@@ -10,25 +10,30 @@ import { OpenQuestionActions } from './open/OpenQuestionActions';
 import { QuestionEditDialog } from './QuestionEditDialog';
 import { ReportQuestionDialog } from './ReportQuestionDialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, Pin, PinOff } from 'lucide-react';
+import { Pencil, Pin, PinOff, Eye, EyeOff, Trash2, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useProgress } from '@/hooks/use-progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 import { QuestionMedia } from './QuestionMedia';
+import { QuestionNotes } from './QuestionNotes';
+import { QuestionComments } from './QuestionComments';
 
 interface OpenQuestionProps {
   question: Question;
   onSubmit: (answer: string, resultValue: boolean | 'partial') => void;
   onNext: () => void;
   lectureId?: string;
+  lectureTitle?: string;
+  specialtyName?: string;
   isAnswered?: boolean;
   answerResult?: boolean | 'partial';
   userAnswer?: string;
   hideImmediateResults?: boolean;
   showDeferredSelfAssessment?: boolean; // Show self-assessment after results are revealed
   onSelfAssessmentUpdate?: (questionId: string, result: boolean | 'partial') => void; // Update result after self-assessment
+  onQuestionUpdate?: (questionId: string, updates: Partial<Question>) => void;
 }
 
 export function OpenQuestion({ 
@@ -36,12 +41,15 @@ export function OpenQuestion({
   onSubmit, 
   onNext, 
   lectureId, 
+  lectureTitle,
+  specialtyName,
   isAnswered, 
   answerResult, 
   userAnswer,
   hideImmediateResults = false,
   showDeferredSelfAssessment = false,
-  onSelfAssessmentUpdate
+  onSelfAssessmentUpdate,
+  onQuestionUpdate
 }: OpenQuestionProps) {
   const [answer, setAnswer] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -56,6 +64,24 @@ export function OpenQuestion({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { trackQuestionProgress } = useProgress();
+
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin';
+  const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
+  // Local override for hidden to ensure instant UI toggle regardless of parent update timing
+  const [localHidden, setLocalHidden] = useState<boolean | undefined>(undefined);
+  // Highlights are managed internally by HighlightableQuestionText; no inline buttons here.
+
+  useEffect(() => {
+    setLocalHidden(undefined);
+  }, [question.id]);
+
+  // Clear local override once parent prop reflects the new state
+  useEffect(() => {
+    if (localHidden !== undefined && (question.hidden === localHidden)) {
+      setLocalHidden(undefined);
+    }
+  }, [question.hidden, localHidden]);
 
   // Load pinned status from database on mount
   useEffect(() => {
@@ -237,11 +263,97 @@ export function OpenQuestion({
       }
       onSubmit(answer, resultValue);
     }
+
+    // Persist attempt + score
+    if (user?.id) {
+      try {
+        await fetch('/api/user-question-state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            questionId: question.id,
+            incrementAttempts: true,
+            lastScore: resultValue === true ? 1 : resultValue === 'partial' ? 0.5 : 0,
+          }),
+        });
+      } catch {}
+    }
   };
 
-  const handleQuestionUpdated = () => {
-    // Reload the page to refresh the question data
-    window.location.reload();
+  const handleQuestionUpdated = async () => {
+    try {
+      const res = await fetch(`/api/questions/${question.id}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const q = await res.json();
+      const updates: Partial<Question> = {
+        text: q.text,
+        explanation: q.explanation,
+        correctAnswers: q.correctAnswers,
+        correct_answers: q.correctAnswers,
+        course_reminder: q.courseReminder,
+        number: q.number,
+        session: q.session,
+        media_url: q.mediaUrl,
+        media_type: q.mediaType,
+      };
+      onQuestionUpdate?.(question.id, updates);
+    } catch {}
+  };
+
+  // Admin function to toggle question visibility
+  const handleToggleVisibility = async () => {
+    if (!isAdmin || !onQuestionUpdate) return;
+    
+  const effectiveHidden = localHidden ?? !!question.hidden;
+  const newHiddenStatus = !effectiveHidden;
+    
+    // Optimistically update the UI
+  setLocalHidden(newHiddenStatus);
+  onQuestionUpdate(question.id, { hidden: newHiddenStatus });
+    
+    try {
+      setIsTogglingVisibility(true);
+      const response = await fetch(`/api/questions/${question.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          hidden: newHiddenStatus
+        }),
+      });
+
+      if (!response.ok) {
+        // Revert the optimistic update on error
+        setLocalHidden(undefined);
+        onQuestionUpdate(question.id, { hidden: question.hidden });
+        toast({
+          title: "Error",
+          description: "Failed to update question visibility",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: newHiddenStatus ? 'Question hidden' : 'Question unhidden',
+          description: newHiddenStatus
+            ? 'The question is now hidden from students.'
+            : 'The question is now visible to students.',
+        });
+      }
+    } catch (error) {
+      // Revert the optimistic update on error
+      setLocalHidden(undefined);
+      onQuestionUpdate(question.id, { hidden: question.hidden });
+      toast({
+        title: "Error",
+        description: "Failed to update question visibility",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTogglingVisibility(false);
+    }
   };
 
   // Reset question state to allow re-answering
@@ -289,10 +401,13 @@ export function OpenQuestion({
             questionText={question.text} 
             questionNumber={question.number}
             session={question.session}
+            lectureTitle={lectureTitle}
+            specialtyName={specialtyName}
+            questionId={question.id}
           />
         </div>
         
-        <div className="flex gap-2 flex-shrink-0">
+  <div className="flex gap-2 flex-shrink-0">
           <Button 
             variant="outline" 
             size="sm"
@@ -324,6 +439,20 @@ export function OpenQuestion({
           >
             <span className="hidden sm:inline">{t('questions.report')}</span>
           </Button>
+          
+          {/* Admin Controls */}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToggleVisibility}
+              disabled={isTogglingVisibility}
+              className="flex items-center gap-1"
+              title={(localHidden ?? !!question.hidden) ? 'Unhide question' : 'Hide question'}
+            >
+              {(localHidden ?? !!question.hidden) ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            </Button>
+          )}
         </div>
       </div>
       
@@ -359,6 +488,14 @@ export function OpenQuestion({
         onReAnswer={handleReAnswer}
         hasSubmitted={hasSubmitted}
       />
+
+      {/* Notes area under buttons (after submitting) */}
+      {submitted && (
+        <QuestionNotes questionId={question.id} />
+      )}
+
+      {/* Comments */}
+      <QuestionComments questionId={question.id} />
       
       <QuestionEditDialog
         question={question}

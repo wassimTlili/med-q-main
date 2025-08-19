@@ -18,6 +18,8 @@ interface ClinicalCaseQuestionProps {
   onSubmit: (caseNumber: number, answers: Record<string, any>, results: Record<string, boolean | 'partial'>) => void;
   onNext: () => void;
   lectureId: string;
+  lectureTitle?: string;
+  specialtyName?: string;
   isAnswered: boolean;
   answerResult?: boolean | 'partial';
   userAnswers?: Record<string, any>;
@@ -30,6 +32,8 @@ export function ClinicalCaseQuestion({
   onSubmit,
   onNext,
   lectureId,
+  lectureTitle,
+  specialtyName,
   isAnswered,
   answerResult,
   userAnswers = {},
@@ -175,12 +179,14 @@ export function ClinicalCaseQuestion({
           )}
         </div>
 
-        {question.type === 'clinic_mcq' ? (
+    {question.type === 'clinic_mcq' ? (
           <MCQQuestion
             question={question}
             onSubmit={(answer, isCorrect) => handleQuestionAnswer(question.id, answer, isCorrect)}
             onNext={() => {}} // No auto-next since we&apos;re showing all questions
             lectureId={lectureId}
+      lectureTitle={lectureTitle}
+      specialtyName={specialtyName}
             isAnswered={showResults ? isAnswered : false} // Only show as answered when results are shown
             answerResult={showResults ? answerResult : undefined}
             userAnswer={userAnswer}
@@ -192,6 +198,8 @@ export function ClinicalCaseQuestion({
             onSubmit={(answer, resultValue) => handleQuestionAnswer(question.id, answer, resultValue)}
             onNext={() => {}} // No auto-next since we're showing all questions
             lectureId={lectureId}
+      lectureTitle={lectureTitle}
+      specialtyName={specialtyName}
             isAnswered={showResults ? isAnswered : false} // Only show as answered when results are shown
             answerResult={showResults ? answerResult : undefined}
             userAnswer={userAnswer}

@@ -133,6 +133,7 @@ export type Question = {
   session?: string; // Exam session (e.g., "Session 2022")
   media_url?: string; // URL to the media file
   media_type?: 'image' | 'video'; // Type of media
+  hidden?: boolean; // Whether the question is hidden from students
   // Clinical case fields
   caseNumber?: number; // Case number for clinical cases
   caseText?: string; // Case description text
