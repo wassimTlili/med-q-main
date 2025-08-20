@@ -35,6 +35,9 @@ export function QuestionEditDialog({
     mediaUrl,
     mediaType,
     handleMediaChange,
+  reminderMediaUrl,
+  reminderMediaType,
+  handleReminderMediaChange,
     updateOptionText,
     updateOptionExplanation,
     toggleCorrectAnswer,
@@ -73,6 +76,9 @@ export function QuestionEditDialog({
             mediaUrl={mediaUrl}
             mediaType={mediaType}
             handleMediaChange={handleMediaChange}
+            reminderMediaUrl={reminderMediaUrl}
+            reminderMediaType={reminderMediaType}
+            handleReminderMediaChange={handleReminderMediaChange}
             isLoading={isLoading}
             onCancel={() => onOpenChange(false)}
             onSubmit={handleSubmit}

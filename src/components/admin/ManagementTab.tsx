@@ -35,6 +35,7 @@ export function ManagementTab({ initialSpecialtyId }: { initialSpecialtyId?: str
   // Questions state for selected lecture
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
   const [openQuestions, setOpenQuestions] = useState(false);
+  const [openOrganizer, setOpenOrganizer] = useState(false);
 
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -293,6 +294,14 @@ export function ManagementTab({ initialSpecialtyId }: { initialSpecialtyId?: str
                         >
                           Questions
                         </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => { setSelectedLecture(l); setOpenOrganizer(true); setOpenQuestions(true); }} 
+                          className="border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300"
+                        >
+                          Organiser
+                        </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -340,7 +349,12 @@ export function ManagementTab({ initialSpecialtyId }: { initialSpecialtyId?: str
         />
       )}
       {selectedLecture && (
-        <QuestionManagementDialog lecture={selectedLecture} isOpen={openQuestions} onOpenChange={(o)=>setOpenQuestions(o)} />
+        <QuestionManagementDialog 
+          lecture={selectedLecture} 
+          isOpen={openQuestions} 
+          onOpenChange={(o)=>{ setOpenQuestions(o); if(!o) setOpenOrganizer(false); }}
+          initialOrganizerOpen={openOrganizer}
+        />
       )}
       
       <ConfirmationDialog

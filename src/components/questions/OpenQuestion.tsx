@@ -4,21 +4,24 @@ import { Question } from '@/types';
 import { motion } from 'framer-motion';
 import { OpenQuestionHeader } from './open/OpenQuestionHeader';
 import { OpenQuestionInput } from './open/OpenQuestionInput';
-import { OpenQuestionExplanation } from './open/OpenQuestionExplanation';
+// Inline Rappel du cours collapsible replaces separate explanation block
 import { OpenQuestionSelfAssessment } from './open/OpenQuestionSelfAssessment';
 import { OpenQuestionActions } from './open/OpenQuestionActions';
 import { QuestionEditDialog } from './QuestionEditDialog';
 import { ReportQuestionDialog } from './ReportQuestionDialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, Pin, PinOff, Eye, EyeOff, Trash2, Plus } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { BookOpen, ChevronRight } from 'lucide-react';
+import { Pencil, Pin, PinOff, Eye, EyeOff, Flag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useProgress } from '@/hooks/use-progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
-import { QuestionMedia } from './QuestionMedia';
 import { QuestionNotes } from './QuestionNotes';
 import { QuestionComments } from './QuestionComments';
+import ZoomableImage from './ZoomableImage';
 
 interface OpenQuestionProps {
   question: Question;
@@ -291,11 +294,13 @@ export function OpenQuestion({
         explanation: q.explanation,
         correctAnswers: q.correctAnswers,
         correct_answers: q.correctAnswers,
-        course_reminder: q.courseReminder,
+        course_reminder: q.courseReminder ?? q.course_reminder,
         number: q.number,
         session: q.session,
-        media_url: q.mediaUrl,
-        media_type: q.mediaType,
+        media_url: q.mediaUrl ?? q.media_url,
+        media_type: q.mediaType ?? q.media_type,
+        course_reminder_media_url: q.courseReminderMediaUrl ?? q.course_reminder_media_url,
+        course_reminder_media_type: q.courseReminderMediaType ?? q.course_reminder_media_type,
       };
       onQuestionUpdate?.(question.id, updates);
     } catch {}
@@ -405,6 +410,24 @@ export function OpenQuestion({
             specialtyName={specialtyName}
             questionId={question.id}
           />
+          {/* Inline media attached to the question (not the reminder) */}
+          {(() => {
+            const mediaUrl = (question as any).media_url || (question as any).mediaUrl;
+            const mediaType = (question as any).media_type || (question as any).mediaType;
+            if (!mediaUrl) return null;
+            const isImageByExt = /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(mediaUrl);
+            const isImage = mediaType === 'image' || (!mediaType && isImageByExt);
+            if (!isImage) return null;
+            return (
+              <div className="mt-3">
+                <ZoomableImage
+                  src={mediaUrl}
+                  alt="Illustration de la question"
+                  thumbnailClassName="max-h-64 w-auto sm:max-h-80 max-w-full rounded-md border object-contain shadow-sm"
+                />
+              </div>
+            );
+          })()}
         </div>
         
   <div className="flex gap-2 flex-shrink-0">
@@ -436,8 +459,11 @@ export function OpenQuestion({
             variant="outline" 
             size="sm"
             onClick={() => setIsReportDialogOpen(true)}
+            className="flex items-center gap-1"
+            title="Signaler"
           >
-            <span className="hidden sm:inline">{t('questions.report')}</span>
+            <Flag className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Signaler</span>
           </Button>
           
           {/* Admin Controls */}
@@ -456,8 +482,7 @@ export function OpenQuestion({
         </div>
       </div>
       
-      {/* Question Media */}
-      <QuestionMedia question={question} className="mb-4" />
+  {/* Media is now displayed inside the "Rappel du cours" section on the page */}
 
       <OpenQuestionInput
         answer={answer}
@@ -465,13 +490,44 @@ export function OpenQuestion({
         isSubmitted={submitted}
       />
 
-      {submitted && !hideImmediateResults && (
-        <OpenQuestionExplanation
-          courseReminder={question.course_reminder}
-          explanation={question.explanation}
-          correctAnswers={question.correctAnswers || question.correct_answers}
-        />
-      )}
+  {/* Rappel du cours (après soumission) */}
+  {submitted && (() => {
+        const text = (question as any).course_reminder || (question as any).courseReminder || question.explanation;
+        const reminderMediaUrl = (question as any).course_reminder_media_url || (question as any).courseReminderMediaUrl;
+        const reminderMediaType = (question as any).course_reminder_media_type || (question as any).courseReminderMediaType;
+        if (!text && !reminderMediaUrl) return null;
+        return (
+          <Card className="mt-2">
+            <CardHeader className="py-3">
+              <Collapsible defaultOpen>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <BookOpen className="h-4 w-4" />
+                    Rappel du cours
+                  </CardTitle>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="px-2 group">
+                      <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent>
+                  <CardContent className="space-y-3 pt-3">
+                    {reminderMediaUrl && (reminderMediaType === 'image' || /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(reminderMediaUrl)) && (
+                      <ZoomableImage src={reminderMediaUrl} alt="Image du rappel" />
+                    )}
+                    {text && (
+                      <div className="prose dark:prose-invert max-w-none text-sm">
+                        <div className="whitespace-pre-wrap text-foreground">{text}</div>
+                      </div>
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </CardHeader>
+          </Card>
+        );
+      })()}
 
       {showSelfAssessment && (!hideImmediateResults || showDeferredSelfAssessment) && (
         <OpenQuestionSelfAssessment
@@ -489,13 +545,13 @@ export function OpenQuestion({
         hasSubmitted={hasSubmitted}
       />
 
-      {/* Notes area under buttons (after submitting) */}
-      {submitted && (
+  {/* Notes area under buttons (after submitting) */}
+  {submitted && (
         <QuestionNotes questionId={question.id} />
       )}
 
-      {/* Comments */}
-      <QuestionComments questionId={question.id} />
+  {/* Commentaires (après soumission) */}
+  {submitted && <QuestionComments questionId={question.id} />}
       
       <QuestionEditDialog
         question={question}

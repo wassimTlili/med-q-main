@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Question, Lecture } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { CreateQuestionDialog } from './CreateQuestionDialog';
+import { QuestionOrganizerDialog } from './QuestionOrganizerDialog';
 import { EditQuestionDialog } from './EditQuestionDialog';
 import {
   AlertDialog,
@@ -26,23 +27,48 @@ interface QuestionManagementDialogProps {
   lecture: Lecture;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  initialCreateOpen?: boolean; // when opening dialog, also open create modal
+  initialOrganizerOpen?: boolean; // when opening dialog, open organizer directly
 }
 
-export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: QuestionManagementDialogProps) {
+export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initialCreateOpen = false, initialOrganizerOpen = false }: QuestionManagementDialogProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [filteredQuestions, setFilteredQuestions] = useState<Question[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [shouldOpenCreate, setShouldOpenCreate] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchQuestions();
       setSearchQuery('');
+      if (initialCreateOpen || shouldOpenCreate) {
+        setIsCreateDialogOpen(true);
+        setShouldOpenCreate(false);
+      }
+      if (initialOrganizerOpen) {
+        setIsOrganizerOpen(true);
+      }
     }
-  }, [isOpen, lecture.id]);
+  }, [isOpen, lecture.id, initialCreateOpen, initialOrganizerOpen]);
+
+  // Listen to global event from LectureItem's quick-create button
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<{ lectureId: string }>;
+      if (custom?.detail?.lectureId === lecture.id) {
+        // open parent dialog first if not open
+        if (!isOpen) onOpenChange(true);
+        setShouldOpenCreate(true);
+      }
+    };
+    window.addEventListener('open-create-question', handler as EventListener);
+    return () => window.removeEventListener('open-create-question', handler as EventListener);
+  }, [lecture.id, isOpen, onOpenChange]);
 
   // Filter questions based on search query
   useEffect(() => {
@@ -134,7 +160,7 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
       <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-blue-200/60 dark:border-blue-900/40">
         <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-blue-100/80 dark:border-blue-900/40 bg-gradient-to-b from-blue-50/60 to-transparent dark:from-blue-950/30">
           <DialogTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
-            Questions for "{lecture.title}"
+            Questions pour « {lecture.title} »
           </DialogTitle>
         </DialogHeader>
         
@@ -142,12 +168,12 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
           <p className="text-sm text-muted-foreground">
             {searchQuery ? (
               <>
-                {filteredQuestions.length} of {questions.length} question{questions.length !== 1 ? 's' : ''} 
-                {filteredQuestions.length === 0 ? ' found' : ' matching search'}
+                {filteredQuestions.length} sur {questions.length} question{questions.length !== 1 ? 's' : ''}
+                {filteredQuestions.length === 0 ? ' trouvée' : ' correspondant à la recherche'}
               </>
             ) : (
               <>
-                {questions.length} question{questions.length !== 1 ? 's' : ''} total
+                {questions.length} question{questions.length !== 1 ? 's' : ''} au total
               </>
             )}
           </p>
@@ -157,7 +183,7 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search questions..."
+                placeholder="Rechercher des questions..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-10 w-64"
@@ -180,7 +206,15 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
               className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
             >
               <PlusCircle className="h-4 w-4 mr-2" />
-              Add Question
+              Créer une question
+            </Button>
+            {/* Organizer */}
+            <Button
+              variant="outline"
+              onClick={() => setIsOrganizerOpen(true)}
+              className="border-blue-200 dark:border-blue-800"
+            >
+              Organiser
             </Button>
           </div>
         </div>
@@ -202,8 +236,8 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
               <CardContent className="p-8 text-center">
                 <p className="text-muted-foreground">
                   {searchQuery ? 
-                    `No questions found matching "${searchQuery}".` : 
-                    'No questions found for this lecture.'
+                    `Aucune question ne correspond à "${searchQuery}".` : 
+                    'Aucune question trouvée pour ce cours.'
                   }
                 </p>
                 {searchQuery && (
@@ -213,7 +247,7 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
                     onClick={clearSearch}
                     className="mt-2"
                   >
-                    Clear search
+                    Effacer la recherche
                   </Button>
                 )}
               </CardContent>
@@ -242,15 +276,15 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
                         )}
                       </CardTitle>
                       <CardDescription className="text-xs mt-1">
-                        Type: <span className="font-medium">{question.type.toUpperCase()}</span>
+            Type : <span className="font-medium">{question.type.toUpperCase()}</span>
                         {question.options && (
                           <span className="ml-2">
-                            | Options: <span className="font-medium">{question.options.length}</span>
+              | Options : <span className="font-medium">{question.options.length}</span>
                           </span>
                         )}
                         {question.correctAnswers?.length && (
                           <span className="ml-2">
-                            | Correct: <span className="font-medium">{question.correctAnswers.length}</span>
+              | Correctes : <span className="font-medium">{question.correctAnswers.length}</span>
                           </span>
                         )}
                       </CardDescription>
@@ -277,18 +311,18 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Question</AlertDialogTitle>
+                            <AlertDialogTitle>Supprimer la question</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete this question? This action cannot be undone.
+                              Êtes-vous sûr de vouloir supprimer cette question ? Cette action est définitive.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
                             <AlertDialogAction 
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               onClick={() => handleDeleteQuestion(question.id)}
                             >
-                              Delete
+                              Supprimer
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -300,7 +334,7 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
                   <CardContent className="pt-2">
                     {question.options && question.options.length > 0 && (
                       <div className="mb-3">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Options:</p>
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Options :</p>
                         <div className="space-y-1">
                           {question.options.map((option, optIndex) => (
                             <div key={option?.id || `option-${question.id}-${optIndex}`} className="flex items-center text-xs">
@@ -329,9 +363,9 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
                         </div>
                       </div>
                     )}
-                    {question.explanation && (
+          {question.explanation && (
                       <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">Explanation:</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Explication :</p>
                         <p className="text-xs text-muted-foreground line-clamp-3">
                           {/* Highlight search terms in explanation */}
                           {searchQuery && question?.explanation ? (
@@ -371,6 +405,17 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange }: Ques
             onQuestionUpdated={handleQuestionUpdated}
           />
         )}
+
+        {/* Organizer Dialog */}
+        <QuestionOrganizerDialog
+          lecture={lecture}
+          isOpen={isOrganizerOpen}
+          onOpenChange={(open) => {
+            setIsOrganizerOpen(open);
+            if (!open) fetchQuestions();
+          }}
+          onSaved={() => fetchQuestions()}
+        />
       </DialogContent>
     </Dialog>
   );

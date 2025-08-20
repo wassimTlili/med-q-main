@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { Question } from '@/types';
 import { toast } from '@/hooks/use-toast';
-import { useTranslation } from 'react-i18next';
 
 interface ReportQuestionDialogProps {
   question: Question;
@@ -25,15 +24,14 @@ export function ReportQuestionDialog({
   const { user } = useAuth();
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!user) {
       toast({
-        title: t('auth.notAuthenticated'),
-        description: t('auth.pleaseSignIn'),
+        title: 'Non authentifié',
+        description: 'Veuillez vous connecter.',
         variant: "destructive",
       });
       return;
@@ -41,8 +39,8 @@ export function ReportQuestionDialog({
     
     if (!reason.trim()) {
       toast({
-        title: t('reports.validationError'),
-        description: t('reports.reasonRequired'),
+        title: 'Erreur de validation',
+        description: 'La raison est requise',
         variant: "destructive",
       });
       return;
@@ -70,8 +68,8 @@ export function ReportQuestionDialog({
       }
       
       toast({
-        title: t('reports.success'),
-        description: t('reports.reportSubmitted'),
+        title: 'Succès',
+        description: 'Votre rapport a été soumis. Merci !',
       });
       
       // Reset form and close dialog
@@ -80,14 +78,14 @@ export function ReportQuestionDialog({
       
     } catch (error: unknown) {
       console.error('Error submitting report:', error);
-      let errorMessage = t('common.tryAgain');
+  let errorMessage = 'Veuillez réessayer.';
       
       if (error instanceof Error) {
         errorMessage = error.message;
       }
       
       toast({
-        title: t('common.error'),
+        title: 'Erreur',
         description: errorMessage,
         variant: "destructive",
       });
@@ -98,19 +96,19 @@ export function ReportQuestionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg max-w-[95vw] p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>{t('reports.reportQuestion')}</DialogTitle>
+          <DialogTitle>Signaler la question</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2 sm:mt-4">
           <div className="space-y-2">
-            <Label htmlFor="reason">{t('reports.reason')}</Label>
+            <Label htmlFor="reason">Raison</Label>
             <Textarea 
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder={t('reports.reasonPlaceholder')}
+              placeholder={'Décrivez le problème (erreur, ambiguïté, image manquante, etc.)...'}
               required
               rows={4}
             />
@@ -123,10 +121,10 @@ export function ReportQuestionDialog({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              {t('common.cancel')}
+              Annuler
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t('reports.submitting') : t('reports.submit')}
+              {isSubmitting ? 'Envoi...' : 'Envoyer'}
             </Button>
           </div>
         </form>

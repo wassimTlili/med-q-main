@@ -133,6 +133,9 @@ export type Question = {
   session?: string; // Exam session (e.g., "Session 2022")
   media_url?: string; // URL to the media file
   media_type?: 'image' | 'video'; // Type of media
+  // Separate media for the Rappel du cours
+  course_reminder_media_url?: string;
+  course_reminder_media_type?: 'image' | 'video';
   hidden?: boolean; // Whether the question is hidden from students
   // Clinical case fields
   caseNumber?: number; // Case number for clinical cases

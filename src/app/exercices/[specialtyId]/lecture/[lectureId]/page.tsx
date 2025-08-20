@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLecture } from '@/hooks/use-lecture'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { LectureTimer } from '@/components/lectures/LectureTimer'
@@ -12,10 +12,13 @@ import { MCQQuestion } from '@/components/questions/MCQQuestion'
 import { OpenQuestion } from '@/components/questions/OpenQuestion'
 import { ClinicalCaseQuestion } from '@/components/questions/ClinicalCaseQuestion'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, BookOpen } from 'lucide-react'
+import { ArrowLeft, PlusCircle, ListOrdered } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { ClinicalCase, Question } from '@/types'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+// removed card/collapsible imports; reminder now lives in question components
+import { QuestionManagementDialog } from '@/components/questions/QuestionManagementDialog'
+import { useAuth } from '@/contexts/AuthContext'
+// import ZoomableImage from '@/components/questions/ZoomableImage'
 // import { LectureComments } from '@/components/lectures/LectureComments'
 
 export default function LecturePageRoute() {
@@ -23,6 +26,9 @@ export default function LecturePageRoute() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { t } = useTranslation()
+  const { user } = useAuth()
+  const [openQuestionsDialog, setOpenQuestionsDialog] = useState(false)
+  const [openOrganizer, setOpenOrganizer] = useState(false)
   
   const lectureId = params?.lectureId as string
   const specialtyId = params?.specialtyId as string
@@ -45,7 +51,8 @@ export default function LecturePageRoute() {
     handleNext,
     handleRestart,
     handleBackToSpecialty,
-  } = useLecture(lectureId, mode); // Pass mode to the hook
+    handleQuestionUpdate,
+  } = useLecture(lectureId, mode);
 
   if (!lectureId) {
     return <div>Lecture ID not found</div>
@@ -235,6 +242,7 @@ export default function LecturePageRoute() {
           isAnswered={isAnswered}
           answerResult={answerResult}
           userAnswer={userAnswer}
+          onQuestionUpdate={handleQuestionUpdate}
         />
       );
     } else {
@@ -249,6 +257,7 @@ export default function LecturePageRoute() {
           isAnswered={isAnswered}
           answerResult={answerResult}
           userAnswer={userAnswer}
+          onQuestionUpdate={handleQuestionUpdate}
         />
       );
     }
@@ -260,49 +269,47 @@ export default function LecturePageRoute() {
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
           <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 pb-10 lg:pb-0">
             <div className="flex-1 space-y-4 sm:space-y-6 min-w-0 w-full max-w-full">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3">
                 {/* Back to specialty button */}
                 <Button
                   onClick={handleBackToSpecialtyNested}
                   variant="ghost"
-                  className="flex items-center gap-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="flex items-center gap-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 w-fit"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Back to Specialty
+                  <span className="hidden sm:inline">Back to Specialty</span>
                 </Button>
-                <LectureTimer lectureId={lectureId} />
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  {user?.role === 'admin' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setOpenQuestionsDialog(true)}
+                        className="whitespace-nowrap"
+                      >
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">creer</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setOpenOrganizer(true); setOpenQuestionsDialog(true); }}
+                        className="whitespace-nowrap"
+                      >
+                        <ListOrdered className="h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">Organiser</span>
+                      </Button>
+                    </>
+                  )}
+                  <LectureTimer lectureId={lectureId} />
+                </div>
               </div>
 
               {currentQuestion && (
                 <div className="space-y-4 sm:space-y-6">
                   {renderCurrentQuestion()}
-
-                  {/* Rappel du cours section */}
-                  {(() => {
-                    if ('caseNumber' in currentQuestion) return null;
-                    const q = currentQuestion as Question;
-                    const text = q.course_reminder || q.explanation;
-                    if (!text) return null;
-                    return (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                            <BookOpen className="h-4 w-4" />
-                            Rappel du cours
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="prose dark:prose-invert max-w-none text-sm sm:text-base">
-                            <div className="whitespace-pre-wrap text-foreground">
-                              {text}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })()}
-
-                  {/* Comments section removed per request */}
+                  {/* Reminder and comments are handled inside question components after submission */}
                 </div>
               )}
             </div>
@@ -336,6 +343,16 @@ export default function LecturePageRoute() {
           </div>
         </div>
       </div>
+      {/* Admin-only Questions Management Dialog with auto-create */}
+      {user?.role === 'admin' && lecture && (
+        <QuestionManagementDialog
+          lecture={lecture}
+          isOpen={openQuestionsDialog}
+          onOpenChange={(o)=>{ setOpenQuestionsDialog(o); if(!o) setOpenOrganizer(false); }}
+          initialOrganizerOpen={openOrganizer}
+          initialCreateOpen
+        />
+      )}
     </ProtectedRoute>
   )
 }

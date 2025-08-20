@@ -3,7 +3,9 @@ import { QuestionType } from '@/types';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
+import { Image, X } from 'lucide-react';
+import type { ChangeEvent } from 'react';
 
 interface QuestionContentTabProps {
   questionText: string;
@@ -15,6 +17,14 @@ interface QuestionContentTabProps {
   setQuestionNumber: (number: number | undefined) => void;
   session: string;
   setSession: (session: string) => void;
+  // Image for the question (from bulk import or manual upload)
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
+  onMediaChange?: (url: string | undefined, type: 'image' | 'video' | undefined) => void;
+  // Image for rappel section
+  reminderMediaUrl?: string;
+  reminderMediaType?: 'image' | 'video';
+  onReminderMediaChange?: (url: string | undefined, type: 'image' | 'video' | undefined) => void;
 }
 
 export function QuestionContentTab({
@@ -26,19 +36,54 @@ export function QuestionContentTab({
   questionNumber,
   setQuestionNumber,
   session,
-  setSession
+  setSession,
+  mediaUrl,
+  mediaType,
+  onMediaChange,
+  reminderMediaUrl,
+  reminderMediaType,
+  onReminderMediaChange
 }: QuestionContentTabProps) {
-  const { t } = useTranslation();
+  const handleImagePick = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onMediaChange) return;
+    if (!file.type.startsWith('image/')) {
+      // silently ignore non-images for now
+      return;
+    }
+    // Use Data URL so it persists in DB (blob: URLs break after reload)
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : undefined;
+      onMediaChange?.(dataUrl, dataUrl ? 'image' : undefined);
+    };
+    reader.readAsDataURL(file);
+    // clear input
+    e.currentTarget.value = '';
+  };
+  const handleReminderImagePick = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onReminderMediaChange) return;
+    if (!file.type.startsWith('image/')) return;
+    // Use Data URL so it persists in DB (blob: URLs break after reload)
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : undefined;
+      onReminderMediaChange?.(dataUrl, dataUrl ? 'image' : undefined);
+    };
+    reader.readAsDataURL(file);
+    e.currentTarget.value = '';
+  };
   
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div className="space-y-2">
-          <Label htmlFor="question-number">{t('questions.questionNumber')}</Label>
+          <Label htmlFor="question-number">Numéro de question</Label>
           <Input 
             id="question-number"
             type="number"
-            placeholder={t('questions.enterQuestionNumber')}
+            placeholder="Entrer le numéro de la question"
             value={questionNumber === undefined ? '' : questionNumber}
             onChange={(e) => {
               const value = e.target.value;
@@ -48,10 +93,10 @@ export function QuestionContentTab({
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="session">{t('questions.session')}</Label>
+          <Label htmlFor="session">Session</Label>
           <Input 
             id="session"
-            placeholder={`${t('questions.examplePrefix')} Session 2022`}
+            placeholder="Ex: Session 2022"
             value={session}
             onChange={(e) => setSession(e.target.value)}
           />
@@ -59,29 +104,87 @@ export function QuestionContentTab({
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="question-text">{t('questions.questionText')}</Label>
+        <Label htmlFor="question-text">Énoncé de la question</Label>
         <Textarea
           id="question-text"
           value={questionText}
           onChange={(e) => setQuestionText(e.target.value)}
-          placeholder={t('questions.enterQuestionText')}
+          placeholder="Saisir l'énoncé de la question"
           className="min-h-24"
         />
+        {/* Image de la question: ajouter ici pour éviter toute confusion avec l'image du rappel */}
+        {onMediaChange && (
+          <div className="mt-2">
+            <Button type="button" variant="outline" size="sm" className="relative">
+              <Image className="h-4 w-4 mr-2" /> Image de la question
+              <input
+                type="file"
+                accept="image/*"
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                onChange={handleImagePick}
+              />
+            </Button>
+          </div>
+        )}
+        {/* Aperçu de l'image de la question */}
+        {mediaUrl && mediaType === 'image' && (
+          <div className="mt-2 border rounded-md p-3 bg-muted/30">
+            <div className="aspect-video relative bg-muted rounded-md overflow-hidden">
+              <img src={mediaUrl} alt="Image de la question" className="w-full h-full object-contain" />
+            </div>
+            {onMediaChange && (
+              <div className="flex justify-end mt-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => onMediaChange(undefined, undefined)}>
+                  <X className="h-4 w-4 mr-1" /> Supprimer
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       <div className="space-y-2">
         <Label htmlFor="course-reminder">
-          {questionType === 'mcq' ? t('questions.courseReminder') : t('questions.referenceAnswer')}
+          {questionType === 'mcq' ? 'Rappel du cours' : 'Réponse de référence'}
         </Label>
+        {/* Bouton dédié à l'image du rappel (distinct de l'image de la question) */}
+        {onReminderMediaChange && (
+          <div className="mb-2">
+            <Button type="button" variant="outline" size="sm" className="relative">
+              <Image className="h-4 w-4 mr-2" /> Image du rappel
+              <input
+                type="file"
+                accept="image/*"
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                onChange={handleReminderImagePick}
+              />
+            </Button>
+          </div>
+        )}
         <Textarea
           id="course-reminder"
           value={courseReminder}
           onChange={(e) => setCourseReminder(e.target.value)}
           placeholder={questionType === 'mcq' 
-            ? t('questions.enterReminderText')
-            : t('questions.enterReferenceAnswer')}
+            ? 'Entrer le rappel du cours'
+            : 'Entrer la réponse de référence'}
           className="min-h-32"
         />
+        {/* Aperçu de l'image du rappel */}
+        {reminderMediaUrl && reminderMediaType === 'image' && (
+          <div className="mt-2 border rounded-md p-3 bg-muted/30">
+            <div className="aspect-video relative bg-muted rounded-md overflow-hidden">
+              <img src={reminderMediaUrl} alt="Image du rappel" className="w-full h-full object-contain" />
+            </div>
+            {onReminderMediaChange && (
+              <div className="flex justify-end mt-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => onReminderMediaChange(undefined, undefined)}>
+                  <X className="h-4 w-4 mr-1" /> Supprimer
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   );

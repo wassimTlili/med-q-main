@@ -23,11 +23,13 @@ async function getHandler(request: AuthenticatedRequest) {
 
     const whereClause: any = {};
     if (user.role !== 'admin') {
-      // Restrict to user's niveau and semester only (no cross-semester visibility)
-      if (user.niveauId) whereClause.niveauId = user.niveauId;
-  // If user has a semesterId, filter to it; else show only specialties without semester
-  // Use any-cast to avoid Prisma type narrowing issues in this file
-  whereClause.semesterId = (user as any).semesterId ?? null;
+      // Non-admins:
+      // - Show all specialties in the user's niveau (any semester)
+      // - PLUS any specialty that has no semester (global/common)
+      const orConditions: any[] = [];
+      if (user.niveauId) orConditions.push({ niveauId: user.niveauId });
+      orConditions.push({ semesterId: null });
+      whereClause.OR = orConditions;
       // Ignore external semester filter for non-admins
     } else {
       // Admins may optionally filter by niveau and/or semester via query params

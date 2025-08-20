@@ -4,18 +4,21 @@ import { Question } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MCQHeader } from './mcq/MCQHeader';
 import { MCQOptionItem } from './mcq/MCQOptionItem';
-import { MCQExplanation } from './mcq/MCQExplanation';
+// Rappel du cours section (collapsible) replaces MCQExplanation
 import { MCQActions } from './mcq/MCQActions';
 import { QuestionEditDialog } from './QuestionEditDialog';
 import { ReportQuestionDialog } from './ReportQuestionDialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, Pin, PinOff, Eye, EyeOff, Trash2, Plus } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { BookOpen, ChevronRight } from 'lucide-react';
+import ZoomableImage from './ZoomableImage';
+import { Pencil, Pin, PinOff, Eye, EyeOff, Trash2, Plus, Flag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useProgress } from '@/hooks/use-progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
-import { QuestionMedia } from './QuestionMedia';
 import { QuestionNotes } from './QuestionNotes';
 import { QuestionComments } from './QuestionComments';
 
@@ -199,17 +202,17 @@ export function MCQQuestion({
       if (!hideImmediateResults) {
         setSubmitted(true);
         setIsCorrect(answerResult === true);
-        // Auto-expand explanations for answered questions
-        const autoExpandIds: string[] = [];
-        const correctAnswers = question.correctAnswers || question.correct_answers || [];
-        
-        // For answered questions, show explanations for all options
-        question.options?.forEach((option: any, index: number) => {
-          const optionId = option.id || index.toString();
-          autoExpandIds.push(optionId);
-        });
-        
-        setExpandedExplanations(autoExpandIds);
+        // Auto-expand only missed correct options and wrong selections
+        const correct = question.correctAnswers || question.correct_answers || [];
+        const ua = (userAnswer || []) as string[];
+        if (answerResult === true) {
+          setExpandedExplanations([]);
+        } else {
+          const wrongSelected = ua.filter((id) => !correct.includes(id));
+          const missedCorrect = correct.filter((id: string) => !ua.includes(id));
+          const autoExpandIds = Array.from(new Set([...wrongSelected, ...missedCorrect]));
+          setExpandedExplanations(autoExpandIds);
+        }
       } else {
         // For clinical case questions with hidden results, keep UI in answering mode
         setSubmitted(false);
@@ -370,11 +373,13 @@ export function MCQQuestion({
         correctAnswers: q.correctAnswers,
         correct_answers: q.correctAnswers, // keep both in sync
         explanation: q.explanation,
-        course_reminder: q.courseReminder,
+        course_reminder: q.courseReminder ?? q.course_reminder,
         number: q.number,
         session: q.session,
-        media_url: q.mediaUrl,
-        media_type: q.mediaType,
+        media_url: q.mediaUrl ?? q.media_url,
+        media_type: q.mediaType ?? q.media_type,
+        course_reminder_media_url: q.courseReminderMediaUrl ?? q.course_reminder_media_url,
+        course_reminder_media_type: q.courseReminderMediaType ?? q.course_reminder_media_type,
       };
       onQuestionUpdate?.(question.id, updates);
     } catch {}
@@ -437,6 +442,24 @@ export function MCQQuestion({
             specialtyName={specialtyName}
             questionId={question.id}
           />
+          {/* Inline media attached to the question (not the reminder) */}
+          {(() => {
+            const mediaUrl = (question as any).media_url || (question as any).mediaUrl;
+            const mediaType = (question as any).media_type || (question as any).mediaType;
+            if (!mediaUrl) return null;
+            const isImageByExt = /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(mediaUrl);
+            const isImage = mediaType === 'image' || (!mediaType && isImageByExt);
+            if (!isImage) return null;
+            return (
+              <div className="mt-3">
+                <ZoomableImage
+                  src={mediaUrl}
+                  alt="Illustration de la question"
+                  thumbnailClassName="max-h-64 w-auto sm:max-h-80 max-w-full rounded-md border object-contain shadow-sm"
+                />
+              </div>
+            );
+          })()}
         </div>
         
         <div className="flex flex-col gap-1 flex-shrink-0 items-end">
@@ -459,8 +482,11 @@ export function MCQQuestion({
               variant="outline" 
               size="sm"
               onClick={() => setIsReportDialogOpen(true)}
+              className="flex items-center gap-1"
+              title="Signaler"
             >
-              <span className="hidden sm:inline">{t('questions.report')}</span>
+              <Flag className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Signaler</span>
             </Button>
           </div>
           {isAdmin && (
@@ -543,8 +569,7 @@ export function MCQQuestion({
         </div>
       </div>
       
-      {/* Question Media */}
-      <QuestionMedia question={question} className="mb-4" />
+  {/* Media for explanation is displayed inside the "Rappel du cours" section below */}
 
       <div className="space-y-3">
         {normalizedOptions.map((option, index) => (
@@ -564,12 +589,44 @@ export function MCQQuestion({
         ))}
       </div>
 
-      {submitted && !hideImmediateResults && (
-        <MCQExplanation
-          courseReminder={question.course_reminder}
-          explanation={question.explanation}
-        />
-      )}
+  {/* Rappel du cours (après soumission) */}
+  {submitted && (() => {
+    const text = (question as any).course_reminder || (question as any).courseReminder || question.explanation;
+    const reminderMediaUrl = (question as any).course_reminder_media_url || (question as any).courseReminderMediaUrl;
+    const reminderMediaType = (question as any).course_reminder_media_type || (question as any).courseReminderMediaType;
+  if (!text && !reminderMediaUrl) return null;
+        return (
+          <Card className="mt-2">
+            <CardHeader className="py-3">
+              <Collapsible defaultOpen>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <BookOpen className="h-4 w-4" />
+                    Rappel du cours
+                  </CardTitle>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="px-2 group">
+                      <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent>
+                  <CardContent className="space-y-3 pt-3">
+                      {reminderMediaUrl && (reminderMediaType === 'image' || /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(reminderMediaUrl)) && (
+                        <ZoomableImage src={reminderMediaUrl} alt="Image du rappel" />
+                      )}
+                      {text && (
+                      <div className="prose dark:prose-invert max-w-none text-sm">
+                        <div className="whitespace-pre-wrap text-foreground">{text}</div>
+                      </div>
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </CardHeader>
+          </Card>
+        );
+      })()}
 
        <MCQActions 
          isSubmitted={submitted}
@@ -582,13 +639,13 @@ export function MCQQuestion({
          buttonRef={buttonRef}
        />
       
-      {/* Notes area under buttons (after submitting) */}
-      {submitted && (
+  {/* Notes (après soumission) */}
+  {submitted && (
         <QuestionNotes questionId={question.id} />
       )}
 
-      {/* Comments (always visible) */}
-      <QuestionComments questionId={question.id} />
+      {/* Commentaires (après soumission) */}
+      {submitted && <QuestionComments questionId={question.id} />}
       
       <QuestionEditDialog
         question={question}

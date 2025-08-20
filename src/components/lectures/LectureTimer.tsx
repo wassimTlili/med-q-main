@@ -39,11 +39,11 @@ export function LectureTimer({ lectureId }: LectureTimerProps) {
   };
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 rounded-xl shadow-md">
-      <div className="flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+    <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 border border-gray-200/60 dark:border-gray-700/60 rounded-xl shadow-md">
+      <div className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
         <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
       </div>
-      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+      <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
         {formatTime(elapsedTime)}
       </span>
     </div>

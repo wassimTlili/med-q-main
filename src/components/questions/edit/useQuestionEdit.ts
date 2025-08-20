@@ -28,22 +28,31 @@ export function useQuestionEdit({
 
   // State for editing
   const [questionText, setQuestionText] = useState(propQuestion?.text || '');
-  const [courseReminder, setCourseReminder] = useState(propQuestion?.course_reminder || '');
+  const [courseReminder, setCourseReminder] = useState(propQuestion?.course_reminder || (propQuestion as any)?.courseReminder || '');
   const [questionNumber, setQuestionNumber] = useState<number | undefined>(propQuestion?.number);
   const [session, setSession] = useState(propQuestion?.session || '');
   const [options, setOptions] = useState(
-    propQuestion?.options?.map((opt, index) => ({
-      id: opt.id || `option-${index}`,
-      text: opt.text || '',
-      explanation: opt.explanation || ''
-    })) || []
+    propQuestion?.options?.map((opt: any, index: number) => {
+      if (typeof opt === 'string') {
+        return { id: index.toString(), text: opt, explanation: '' };
+      }
+      return {
+        id: opt.id || index.toString(),
+        text: opt.text || '',
+        explanation: opt.explanation || ''
+      };
+    }) || []
   );
   const [correctAnswers, setCorrectAnswers] = useState<string[]>(
-    propQuestion?.correct_answers || propQuestion?.correctAnswers || []
+    propQuestion?.correctAnswers || propQuestion?.correct_answers || []
   );
   const [mediaUrl, setMediaUrl] = useState(propQuestion?.media_url || '');
   const [mediaType, setMediaType] = useState<'image' | 'video' | undefined>(
     propQuestion?.media_url ? (propQuestion.media_url.includes('image') ? 'image' : 'video') : undefined
+  );
+  const [reminderMediaUrl, setReminderMediaUrl] = useState(propQuestion?.course_reminder_media_url || '');
+  const [reminderMediaType, setReminderMediaType] = useState<'image' | 'video' | undefined>(
+    propQuestion?.course_reminder_media_url ? 'image' : undefined
   );
 
   useEffect(() => {
@@ -56,23 +65,30 @@ export function useQuestionEdit({
     if (propQuestion) {
       setQuestion(propQuestion);
       setQuestionText(propQuestion.text || '');
-      setCourseReminder(propQuestion.course_reminder || '');
+  setCourseReminder(propQuestion.course_reminder || (propQuestion as any).courseReminder || '');
       setQuestionNumber(propQuestion.number);
       setSession(propQuestion.session || '');
       setOptions(
-        propQuestion.options?.map((opt, index) => ({
-          id: opt.id || `option-${index}`,
-          text: opt.text || '',
-          explanation: opt.explanation || ''
-        })) || []
+        propQuestion.options?.map((opt: any, index: number) => {
+          if (typeof opt === 'string') {
+            return { id: index.toString(), text: opt, explanation: '' };
+          }
+          return {
+            id: opt.id || index.toString(),
+            text: opt.text || '',
+            explanation: opt.explanation || ''
+          };
+        }) || []
       );
       setCorrectAnswers(
-        propQuestion.correct_answers || propQuestion.correctAnswers || []
+        propQuestion.correctAnswers || propQuestion.correct_answers || []
       );
       setMediaUrl(propQuestion.media_url || '');
       setMediaType(
         propQuestion.media_url ? (propQuestion.media_url.includes('image') ? 'image' : 'video') : undefined
       );
+  setReminderMediaUrl(propQuestion.course_reminder_media_url || '');
+  setReminderMediaType(propQuestion.course_reminder_media_url ? 'image' : undefined);
       setIsLoading(false);
     }
   }, [propQuestion]);
@@ -91,23 +107,30 @@ export function useQuestionEdit({
       const data = await response.json();
       setQuestion(data);
       setQuestionText(data.text || '');
-      setCourseReminder(data.course_reminder || '');
+  setCourseReminder(data.course_reminder || data.courseReminder || '');
       setQuestionNumber(data.number);
       setSession(data.session || '');
       setOptions(
-        data.options?.map((opt: any, index: number) => ({
-          id: opt.id || `option-${index}`,
-          text: opt.text || '',
-          explanation: opt.explanation || ''
-        })) || []
+        data.options?.map((opt: any, index: number) => {
+          if (typeof opt === 'string') {
+            return { id: index.toString(), text: opt, explanation: '' };
+          }
+          return {
+            id: opt.id || index.toString(),
+            text: opt.text || '',
+            explanation: opt.explanation || ''
+          };
+        }) || []
       );
       setCorrectAnswers(
-        data.options?.filter((opt: any) => opt.is_correct).map((opt: any) => opt.id) || []
+        data.correctAnswers || data.correct_answers || []
       );
       setMediaUrl(data.media_url || '');
       setMediaType(
         data.media_url ? (data.media_url.includes('image') ? 'image' : 'video') : undefined
       );
+  setReminderMediaUrl(data.course_reminder_media_url || '');
+  setReminderMediaType(data.course_reminder_media_url ? 'image' : undefined);
     } catch (error) {
       console.error('Error fetching question:', error);
       toast({
@@ -205,24 +228,33 @@ export function useQuestionEdit({
     setMediaUrl(url || '');
     setMediaType(type);
   };
+  const handleReminderMediaChange = (url: string | undefined, type: 'image' | 'video' | undefined) => {
+    setReminderMediaUrl(url || '');
+    setReminderMediaType(type);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!question) return;
 
-    const updatedQuestion: Partial<Question> = {
+    const updatedQuestion: Partial<Question> & any = {
       text: questionText,
-      course_reminder: courseReminder,
+      // Use camelCase to match API route expectations
+      courseReminder: courseReminder,
       number: questionNumber,
       session,
-      media_url: mediaUrl,
+      mediaUrl: mediaUrl,
+      mediaType: mediaType,
+      courseReminderMediaUrl: reminderMediaUrl,
+      courseReminderMediaType: reminderMediaType,
       options: question.type === 'mcq' ? options.map(opt => ({
         id: opt.id,
         text: opt.text,
-        explanation: opt.explanation,
-        is_correct: correctAnswers.includes(opt.id)
-      })) : undefined
+        explanation: opt.explanation
+      })) : undefined,
+      // Use camelCase to match API route
+      correctAnswers: (question.type === 'mcq' || question.type === 'clinic_mcq') ? correctAnswers : undefined
     };
 
     await saveQuestion(updatedQuestion);
@@ -244,7 +276,10 @@ export function useQuestionEdit({
     correctAnswers,
     mediaUrl,
     mediaType,
+  reminderMediaUrl,
+  reminderMediaType,
     handleMediaChange,
+  handleReminderMediaChange,
     updateOptionText,
     updateOptionExplanation,
     toggleCorrectAnswer,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
+import { questionsSupportsRappelMedia } from '@/lib/db-features';
 
 async function getHandler(request: AuthenticatedRequest) {
   try {
@@ -63,7 +64,8 @@ async function getHandler(request: AuthenticatedRequest) {
       }
     }
 
-    const questions = await prisma.question.findMany({
+  const supportsRappel = await questionsSupportsRappelMedia();
+  const questions = await prisma.question.findMany({
       where,
       orderBy: [
         { type: 'asc' },
@@ -83,6 +85,7 @@ async function getHandler(request: AuthenticatedRequest) {
         session: true,
         mediaUrl: true,
         mediaType: true,
+    ...(supportsRappel ? { courseReminderMediaUrl: true, courseReminderMediaType: true } : {}),
         caseNumber: true,
         caseText: true,
         caseQuestionNumber: true,
@@ -133,6 +136,8 @@ async function postHandler(request: AuthenticatedRequest) {
       session,
       mediaUrl,
       mediaType,
+      courseReminderMediaUrl,
+      courseReminderMediaType,
       caseNumber,
       caseText,
       caseQuestionNumber
@@ -145,7 +150,8 @@ async function postHandler(request: AuthenticatedRequest) {
       );
     }
 
-    const question = await prisma.question.create({
+  const supportsRappel = await questionsSupportsRappelMedia();
+  const question = await prisma.question.create({
       data: {
         lecture: { connect: { id: lectureId } },
         type,
@@ -158,6 +164,7 @@ async function postHandler(request: AuthenticatedRequest) {
         session,
         mediaUrl,
         mediaType,
+    ...(supportsRappel ? { courseReminderMediaUrl, courseReminderMediaType } : {}),
         caseNumber,
         caseText,
         caseQuestionNumber
@@ -175,6 +182,7 @@ async function postHandler(request: AuthenticatedRequest) {
         session: true,
         mediaUrl: true,
         mediaType: true,
+    ...(supportsRappel ? { courseReminderMediaUrl: true, courseReminderMediaType: true } : {}),
         caseNumber: true,
         caseText: true,
         caseQuestionNumber: true,
@@ -225,6 +233,8 @@ async function putHandler(request: AuthenticatedRequest) {
       session,
       mediaUrl,
       mediaType,
+      courseReminderMediaUrl,
+      courseReminderMediaType,
       caseNumber,
       caseText,
       caseQuestionNumber,
@@ -245,7 +255,8 @@ async function putHandler(request: AuthenticatedRequest) {
       );
     }
 
-    const question = await prisma.question.update({
+  const supportsRappel = await questionsSupportsRappelMedia();
+  const question = await prisma.question.update({
       where: { id },
       data: {
         lecture: { connect: { id: lectureId } },
@@ -259,6 +270,7 @@ async function putHandler(request: AuthenticatedRequest) {
         session,
         mediaUrl,
         mediaType,
+    ...(supportsRappel ? { courseReminderMediaUrl, courseReminderMediaType } : {}),
         caseNumber,
         caseText,
   caseQuestionNumber,

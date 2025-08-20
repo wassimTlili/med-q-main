@@ -1,7 +1,6 @@
 
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, ArrowRight, Keyboard } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { CheckCircle, XCircle, ArrowRight, Keyboard, RotateCcw } from 'lucide-react';
 import { 
   Tooltip,
   TooltipContent,
@@ -30,14 +29,12 @@ export function MCQActions({
   hasSubmitted = false,
   buttonRef
 }: MCQActionsProps) {
-  const { t } = useTranslation();
-  
   return (
-    <div className="flex justify-between pt-4">
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-4">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center text-xs text-muted-foreground">
+            <div className="hidden sm:flex items-center text-xs text-muted-foreground">
               <Keyboard className="h-3.5 w-3.5 mr-1" />
               <span>
                 {isSubmitted ? "Spacebar: Next" : "1-5: Select options, Spacebar: Submit"}
@@ -67,38 +64,41 @@ export function MCQActions({
           ref={buttonRef}
           onClick={onSubmit} 
           disabled={hasSubmitted || !canSubmit}
-          className="ml-auto"
+          className="sm:ml-auto w-full sm:w-auto"
         >
-          {hasSubmitted ? "Répondu" : t('questions.submitAnswer')}
+          {hasSubmitted ? "Répondu" : "Soumettre la réponse"}
         </Button>
       ) : (
-        <div className="flex items-center ml-auto gap-2">
-          <div className="flex items-center mr-4">
+        <div className="w-full sm:w-auto sm:ml-auto flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex items-center sm:mr-4">
             {isCorrect ? (
               <div className="flex items-center text-green-600">
                 <CheckCircle className="h-5 w-5 mr-2" />
-                <span className="font-medium">{t('questions.correct')}</span>
+                <span className="font-medium">Correct!</span>
               </div>
             ) : (
               <div className="flex items-center text-red-600">
                 <XCircle className="h-5 w-5 mr-2" />
-                <span className="font-medium">{t('questions.incorrect')}</span>
+                <span className="font-medium">Incorrect</span>
               </div>
             )}
           </div>
-          {onReAnswer && (
-            <Button 
-              variant="outline" 
-              onClick={onReAnswer}
-              className="mr-2"
-            >
-              {t('questions.reAnswer')}
+          <div className="flex gap-2 justify-end flex-wrap">
+            {onReAnswer && (
+              <Button 
+                variant="outline" 
+                onClick={onReAnswer}
+                className=""
+              >
+                <RotateCcw className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Répondre à nouveau</span>
+              </Button>
+            )}
+            <Button onClick={onNext} className="group">
+              <span className="hidden sm:inline">Question suivante</span>
+              <ArrowRight className="sm:ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
-          )}
-          <Button onClick={onNext} className="group">
-            {t('questions.nextQuestion')}
-            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Button>
+          </div>
         </div>
       )}
     </div>

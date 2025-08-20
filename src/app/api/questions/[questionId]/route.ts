@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireAuth, requireAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { prisma } from '@/lib/prisma';
+import { questionsSupportsRappelMedia } from '@/lib/db-features';
 
 async function getHandler(
   request: AuthenticatedRequest,
@@ -54,7 +55,8 @@ async function getHandler(
       };
     }
 
-    const question = await prisma.question.findUnique({
+  const supportsRappel = await questionsSupportsRappelMedia();
+  const question = await prisma.question.findUnique({
       where: whereClause as { id: string },
       select: {
         id: true,
@@ -69,6 +71,7 @@ async function getHandler(
         session: true,
         mediaUrl: true,
         mediaType: true,
+    ...(supportsRappel ? { courseReminderMediaUrl: true, courseReminderMediaType: true } : {}),
         caseNumber: true,
         caseText: true,
         caseQuestionNumber: true,
@@ -118,6 +121,7 @@ async function putHandler(
 ) {
   try {
     const { questionId } = await params;
+    const supportsRappel = await questionsSupportsRappelMedia();
     const {
       type,
       text,
@@ -129,13 +133,15 @@ async function putHandler(
       session,
       mediaUrl,
       mediaType,
+      courseReminderMediaUrl,
+      courseReminderMediaType,
       caseNumber,
       caseText,
       caseQuestionNumber,
       hidden
     } = await request.json();
 
-    const question = await prisma.question.update({
+  const question = await prisma.question.update({
       where: { id: questionId },
       data: {
         type,
@@ -148,6 +154,7 @@ async function putHandler(
         session,
         mediaUrl,
         mediaType,
+    ...(supportsRappel ? { courseReminderMediaUrl, courseReminderMediaType } : {}),
         caseNumber,
         caseText,
   caseQuestionNumber,
@@ -166,6 +173,7 @@ async function putHandler(
         session: true,
         mediaUrl: true,
         mediaType: true,
+    ...(supportsRappel ? { courseReminderMediaUrl: true, courseReminderMediaType: true } : {}),
         caseNumber: true,
         caseText: true,
   caseQuestionNumber: true,

@@ -224,7 +224,9 @@ export default function ExercicesPage() {
     try {
       // Check cache first
       const now = Date.now();
-      if (niveauFilter === 'all' && semesterFilter === 'all' && !forceRefresh && specialtiesCache && (now - cacheTimestamp) < CACHE_DURATION) {
+  // Only use cache for admins; non-admins have user-specific visibility
+  const canUseCache = isAdmin && niveauFilter === 'all' && semesterFilter === 'all';
+  if (canUseCache && !forceRefresh && specialtiesCache && (now - cacheTimestamp) < CACHE_DURATION) {
         setSpecialties(specialtiesCache);
         setFilteredSpecialties(specialtiesCache);
         setIsLoading(false);
@@ -233,7 +235,7 @@ export default function ExercicesPage() {
 
       setIsLoading(true);
       const params = new URLSearchParams();
-      if (isAdmin) {
+  if (isAdmin) {
         if (niveauFilter && niveauFilter !== 'all') params.set('niveau', niveauFilter);
         if (semesterFilter && semesterFilter !== 'all') params.set('semester', semesterFilter);
       }
@@ -244,7 +246,7 @@ export default function ExercicesPage() {
         }
       });
       
-      if (!response.ok) {
+  if (!response.ok) {
         throw new Error('Failed to fetch specialties');
       }
 
@@ -252,8 +254,8 @@ export default function ExercicesPage() {
       setSpecialties(data || []);
       setFilteredSpecialties(data || []);
       
-      // Update cache only for unfiltered case
-      if (niveauFilter === 'all' && semesterFilter === 'all') {
+  // Update cache only for admin unfiltered case
+  if (isAdmin && niveauFilter === 'all' && semesterFilter === 'all') {
         specialtiesCache = data || [];
         cacheTimestamp = now;
       }

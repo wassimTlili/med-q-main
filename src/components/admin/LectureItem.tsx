@@ -1,7 +1,7 @@
 import { Lecture } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Edit, Trash, FileText } from 'lucide-react';
+import { Edit, Trash, FileText, PlusCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
@@ -138,6 +138,28 @@ export function LectureItem({ lecture, onDelete, onUpdate }: LectureItemProps) {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">Questions</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-8 w-8 rounded-lg hover:bg-primary/10"
+                onClick={() => {
+                  setIsQuestionsDialogOpen(true);
+                  // Use a microtask to ensure dialog state propagates before opening nested create
+                  queueMicrotask(() => {
+                    const ev = new CustomEvent('open-create-question', { detail: { lectureId: lecture.id } });
+                    window.dispatchEvent(ev);
+                  });
+                }}
+                title="Créer une question"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span className="sr-only">Créer une question</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Créer une question</TooltipContent>
           </Tooltip>
           <AlertDialog>
             <AlertDialogTrigger asChild>

@@ -66,6 +66,9 @@ model Specialty {
   courseGroups CourseGroup[]
   pinnedSpecialties PinnedSpecialty[]
 
+  // Separate media for the course reminder section
+  courseReminderMediaUrl  String? @map("course_reminder_media_url")
+  courseReminderMediaType String? @map("course_reminder_media_type")
   @@map("specialties")
 }
 
@@ -181,6 +184,8 @@ model Question {
   session            String?
   mediaUrl           String?  @map("media_url")
   mediaType          String?  @map("media_type")
+  courseReminderMediaUrl  String? @map("course_reminder_media_url")
+  courseReminderMediaType String? @map("course_reminder_media_type")
   caseNumber         Int?     @map("case_number")
   caseText           String?  @map("case_text")
   caseQuestionNumber Int?     @map("case_question_number")
@@ -223,6 +228,7 @@ model QuestionComment {
   questionId String   @map("question_id") @db.Uuid
   userId     String   @map("user_id") @db.Uuid
   content    String
+  isAnonymous Boolean @default(false) @map("is_anonymous")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)

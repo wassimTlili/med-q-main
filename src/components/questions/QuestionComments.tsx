@@ -5,7 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { MessageSquare, Send, Trash2, Pencil, Loader2, UserRound } from 'lucide-react';
+import { MessageSquare, Send, Trash2, Pencil, Loader2, UserRound, EyeOff } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface QuestionCommentsProps {
   questionId: string;
@@ -14,6 +15,7 @@ interface QuestionCommentsProps {
 type QComment = {
   id: string;
   content: string;
+  isAnonymous?: boolean;
   createdAt: string;
   updatedAt: string;
   user: { id: string; name?: string | null; email: string; role: string };
@@ -27,8 +29,10 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
   const [text, setText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [postAnonymous, setPostAnonymous] = useState(false);
   const canPost = !!user?.id && text.trim().length > 0 && !submitting;
   const ownerId = user?.id;
+  const isAdmin = user?.role === 'admin';
 
   const load = useMemo(() => async () => {
     try {
@@ -58,7 +62,7 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
       const res = await fetch('/api/question-comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId, userId: ownerId, content: text }),
+        body: JSON.stringify({ questionId, userId: ownerId, content: text, isAnonymous: postAnonymous }),
       });
       if (!res.ok) throw new Error('Failed');
       const created: QComment = await res.json();
@@ -133,7 +137,14 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
                 className="min-h-[80px]"
               />
               <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <span>Press Ctrl/Cmd+Enter to send</span>
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={postAnonymous}
+                    onCheckedChange={(v) => setPostAnonymous(!!v)}
+                    className="h-4 w-4"
+                  />
+                  Poster en anonyme
+                </label>
                 <Button size="sm" onClick={add} disabled={!canPost}>
                   {submitting ? (<><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Posting</>) : (<><Send className="h-3.5 w-3.5 mr-1" /> Post</>)}
                 </Button>
@@ -166,7 +177,10 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
             {comments.map((c) => {
               const isOwner = ownerId && (ownerId === c.user.id);
               const isEditing = editingId === c.id;
-              const initials = (c.user?.name || c.user?.email || '?').slice(0,1).toUpperCase();
+              const displayAsAnonymous = c.isAnonymous && !isAdmin && ownerId !== c.user.id;
+              const displayName = displayAsAnonymous ? 'Anonyme' : (c.user?.name || c.user?.email || 'Utilisateur');
+              const initials = (displayName).slice(0,1).toUpperCase();
+              const canDelete = !!(isAdmin || isOwner);
               return (
                 <li key={c.id} className="rounded-lg border bg-background/60 p-3">
                   <div className="flex items-start gap-2">
@@ -175,10 +189,20 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="truncate max-w-[160px] sm:max-w-[260px]">{c.user?.name || c.user?.email}</span>
+                        <span className="truncate max-w-[160px] sm:max-w-[260px] flex items-center gap-1">
+                          {displayName}
+                          {c.isAnonymous && isAdmin && (
+                            <span className="inline-flex" title="Posté en anonyme" aria-label="Posté en anonyme">
+                              <EyeOff className="h-3.5 w-3.5 text-amber-600" />
+                            </span>
+                          )}
+                        </span>
                         <span>•</span>
                         <span>{new Date(c.createdAt).toLocaleString()}</span>
                         {c.updatedAt && c.updatedAt !== c.createdAt && (<span className="italic">(edited)</span>)}
+                        {c.isAnonymous && isAdmin && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Anonyme</span>
+                        )}
                       </div>
                       {!isEditing ? (
                         <div className="mt-1 text-sm whitespace-pre-wrap">{c.content}</div>
@@ -192,11 +216,13 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
                         </div>
                       )}
                     </div>
-                    {isOwner && !isEditing && (
+                    {canDelete && !isEditing && (
                       <div className="flex gap-1 ml-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => beginEdit(c)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {isOwner && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit" onClick={() => beginEdit(c)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Delete" onClick={() => remove(c.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>

@@ -10,9 +10,10 @@ interface MediaUploadProps {
   mediaUrl?: string;
   mediaType?: 'image' | 'video';
   onMediaChange: (url: string | undefined, type: 'image' | 'video' | undefined) => void;
+  label?: string;
 }
 
-export function MediaUpload({ mediaUrl, mediaType, onMediaChange }: MediaUploadProps) {
+export function MediaUpload({ mediaUrl, mediaType, onMediaChange, label }: MediaUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const { t } = useTranslation();
   
@@ -79,7 +80,7 @@ export function MediaUpload({ mediaUrl, mediaType, onMediaChange }: MediaUploadP
   
   return (
     <div className="space-y-4">
-      <Label>{t('admin.questionMedia')}</Label>
+  <Label>{label ?? t('admin.questionMedia')}</Label>
       
       {mediaUrl ? (
         <div className="border rounded-md p-4 space-y-3">
