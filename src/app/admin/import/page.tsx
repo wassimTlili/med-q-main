@@ -107,6 +107,9 @@ interface ImportPreview {
         cours: string;
         questionNumber: number;
         questionText: string;
+  explanation?: string;
+  niveau?: string;
+  semestre?: string;
         matchedLecture?: Lecture;
         mediaUrl?: string | null;
         mediaType?: string | null;
@@ -290,15 +293,15 @@ export default function ImportPage() {
         const headerRow = jsonData[0] as string[];
         const header = headerRow.map(h => h?.toString().trim().toLowerCase() || '');
 
-        let expectedHeaders: string[] = [];
+    let expectedHeaders: string[] = [];
         let questionType = '';
         switch (sheetName) {
           case 'qcm':
-            expectedHeaders = ['matiere', 'cours', 'question n', 'source', 'texte de la question', 'option a', 'option b', 'option c', 'option d', 'option e', 'reponse'];
+      expectedHeaders = ['matiere', 'cours', 'question n', 'source', 'texte de la question', 'option a', 'option b', 'option c', 'option d', 'option e', 'reponse'];
             questionType = 'MCQ';
             break;
           case 'qroc':
-            expectedHeaders = ['matiere', 'cours', 'question n', 'source', 'texte de la question', 'reponse'];
+      expectedHeaders = ['matiere', 'cours', 'question n', 'source', 'texte de la question', 'reponse'];
             questionType = 'QROC';
             break;
           case 'cas_qcm':
@@ -324,6 +327,9 @@ export default function ImportPage() {
           cours: string;
           questionNumber: number;
           questionText: string;
+          explanation?: string;
+          niveau?: string;
+          semestre?: string;
           matchedLecture?: Lecture;
           mediaUrl?: string | null;
           mediaType?: string | null;
@@ -364,6 +370,9 @@ export default function ImportPage() {
               cours: string;
               questionNumber: number;
               questionText: string;
+              explanation?: string;
+              niveau?: string;
+              semestre?: string;
               matchedLecture?: Lecture;
               mediaUrl?: string | null;
               mediaType?: string | null;
@@ -377,6 +386,9 @@ export default function ImportPage() {
               cours: rowData['cours'],
               questionNumber: questionNumber ?? 0,
               questionText: cleanedText,
+              explanation: rowData['explication'] || undefined,
+              niveau: rowData['niveau'] || undefined,
+              semestre: rowData['semestre'] || undefined,
               matchedLecture,
               mediaUrl,
               mediaType
@@ -701,6 +713,9 @@ export default function ImportPage() {
                               cours: string;
                               questionNumber: number;
                               questionText: string;
+                              explanation?: string;
+                              niveau?: string;
+                              semestre?: string;
                               matchedLecture?: Lecture;
                               mediaUrl?: string | null;
                               mediaType?: string | null;
@@ -772,6 +787,16 @@ export default function ImportPage() {
                                     {item.mediaUrl && typeof item.mediaUrl === 'string' && (
                                       <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                                         <span className="font-semibold">{t('admin.image')}:</span> {item.mediaUrl}
+                                      </p>
+                                    )}
+                                    {item.explanation && (
+                                      <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
+                                        <span className="font-semibold">{t('admin.explanation') || 'Explanation'}:</span> {item.explanation.substring(0, 120)}{item.explanation.length > 120 ? '…' : ''}
+                                      </p>
+                                    )}
+                                    {(item.niveau || item.semestre) && (
+                                      <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
+                                        <span className="font-semibold">{t('admin.level') || 'Niveau/Semestre'}:</span> {[item.niveau, item.semestre].filter(Boolean).join(' • ')}
                                       </p>
                                     )}
                                     

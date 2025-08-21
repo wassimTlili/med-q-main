@@ -237,6 +237,7 @@ export function ClinicalCaseQuestion({
           <ClinicalCaseDisplay
             caseNumber={clinicalCase.caseNumber}
             caseText={clinicalCase.caseText}
+            lectureId={lectureId}
           />
         </CardHeader>
         <CardContent>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAdmin, requireAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
+import { requireAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 
 async function getHandler(request: AuthenticatedRequest) {
   const url = new URL(request.url);

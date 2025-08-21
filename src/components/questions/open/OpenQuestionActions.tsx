@@ -1,6 +1,6 @@
 
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, Keyboard } from 'lucide-react';
 
 interface OpenQuestionActionsProps {
   isSubmitted: boolean;
@@ -27,6 +27,12 @@ export function OpenQuestionActions({
 }: OpenQuestionActionsProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-6">
+      <div className="hidden sm:flex items-center text-xs text-muted-foreground">
+        <Keyboard className="h-3.5 w-3.5 mr-1" />
+        <span>
+          {isSubmitted ? "Entrée: Suivant | 1/2/3: Noter" : "Entrée: Soumettre | Shift+Entrée: Nouvelle ligne"}
+        </span>
+      </div>
       {showPrevious && onPrevious && (
         <Button
           variant="outline"

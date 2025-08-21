@@ -58,13 +58,14 @@ async function putHandler(
 ) {
   try {
     const { reportId } = await params;
-    const { status, message } = await request.json();
+  const { status, message, reportType } = await request.json();
 
-    const report = await prisma.report.update({
+  const report = await (prisma as any).report.update({
       where: { id: reportId },
       data: {
         status,
-        message
+    message,
+    reportType: reportType ?? undefined
       },
       include: {
         question: {

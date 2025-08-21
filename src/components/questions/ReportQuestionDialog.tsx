@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { Question } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -23,6 +24,7 @@ export function ReportQuestionDialog({
 }: ReportQuestionDialogProps) {
   const { user } = useAuth();
   const [reason, setReason] = useState('');
+  const [type, setType] = useState<'mal_placee' | 'erreur_syntaxe' | 'autre' | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,6 +39,10 @@ export function ReportQuestionDialog({
       return;
     }
     
+    if (!type) {
+      toast({ title: 'Erreur de validation', description: 'Le type est requis', variant: 'destructive' });
+      return;
+    }
     if (!reason.trim()) {
       toast({
         title: 'Erreur de validation',
@@ -49,7 +55,7 @@ export function ReportQuestionDialog({
     try {
       setIsSubmitting(true);
       
-      const response = await fetch('/api/reports', {
+    const response = await fetch('/api/reports', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,7 +64,8 @@ export function ReportQuestionDialog({
         body: JSON.stringify({
           questionId: question.id,
           lectureId: lectureId,
-          message: reason.trim(),
+      message: reason.trim(),
+      reportType: type,
         }),
       });
       
@@ -102,6 +109,23 @@ export function ReportQuestionDialog({
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4 mt-2 sm:mt-4">
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <RadioGroup value={type} onValueChange={(v) => setType(v as any)} className="grid gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem value="mal_placee" />
+                <span>Question mal placée</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem value="erreur_syntaxe" />
+                <span>Erreur de syntaxe</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <RadioGroupItem value="autre" />
+                <span>Autre</span>
+              </label>
+            </RadioGroup>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="reason">Raison</Label>
             <Textarea 

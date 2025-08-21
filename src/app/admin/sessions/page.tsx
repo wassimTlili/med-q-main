@@ -20,15 +20,21 @@ type SessionRow = {
   pdfUrl?: string;
   correctionUrl?: string;
   niveau?: string;
+  semestre?: string | number;
+  specialty?: string;
 };
 
 export default function SessionsAdminPage() {
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [manual, setManual] = useState<SessionRow>({ name: '' });
   const [manualNiveauId, setManualNiveauId] = useState<string>('');
+  const [manualSemester, setManualSemester] = useState<string>('');
+  const [manualSpecialty, setManualSpecialty] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const [niveaux, setNiveaux] = useState<{ id: string; name: string }[]>([]);
   const [fileName, setFileName] = useState<string>('');
+  const [semesters, setSemesters] = useState<{ id: string; name: string; order: number; niveauId: string }[]>([]);
+  const [specialties, setSpecialties] = useState<{ id: string; name: string }[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
 
@@ -41,6 +47,8 @@ export default function SessionsAdminPage() {
           const data = await res.json();
           setNiveaux(data);
         }
+        const specs = await fetch('/api/specialties/list');
+        if (specs.ok) setSpecialties(await specs.json());
       } catch (e) {
         // silent
       }
@@ -48,16 +56,25 @@ export default function SessionsAdminPage() {
     load();
   }, []);
 
+  useEffect(() => {
+    const loadSemesters = async () => {
+      const params = manualNiveauId ? `?niveauId=${encodeURIComponent(manualNiveauId)}` : '';
+      const res = await fetch(`/api/semesters${params}`);
+      if (res.ok) setSemesters(await res.json());
+    };
+    loadSemesters();
+  }, [manualNiveauId]);
+
   const parseCSVLike = async (file: File) => {
-    // For simplicity: expect a CSV or XLSX saved-as-CSV: name,pdfUrl,correctionUrl,niveau
+    // Expect CSV: name,pdfUrl,correctionUrl,niveau,semestre,specialty
     const text = await file.text();
     const lines = text.split(/\r?\n/).filter(Boolean);
     const out: SessionRow[] = [];
     const startIdx = 1; // assume first row is header
     for (const line of lines.slice(startIdx)) {
       const cols = line.split(','); // naive CSV split (no quote handling)
-      const [name, pdfUrl, correctionUrl, niveau] = cols.map(c => c?.trim());
-      if (name) out.push({ name, pdfUrl, correctionUrl, niveau });
+      const [name, pdfUrl, correctionUrl, niveau, semestre, specialty] = cols.map(c => c?.trim());
+      if (name) out.push({ name, pdfUrl, correctionUrl, niveau, semestre, specialty });
     }
     setRows(out);
   };
@@ -69,11 +86,13 @@ export default function SessionsAdminPage() {
     const ws = workbook.Sheets[firstSheet];
     const json = XLSX.utils.sheet_to_json(ws, { defval: '' }) as Record<string, any>[];
     const norm = (s: string) => String(s || '').trim().toLowerCase();
-    const aliasMap: Record<string, 'name' | 'pdfUrl' | 'correctionUrl' | 'niveau'> = {
+    const aliasMap: Record<string, 'name' | 'pdfUrl' | 'correctionUrl' | 'niveau' | 'semestre' | 'specialty'> = {
       name: 'name', nom: 'name', titre: 'name',
       pdf: 'pdfUrl', pdfurl: 'pdfUrl', 'pdf url': 'pdfUrl', lienpdf: 'pdfUrl',
       correction: 'correctionUrl', 'correction url': 'correctionUrl', correctionurl: 'correctionUrl', liencorrection: 'correctionUrl',
-      niveau: 'niveau', level: 'niveau'
+      niveau: 'niveau', level: 'niveau',
+      semestre: 'semestre', semester: 'semestre', s: 'semestre',
+      speciality: 'specialty', specialty: 'specialty', matiere: 'specialty', specialite: 'specialty', 'specialité': 'specialty'
     };
     const out: SessionRow[] = [];
     for (const row of json) {
@@ -93,6 +112,9 @@ export default function SessionsAdminPage() {
     if (!rows.length) return;
     setIsUploading(true);
     try {
+      let ok = 0;
+      let fail = 0;
+      const errors: string[] = [];
       for (const r of rows) {
         // Resolve niveauId by name (case-insensitive) if provided
         let niveauId: string | undefined;
@@ -100,13 +122,39 @@ export default function SessionsAdminPage() {
           const match = niveaux.find(n => n.name.toLowerCase() === r.niveau!.toLowerCase());
           if (match) niveauId = match.id;
         }
-        await fetch('/api/sessions', {
+        const res = await fetch('/api/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: r.name, pdfUrl: r.pdfUrl, correctionUrl: r.correctionUrl, niveauId })
+          body: JSON.stringify({
+            name: r.name,
+            pdfUrl: r.pdfUrl,
+            correctionUrl: r.correctionUrl,
+            niveauId,
+            semester: r.semestre,
+            specialtyName: r.specialty
+          })
         });
+        if (res.ok) {
+          ok++;
+        } else {
+          fail++;
+          let msg = '';
+          try {
+            // Try reading JSON from a cloned response to avoid consuming the original body
+            const j = await res.clone().json();
+            msg = j?.error || j?.message || JSON.stringify(j);
+          } catch {
+            try { msg = await res.text(); } catch { /* ignore */ }
+          }
+          errors.push(`${r.name}: ${msg || res.statusText}`);
+        }
       }
-  toast({ title: 'Import completed', description: `${rows.length} session(s) imported.` });
+      if (fail === 0) {
+        toast({ title: 'Import completed', description: `${ok}/${rows.length} session(s) imported.` });
+      } else {
+        toast({ title: 'Import completed with errors', description: `${ok} success, ${fail} failed`, variant: 'destructive' });
+        console.error('Session import errors:', errors);
+      }
     } finally {
       setIsUploading(false);
     }
@@ -114,14 +162,34 @@ export default function SessionsAdminPage() {
 
   const handleManualCreate = async () => {
     if (!manual.name) return;
-    await fetch('/api/sessions', {
+    const res = await fetch('/api/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: manual.name, pdfUrl: manual.pdfUrl, correctionUrl: manual.correctionUrl, niveauId: manualNiveauId || undefined })
+      body: JSON.stringify({
+        name: manual.name,
+        pdfUrl: manual.pdfUrl,
+        correctionUrl: manual.correctionUrl,
+        niveauId: manualNiveauId || undefined,
+        semester: manualSemester || undefined,
+        specialtyName: manualSpecialty || undefined
+      })
     });
-    setManual({ name: '' });
-    setManualNiveauId('');
-  toast({ title: 'Session created', description: manual.name });
+    if (res.ok) {
+      setManual({ name: '' });
+      setManualNiveauId('');
+      setManualSemester('');
+      setManualSpecialty('');
+      toast({ title: 'Session created', description: manual.name });
+    } else {
+      let msg = '';
+      try {
+        const j = await res.clone().json();
+        msg = j?.error || j?.message || JSON.stringify(j);
+      } catch {
+        try { msg = await res.text(); } catch { /* ignore */ }
+      }
+      toast({ title: 'Failed to create session', description: msg || `${res.status} ${res.statusText}`, variant: 'destructive' });
+    }
   };
 
   const handleFile = async (file: File) => {
@@ -143,7 +211,7 @@ export default function SessionsAdminPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Import Sessions (Exams)</CardTitle>
-                <CardDescription>Upload an Excel/CSV with 4 columns: name, pdfUrl, correctionUrl, niveau (optional)</CardDescription>
+                <CardDescription>Upload an Excel/CSV with columns: name, pdfUrl, correctionUrl, niveau (opt), semestre (opt), specialty (opt)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -203,6 +271,8 @@ export default function SessionsAdminPage() {
                           <TableHead>PDF URL</TableHead>
                           <TableHead>Correction URL</TableHead>
                           <TableHead>Niveau</TableHead>
+                          <TableHead>Semestre</TableHead>
+                          <TableHead>Specialty</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -212,6 +282,8 @@ export default function SessionsAdminPage() {
                             <TableCell className="truncate max-w-[280px]">{r.pdfUrl}</TableCell>
                             <TableCell className="truncate max-w-[280px]">{r.correctionUrl}</TableCell>
                             <TableCell>{r.niveau || '-'}</TableCell>
+                            <TableCell>{r.semestre || '-'}</TableCell>
+                            <TableCell>{r.specialty || '-'}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -264,6 +336,34 @@ export default function SessionsAdminPage() {
                           <SelectItem value="none">None</SelectItem>
                           {niveaux.map(n => (
                             <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Semestre (optional)</Label>
+                      <Select value={manualSemester || 'none'} onValueChange={(val) => setManualSemester(val === 'none' ? '' : val)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select semester" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {semesters.map(s => (
+                            <SelectItem key={s.id} value={String(s.order)}>S{s.order}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Specialty (optional)</Label>
+                      <Select value={manualSpecialty || 'none'} onValueChange={(val) => setManualSpecialty(val === 'none' ? '' : val)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select specialty" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {specialties.map(s => (
+                            <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>

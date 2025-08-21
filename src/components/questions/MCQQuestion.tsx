@@ -64,6 +64,7 @@ export function MCQQuestion({
   const { user } = useAuth();
   const { trackQuestionProgress } = useProgress();
   const isAdmin = user?.role === 'admin';
+  const isMaintainer = user?.role === 'maintainer';
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
   // Local override for hidden to ensure instant UI toggle regardless of parent update timing
   const [localHidden, setLocalHidden] = useState<boolean | undefined>(undefined);
@@ -489,7 +490,7 @@ export function MCQQuestion({
               <span className="hidden sm:inline">Signaler</span>
             </Button>
           </div>
-          {isAdmin && (
+          {(isAdmin || isMaintainer) && (
             <div className="flex gap-2 items-center mt-1">
               <Button 
                 variant="outline" 
@@ -546,24 +547,26 @@ export function MCQQuestion({
               >
                 {(localHidden ?? !!question.hidden) ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  if (!confirm('Delete this question?')) return;
-                  try {
-                    const res = await fetch(`/api/questions/${question.id}`, { method: 'DELETE', credentials: 'include' });
-                    if (!res.ok) throw new Error('Failed');
-                    window.location.reload(); // Still need reload for delete as it affects the list
-                  } catch (e) {
-                    toast({ title: 'Error', description: 'Failed to delete question', variant: 'destructive' });
-                  }
-                }}
-                className="flex items-center gap-1 text-destructive"
-                title="Delete"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (!confirm('Delete this question?')) return;
+                    try {
+                      const res = await fetch(`/api/questions/${question.id}`, { method: 'DELETE', credentials: 'include' });
+                      if (!res.ok) throw new Error('Failed');
+                      window.location.reload(); // Still need reload for delete as it affects the list
+                    } catch (e) {
+                      toast({ title: 'Error', description: 'Failed to delete question', variant: 'destructive' });
+                    }
+                  }}
+                  className="flex items-center gap-1 text-destructive"
+                  title="Delete"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
           )}
         </div>

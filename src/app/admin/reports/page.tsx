@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { AdminRoute } from '@/components/auth/AdminRoute'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { AdminRoute } from '@/components/auth/AdminRoute'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,6 +37,7 @@ interface Report {
   id: string
   message: string
   status: 'pending' | 'resolved' | 'dismissed'
+  reportType: 'mal_placee' | 'erreur_syntaxe' | 'autre'
   createdAt: string
   user: {
     id: string
@@ -95,12 +96,18 @@ export default function AdminReportsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
 
   // Define callbacks before effects
   const fetchReports = useCallback(async () => {
     try {
       setIsLoading(true)
-      const url = lectureId ? `/api/reports?lectureId=${lectureId}` : '/api/reports'
+  const params = new URLSearchParams()
+  if (lectureId) params.set('lectureId', lectureId)
+  if (statusFilter !== 'all') params.set('status', statusFilter)
+  if (typeFilter !== 'all') params.set('type', typeFilter)
+  const qs = params.toString()
+  const url = qs ? `/api/reports?${qs}` : '/api/reports'
       const response = await fetch(url)
       
       if (response.ok) {
@@ -119,7 +126,7 @@ export default function AdminReportsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [lectureId])
+  }, [lectureId, statusFilter, typeFilter])
 
   const filterReports = useCallback(() => {
     let filtered = reports
@@ -139,9 +146,12 @@ export default function AdminReportsPage() {
     if (statusFilter !== 'all') {
       filtered = filtered.filter(report => report.status === statusFilter)
     }
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(report => report.reportType === typeFilter)
+    }
 
     setFilteredReports(filtered)
-  }, [reports, searchQuery, statusFilter])
+  }, [reports, searchQuery, statusFilter, typeFilter])
 
   // Effects that use the callbacks
   useEffect(() => {
@@ -188,20 +198,7 @@ export default function AdminReportsPage() {
     }
   }
 
-  if (!isAdmin) {
-    return (
-      <ProtectedRoute requireAdmin>
-        <AdminRoute>
-          <AdminLayout>
-            <div className="p-8 text-center">
-              <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
-              <p className="text-gray-600 mt-2">You don&apos;t have permission to access this page.</p>
-            </div>
-          </AdminLayout>
-        </AdminRoute>
-      </ProtectedRoute>
-    )
-  }
+  // Maintainers can access; UI remains the same
 
   return (
     <ProtectedRoute requireAdmin>
@@ -255,6 +252,19 @@ export default function AdminReportsPage() {
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="resolved">Resolved</SelectItem>
               <SelectItem value="dismissed">Dismissed</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-60">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Filtrer par type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les types</SelectItem>
+              <SelectItem value="mal_placee">Question mal placée</SelectItem>
+              <SelectItem value="erreur_syntaxe">Erreur de syntaxe</SelectItem>
+              <SelectItem value="autre">Autre</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -383,9 +393,14 @@ export default function AdminReportsPage() {
                           <div className="flex items-start gap-2">
                             <MessageSquare className="w-4 h-4 text-gray-500 mt-0.5" />
                             <div>
-                              <p className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                                Report Message:
-                              </p>
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="font-medium text-gray-900 dark:text-gray-100">
+                                  Message du rapport
+                                </p>
+                                <Badge variant="secondary">
+                                  {report.reportType === 'mal_placee' ? 'Question mal placée' : report.reportType === 'erreur_syntaxe' ? 'Erreur de syntaxe' : 'Autre'}
+                                </Badge>
+                              </div>
                               <p className="text-gray-700 dark:text-gray-300">
                                 {report.message}
                               </p>

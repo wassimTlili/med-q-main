@@ -280,7 +280,7 @@ export default function LecturePageRoute() {
                   <span className="hidden sm:inline">Back to Specialty</span>
                 </Button>
                 <div className="flex items-center gap-2 flex-wrap justify-end">
-                  {user?.role === 'admin' && (
+                  {(user?.role === 'admin' || user?.role === 'maintainer') && (
                     <>
                       <Button
                         variant="outline"
@@ -291,15 +291,17 @@ export default function LecturePageRoute() {
                         <PlusCircle className="h-4 w-4 mr-2" />
                         <span className="hidden sm:inline">creer</span>
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => { setOpenOrganizer(true); setOpenQuestionsDialog(true); }}
-                        className="whitespace-nowrap"
-                      >
-                        <ListOrdered className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">Organiser</span>
-                      </Button>
+                      {user?.role === 'admin' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { setOpenOrganizer(true); setOpenQuestionsDialog(true); }}
+                          className="whitespace-nowrap"
+                        >
+                          <ListOrdered className="h-4 w-4 mr-2" />
+                          <span className="hidden sm:inline">Organiser</span>
+                        </Button>
+                      )}
                     </>
                   )}
                   <LectureTimer lectureId={lectureId} />
@@ -343,13 +345,13 @@ export default function LecturePageRoute() {
           </div>
         </div>
       </div>
-      {/* Admin-only Questions Management Dialog with auto-create */}
-      {user?.role === 'admin' && lecture && (
+    {/* Admin and Maintainer: Maintainers can create/edit, but not organizer */}
+    {(user?.role === 'admin' || user?.role === 'maintainer') && lecture && (
         <QuestionManagementDialog
           lecture={lecture}
           isOpen={openQuestionsDialog}
-          onOpenChange={(o)=>{ setOpenQuestionsDialog(o); if(!o) setOpenOrganizer(false); }}
-          initialOrganizerOpen={openOrganizer}
+      onOpenChange={(o)=>{ setOpenQuestionsDialog(o); if(!o) setOpenOrganizer(false); }}
+      initialOrganizerOpen={user?.role === 'admin' ? openOrganizer : false}
           initialCreateOpen
         />
       )}

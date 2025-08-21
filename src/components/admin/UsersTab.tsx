@@ -24,7 +24,7 @@ interface User {
   id: string;
   email: string;
   name?: string;
-  role: 'student' | 'admin';
+  role: 'student' | 'maintainer' | 'admin';
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -105,7 +105,7 @@ export function UsersTab() {
     fetchUsers(page, search, roleFilter);
   };
 
-  const handleRoleChange = async (userId: string, newRole: 'student' | 'admin') => {
+  const handleRoleChange = async (userId: string, newRole: 'student' | 'maintainer' | 'admin') => {
     try {
       const response = await fetch('/api/admin/users', {
         method: 'PUT',
@@ -127,7 +127,7 @@ export function UsersTab() {
 
       toast({
         title: t('admin.roleUpdated'),
-        description: t('admin.roleUpdatedSuccess', { email: updatedUser.email, role: newRole }),
+  description: t('admin.roleUpdatedSuccess', { email: updatedUser.email, role: newRole }),
       });
     } catch (error: unknown) {
       console.error('Error updating user role:', error);
@@ -209,6 +209,7 @@ export function UsersTab() {
               <SelectContent>
                 <SelectItem value="all">{t('admin.allRoles')}</SelectItem>
                 <SelectItem value="student">{t('admin.students')}</SelectItem>
+                <SelectItem value="maintainer">{t('admin.maintainers', { defaultValue: 'Maintainers' })}</SelectItem>
                 <SelectItem value="admin">{t('admin.admins')}</SelectItem>
               </SelectContent>
             </Select>
@@ -274,7 +275,7 @@ export function UsersTab() {
                     <div className="flex justify-end">
                       <Select
                         value={user.role}
-                        onValueChange={(value: 'student' | 'admin') => handleRoleChange(user.id, value)}
+                        onValueChange={(value: 'student' | 'maintainer' | 'admin') => handleRoleChange(user.id, value)}
                       >
                         <SelectTrigger className="w-40 rounded-xl bg-background/50">
                           <SelectValue />
@@ -284,6 +285,12 @@ export function UsersTab() {
                             <div className="flex items-center gap-2">
                               <User className="h-4 w-4" />
                               {t('admin.student')}
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="maintainer">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              {t('admin.maintainer', { defaultValue: 'Maintainer' })}
                             </div>
                           </SelectItem>
                           <SelectItem value="admin">
@@ -358,7 +365,7 @@ export function UsersTab() {
                       <TableCell className="text-right">
                         <Select
                           value={user.role}
-                          onValueChange={(value: 'student' | 'admin') => handleRoleChange(user.id, value)}
+                          onValueChange={(value: 'student' | 'maintainer' | 'admin') => handleRoleChange(user.id, value)}
                         >
                           <SelectTrigger className="w-28 sm:w-32 rounded-xl bg-background/50">
                             <SelectValue />
@@ -368,6 +375,12 @@ export function UsersTab() {
                               <div className="flex items-center gap-2">
                                 <User className="h-4 w-4" />
                                 {t('admin.student')}
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="maintainer">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                {t('admin.maintainer', { defaultValue: 'Maintainer' })}
                               </div>
                             </SelectItem>
                             <SelectItem value="admin">

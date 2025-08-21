@@ -56,46 +56,27 @@ export function AdminSidebar() {
     href: '/dashboard',
     description: 'Go to student dashboard'
   };
+  
+  const isAdmin = user?.role === 'admin';
+  const isMaintainer = user?.role === 'maintainer';
 
   const adminMenuItems = [
-    { 
-      label: t('admin.dashboard'), 
-      icon: LayoutDashboard, 
-      href: '/admin',
-      description: t('admin.manageContent')
-    },
-    { 
-      label: t('admin.management') || 'Management', 
-      icon: BookOpen, 
-      href: '/admin/management',
-      description: 'Manage specialties, courses, and questions'
-    },
-    {
-      label: 'Sessions',
-      icon: FileText,
-      href: '/admin/sessions',
-      description: 'Manage/import sessions'
-    },
-    { 
-      label: t('admin.users'), 
-      icon: Users, 
-      href: '/admin/users',
-      description: 'Manage users'
-    },
-    { 
-      label: t('admin.importQuestions'), 
-      icon: Upload, 
-      href: '/admin/import',
-      description: 'Import QROC questions'
-    },
-    { 
-      label: t('admin.reports'), 
-      icon: AlertTriangle, 
-      href: '/admin/reports',
-      description: 'View reports'
-    },
+    { label: t('admin.dashboard'), icon: LayoutDashboard, href: '/admin', description: t('admin.manageContent') },
+    { label: t('admin.management') || 'Management', icon: BookOpen, href: '/admin/management', description: 'Manage specialties, courses, and questions' },
+    { label: 'Sessions', icon: FileText, href: '/admin/sessions', description: 'Manage/import sessions' },
+    { label: t('admin.users'), icon: Users, href: '/admin/users', description: 'Manage users' },
+    { label: t('admin.importQuestions'), icon: Upload, href: '/admin/import', description: 'Import QROC questions' },
+    { label: t('admin.reports'), icon: AlertTriangle, href: '/admin/reports', description: 'View reports' },
     studentPanelItem
   ];
+
+  const maintainerMenuItems = [
+    { label: 'Sessions', icon: FileText, href: '/maintainer/sessions', description: 'Créer des sessions' },
+    { label: t('admin.reports'), icon: AlertTriangle, href: '/maintainer/reports', description: 'Rapports par niveau' },
+    studentPanelItem
+  ];
+
+  const menuItems = isAdmin ? adminMenuItems : isMaintainer ? maintainerMenuItems : [studentPanelItem];
 
   const handleSignOut = async () => {
     try {
@@ -165,11 +146,9 @@ export function AdminSidebar() {
             <SidebarGroup className="mt-3 sm:mt-4">
               <SidebarGroupContent>
                 <SidebarMenu className={`space-y-2 ${state === 'expanded' ? 'px-2 sm:px-3' : 'px-0'}`}>
-                  {adminMenuItems.slice(0, -1).map((item) => {
+                  {menuItems.slice(0, -1).map((item) => {
                     // Check if current page matches the item
-                    const isActive = pathname === item.href || 
-                                   (item.href === '/admin/management' && pathname.startsWith('/admin/management')) ||
-                                   (item.href === '/admin' && pathname === '/admin');
+                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                     
                     return (
                       <SidebarMenuItem key={item.href}>
@@ -206,7 +185,7 @@ export function AdminSidebar() {
                   
                   {/* Student Panel - Last item */}
                   {(() => {
-                    const item = adminMenuItems[adminMenuItems.length - 1];
+                    const item = menuItems[menuItems.length - 1];
                     const isStudentPanel = item.href === '/dashboard' && pathname.startsWith('/dashboard');
                     return (
                       <SidebarMenuItem key={item.href}>

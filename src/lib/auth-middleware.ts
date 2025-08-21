@@ -107,6 +107,31 @@ export function requireAdmin<T extends any[]>(
   };
 }
 
+export function requireMaintainerOrAdmin<T extends any[]>(
+  handler: (req: AuthenticatedRequest, ...args: T) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, ...args: T) => {
+    const authenticatedRequest = await authenticateRequest(request);
+
+    if (!authenticatedRequest) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const role = authenticatedRequest.user?.role;
+    if (role !== 'admin' && role !== 'maintainer') {
+      return NextResponse.json(
+        { error: 'Forbidden - Maintainer or Admin required' },
+        { status: 403 }
+      );
+    }
+
+    return handler(authenticatedRequest, ...args);
+  };
+}
+
 export async function verifyAuth(request: NextRequest): Promise<{ success: boolean; userId?: string; error?: string }> {
   try {
     // Get token from cookie or Authorization header

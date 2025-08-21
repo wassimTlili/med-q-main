@@ -47,17 +47,32 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
     
     const mcqQuestions: Question[] = [];
     const qrocQuestions: Question[] = [];
-    const clinicalCaseMap = new Map<number, Question[]>();
+  const clinicalCaseMap = new Map<number, Question[]>();
+  const textCaseMap = new Map<string, number>(); // map caseText -> synthetic caseNumber
+  let nextSyntheticCase = 100000; // large range to avoid collisions with real numbers
 
     // Separate questions by type
     questions.forEach(question => {
-      if (question.caseNumber && (question.type === 'clinic_mcq' || question.type === 'clinic_croq')) {
-        // Clinical case questions
-        if (!clinicalCaseMap.has(question.caseNumber)) {
-          clinicalCaseMap.set(question.caseNumber, []);
+      if ((question.type === 'clinic_mcq' || question.type === 'clinic_croq')) {
+        // Prefer explicit caseNumber; else group by identical caseText
+        let keyNum: number | undefined = question.caseNumber || undefined;
+        if (!keyNum) {
+          const text = (question.caseText || '').trim();
+          if (text) {
+            if (!textCaseMap.has(text)) {
+              textCaseMap.set(text, nextSyntheticCase++);
+            }
+            keyNum = textCaseMap.get(text)!;
+          }
         }
-        clinicalCaseMap.get(question.caseNumber)!.push(question);
-      } else if (question.type === 'mcq') {
+        if (keyNum) {
+          if (!clinicalCaseMap.has(keyNum)) clinicalCaseMap.set(keyNum, []);
+          clinicalCaseMap.get(keyNum)!.push(question);
+          return;
+        }
+        // If still no key (no number and no text), fall back to type bucket below
+      }
+      if (question.type === 'mcq') {
         mcqQuestions.push(question);
       } else {
         // Put ALL other question types (qroc, open, etc.) into qrocQuestions
@@ -71,7 +86,7 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
 
     // Convert clinical case groups to ClinicalCase objects and sort by case number
     const clinicalCases: ClinicalCase[] = [];
-    Array.from(clinicalCaseMap.entries())
+  Array.from(clinicalCaseMap.entries())
       .sort(([a], [b]) => a - b) // Sort by case number
       .forEach(([caseNumber, caseQuestions]) => {
         // Sort questions within each case by caseQuestionNumber
@@ -81,7 +96,7 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
         
         const clinicalCase: ClinicalCase = {
           caseNumber,
-          caseText: sortedQuestions[0]?.caseText || '',
+      caseText: (sortedQuestions[0]?.caseText || '').trim(),
           questions: sortedQuestions,
           totalQuestions: sortedQuestions.length
         };

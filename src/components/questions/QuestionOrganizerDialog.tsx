@@ -41,6 +41,7 @@ export function QuestionOrganizerDialog({ lecture, isOpen, onOpenChange, onSaved
   const dragItem = useRef<DnDItem | null>(null);
   const overId = useRef<string | null>(null);
   const overType = useRef<QType | null>(null);
+  const overAfter = useRef<boolean>(false); // whether pointer is in bottom half of hovered item
 
   useEffect(() => {
     if (!isOpen) return;
@@ -53,13 +54,19 @@ export function QuestionOrganizerDialog({ lecture, isOpen, onOpenChange, onSaved
       const res = await fetch(`/api/questions?lectureId=${lecture.id}`);
       if (!res.ok) throw new Error('Failed to load questions');
       const data: Question[] = await res.json();
+      // Normalize and sort each column by number to get deterministic order
+      const sortByNumber = (a: Question, b: Question) => {
+        const an = a.number ?? Number.MAX_SAFE_INTEGER;
+        const bn = b.number ?? Number.MAX_SAFE_INTEGER;
+        if (an !== bn) return an - bn;
+        return a.id.localeCompare(b.id);
+      };
+      const mcq = data.filter(q => q.type === 'mcq').sort(sortByNumber).map((q, i) => ({ ...q, number: q.number ?? i + 1 }));
+      const qroc = data.filter(q => q.type === 'qroc').sort(sortByNumber).map((q, i) => ({ ...q, number: q.number ?? i + 1 }));
+      const clinic_mcq = data.filter(q => q.type === 'clinic_mcq').sort(sortByNumber).map((q, i) => ({ ...q, number: q.number ?? i + 1 }));
+      const clinic_croq = data.filter(q => q.type === 'clinic_croq').sort(sortByNumber).map((q, i) => ({ ...q, number: q.number ?? i + 1 }));
       setQuestions(data);
-      setColumns({
-        mcq: data.filter(q => q.type === 'mcq'),
-        qroc: data.filter(q => q.type === 'qroc'),
-        clinic_mcq: data.filter(q => q.type === 'clinic_mcq'),
-        clinic_croq: data.filter(q => q.type === 'clinic_croq'),
-      });
+      setColumns({ mcq, qroc, clinic_mcq, clinic_croq });
   setDirty(false);
     } catch (e) {
       console.error(e);
@@ -102,14 +109,33 @@ export function QuestionOrganizerDialog({ lecture, isOpen, onOpenChange, onSaved
 
   const onDragOverColumn = (type: QType) => (e: React.DragEvent) => {
     e.preventDefault();
+    // Mark the active column but do NOT clear last hovered item.
+    // Clearing it forces drops to append at end; we want to keep last precise target.
     overType.current = type;
-    overId.current = null; // dropping to end by default when over column area
+    // If the column is empty, ensure we drop at end (which is also start)
+    try {
+      // columns from closure is safe here
+      const hasItems = (columns[type] || []).length > 0;
+      if (!hasItems) overId.current = null;
+    } catch {}
   };
 
   const onDragOverItem = (type: QType, id: string) => (e: React.DragEvent) => {
     e.preventDefault();
     overType.current = type;
-    overId.current = id; // insert before this item
+    overId.current = id; // target this item
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    overAfter.current = e.clientY > midpoint; // true => drop after this item
+  };
+
+  // Stabilize target on drag enter as well (helps when dragover fires on container afterwards)
+  const onDragEnterItem = (type: QType, id: string) => (e: React.DragEvent) => {
+    overType.current = type;
+    overId.current = id;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    overAfter.current = e.clientY > midpoint;
   };
 
   const onDrop = () => {
@@ -141,12 +167,11 @@ export function QuestionOrganizerDialog({ lecture, isOpen, onOpenChange, onSaved
       moving.type = targetType;
 
   const col = next[targetType];
-  let insertAt = targetId ? col.findIndex(q => q.id === targetId) : -1;
-  if (insertAt < 0 || insertAt > col.length) {
-        col.push(moving);
-      } else {
-        col.splice(insertAt, 0, moving);
-      }
+  let insertAt = targetId ? col.findIndex(q => q.id === targetId) : col.length; // default end if no target
+  if (insertAt < 0) insertAt = col.length;
+  // If pointer is in bottom half, insert after the target
+  if (targetId && overAfter.current) insertAt = Math.min(insertAt + 1, col.length);
+  col.splice(insertAt, 0, moving);
       // re-number within each column (1..n) visually
       (Object.keys(next) as QType[]).forEach(t => {
         next[t] = next[t].map((q, i) => ({ ...q, number: i + 1 }));
@@ -158,6 +183,7 @@ export function QuestionOrganizerDialog({ lecture, isOpen, onOpenChange, onSaved
     dragItem.current = null;
     overType.current = null;
   overId.current = null;
+  overAfter.current = false;
   setDirty(true);
   };
 
@@ -285,6 +311,7 @@ export function QuestionOrganizerDialog({ lecture, isOpen, onOpenChange, onSaved
                 draggable
                 onDragStart={onDragStart(q)}
                 onDragOver={onDragOverItem(type, q.id)}
+                onDragEnter={onDragEnterItem(type, q.id)}
                 onDrop={onDrop}
               >
                 <GripVertical className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />

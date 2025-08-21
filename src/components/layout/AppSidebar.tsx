@@ -19,7 +19,7 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, UserCircle, Settings, Users, LogOut, BookOpen, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, UserCircle, Settings, Users, LogOut, BookOpen, Moon, Sun, FileText, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
@@ -43,6 +43,13 @@ export function AppSidebar() {
   ];
 
   const adminItem = isAdmin ? { label: t('sidebar.admin'), icon: Users, href: '/admin' } : null;
+  const isMaintainer = user?.role === 'maintainer';
+  const maintainerItems = isMaintainer
+    ? [
+        { label: 'Sessions', icon: FileText, href: '/maintainer/sessions' },
+        { label: t('admin.reports'), icon: AlertTriangle, href: '/maintainer/reports' },
+      ]
+    : [];
 
   const handleSignOut = async () => {
     try {
@@ -121,6 +128,44 @@ export function AppSidebar() {
                     );
                   })}
                   
+                  {/* Maintainer quick links into Admin space */}
+                  {isMaintainer && (
+                    <>
+                      <div className={`${state === 'expanded' ? 'mx-3' : 'mx-2'} my-4`}>
+                        <div className="h-px bg-border"></div>
+                      </div>
+                      {maintainerItems.map((item) => {
+                        const isActive = pathname === item.href || pathname.startsWith(item.href);
+                        return (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton 
+                              asChild 
+                              tooltip={item.label}
+                              className={
+                                `group transition-all duration-200 font-medium rounded-xl ${
+                                  state === 'expanded' 
+                                    ? 'px-4 py-3 min-h-[44px] flex items-center' 
+                                    : 'p-0 min-h-[44px] w-full flex items-center justify-center'
+                                } ${
+                                  isActive
+                                    ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-500/25'
+                                    : 'hover:bg-muted/80 text-foreground hover:text-indigo-600'
+                                }`
+                              }
+                            >
+                              <Link href={item.href} className={`${state === 'expanded' ? 'flex items-center gap-3 w-full' : 'flex items-center justify-center w-full h-full'}`}>
+                                <item.icon className={`${iconSize} ${isActive ? 'text-white' : 'text-indigo-500 group-hover:text-indigo-600'} transition-all flex-shrink-0`} />
+                                <span className={`${state === 'expanded' ? 'block' : 'sr-only'} font-medium`}>
+                                  {item.label}
+                                </span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </>
+                  )}
+
                   {/* Separator for admin item */}
                   {adminItem && (
                     <>

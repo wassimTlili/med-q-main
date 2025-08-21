@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { BookOpen, ChevronRight } from 'lucide-react';
-import { Pencil, Pin, PinOff, Eye, EyeOff, Flag } from 'lucide-react';
+import { Pencil, Pin, PinOff, Eye, EyeOff, Flag, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useProgress } from '@/hooks/use-progress';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,6 +70,7 @@ export function OpenQuestion({
 
   // Check if user is admin
   const isAdmin = user?.role === 'admin';
+  const isMaintainer = user?.role === 'maintainer';
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
   // Local override for hidden to ensure instant UI toggle regardless of parent update timing
   const [localHidden, setLocalHidden] = useState<boolean | undefined>(undefined);
@@ -371,17 +372,44 @@ export function OpenQuestion({
     hasSubmittedRef.current = false; // Reset the ref too!
   };
 
-  // Add keyboard shortcut for submitting answer
+  // Keyboard shortcuts: Enter to submit (or next), 1/2/3 to rate during self-assessment
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === '1') {
-        // Only trigger if not already submitted and there&apos;s text in the answer
-        if (!submitted && answer.trim()) {
-          handleSubmit();
-        } else if (submitted && assessmentCompleted) {
-          // If already submitted and assessment completed, move to next question
-          onNext();
+      const target = event.target as HTMLElement | null;
+      const isTyping = !!target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        (target as HTMLElement).isContentEditable === true
+      );
+
+      // When self-assessment is visible, map 1/2/3 to correct/partial/wrong
+      if (showSelfAssessment && (!hideImmediateResults || showDeferredSelfAssessment)) {
+        if (['1', '2', '3'].includes(event.key)) {
+          event.preventDefault();
+          const map: Record<string, 'correct' | 'partial' | 'wrong'> = {
+            '1': 'correct',
+            '2': 'partial',
+            '3': 'wrong',
+          };
+          handleSelfAssessment(map[event.key]);
         }
+        return; // don’t fall through to Enter handling while assessing
+      }
+
+      // Submit with Enter (only when not typing in inputs, textarea handles its own Enter)
+      if (!submitted && !isTyping && event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        if (answer.trim()) {
+          handleSubmit();
+        }
+        return;
+      }
+
+      // Next question with Enter after assessment is complete
+      if (submitted && assessmentCompleted && !isTyping && event.key === 'Enter') {
+        event.preventDefault();
+        onNext();
+        return;
       }
     };
 
@@ -389,7 +417,7 @@ export function OpenQuestion({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [submitted, answer, assessmentCompleted, onNext]);
+  }, [showSelfAssessment, hideImmediateResults, showDeferredSelfAssessment, submitted, assessmentCompleted, answer]);
 
   return (
     <motion.div
@@ -429,55 +457,77 @@ export function OpenQuestion({
             );
           })()}
         </div>
-        
-  <div className="flex gap-2 flex-shrink-0">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={isPinned ? handleUnpinQuestion : handlePinQuestion}
-            className="flex items-center gap-1"
-          >
-            {isPinned ? (
-              <PinOff className="h-3.5 w-3.5" />
-            ) : (
-              <Pin className="h-3.5 w-3.5" />
-            )}
-            <span className="hidden sm:inline">{isPinned ? 'Unpin' : 'Pin'}</span>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setIsEditDialogOpen(true)}
-            className="flex items-center gap-1"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t('common.edit')}</span>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => setIsReportDialogOpen(true)}
-            className="flex items-center gap-1"
-            title="Signaler"
-          >
-            <Flag className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Signaler</span>
-          </Button>
-          
-          {/* Admin Controls */}
-          {isAdmin && (
-            <Button
-              variant="outline"
+
+        <div className="flex flex-col gap-1 flex-shrink-0 items-end">
+          <div className="flex gap-2 items-center">
+            <Button 
+              variant="outline" 
               size="sm"
-              onClick={handleToggleVisibility}
-              disabled={isTogglingVisibility}
+              onClick={isPinned ? handleUnpinQuestion : handlePinQuestion}
               className="flex items-center gap-1"
-              title={(localHidden ?? !!question.hidden) ? 'Unhide question' : 'Hide question'}
             >
-              {(localHidden ?? !!question.hidden) ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              {isPinned ? (
+                <PinOff className="h-3.5 w-3.5" />
+              ) : (
+                <Pin className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">{isPinned ? 'Unpin' : 'Pin'}</span>
             </Button>
+
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setIsReportDialogOpen(true)}
+              className="flex items-center gap-1"
+              title="Signaler"
+            >
+              <Flag className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Signaler</span>
+            </Button>
+          </div>
+
+          {(isAdmin || isMaintainer) && (
+            <div className="flex gap-2 items-center mt-1">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsEditDialogOpen(true)}
+                className="flex items-center gap-1"
+                title="Edit"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleToggleVisibility}
+                disabled={isTogglingVisibility}
+                className="flex items-center gap-1"
+                title={(localHidden ?? !!question.hidden) ? 'Unhide question' : 'Hide question'}
+              >
+                {(localHidden ?? !!question.hidden) ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (!confirm('Delete this question?')) return;
+                    try {
+                      const res = await fetch(`/api/questions/${question.id}`, { method: 'DELETE', credentials: 'include' });
+                      if (!res.ok) throw new Error('Failed');
+                      window.location.reload();
+                    } catch (e) {
+                      toast({ title: 'Error', description: 'Failed to delete question', variant: 'destructive' });
+                    }
+                  }}
+                  className="flex items-center gap-1 text-destructive"
+                  title="Delete"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -488,6 +538,7 @@ export function OpenQuestion({
         answer={answer}
         setAnswer={setAnswer}
         isSubmitted={submitted}
+        onSubmit={handleSubmit}
       />
 
   {/* Rappel du cours (après soumission) */}

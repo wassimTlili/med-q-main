@@ -13,6 +13,13 @@ enum Role {
   admin
 }
 
+// Type of user-submitted report (French slugs)
+enum ReportType {
+  mal_placee      // Question mal placée
+  erreur_syntaxe  // Erreur de syntaxe
+  autre           // Autre
+}
+
 model User {
   id                    String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email                 String         @unique(map: "profiles_email_idx")
@@ -65,6 +72,7 @@ model Specialty {
   semester    Semester? @relation(fields: [semesterId], references: [id])
   courseGroups CourseGroup[]
   pinnedSpecialties PinnedSpecialty[]
+  sessions    Session[]
 
   // Separate media for the course reminder section
   courseReminderMediaUrl  String? @map("course_reminder_media_url")
@@ -265,6 +273,8 @@ model Report {
   message    String
   userId     String?  @map("user_id") @db.Uuid
   status     String   @default("pending")
+  // New field: report type (mapped to DB column "type")
+  reportType ReportType @default(autre) @map("type")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   lecture    Lecture  @relation(fields: [lectureId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   question   Question @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -306,11 +316,13 @@ model Session {
   name           String
   niveauId       String?  @map("niveau_id") @db.Uuid
   semesterId     String?  @map("semester_id") @db.Uuid
+  specialtyId    String?  @map("specialty_id") @db.Uuid
   pdfUrl         String?  @map("pdf_url")
   correctionUrl  String?  @map("correction_url")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   niveau         Niveau?  @relation(fields: [niveauId], references: [id])
   semester       Semester? @relation(fields: [semesterId], references: [id])
+  specialty      Specialty? @relation(fields: [specialtyId], references: [id])
 
   @@map("sessions")
 }

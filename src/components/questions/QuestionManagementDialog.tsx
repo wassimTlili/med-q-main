@@ -10,7 +10,8 @@ import { Question, Lecture } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { CreateQuestionDialog } from './CreateQuestionDialog';
 import { QuestionOrganizerDialog } from './QuestionOrganizerDialog';
-import { EditQuestionDialog } from './EditQuestionDialog';
+import { QuestionEditDialog } from './QuestionEditDialog';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,9 @@ interface QuestionManagementDialogProps {
 }
 
 export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initialCreateOpen = false, initialOrganizerOpen = false }: QuestionManagementDialogProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const isMaintainer = user?.role === 'maintainer';
   const [questions, setQuestions] = useState<Question[]>([]);
   const [filteredQuestions, setFilteredQuestions] = useState<Question[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,20 +45,36 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
   const [isOrganizerOpen, setIsOrganizerOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [shouldOpenCreate, setShouldOpenCreate] = useState(false);
+  // Track how the dialog was opened to avoid unwanted cascades
+  const [openContext, setOpenContext] = useState<'normal' | 'standaloneCreate' | 'standaloneOrganizer'>('normal');
+  // Ensure initial flags are consumed once per parent open
+  const [consumedInitialCreate, setConsumedInitialCreate] = useState(false);
+  const [consumedInitialOrganizer, setConsumedInitialOrganizer] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchQuestions();
       setSearchQuery('');
-      if (initialCreateOpen || shouldOpenCreate) {
+      // Open create in standalone mode when requested from outside
+      if ((initialCreateOpen && !consumedInitialCreate) || shouldOpenCreate) {
         setIsCreateDialogOpen(true);
+        setOpenContext('standaloneCreate');
         setShouldOpenCreate(false);
+        setConsumedInitialCreate(true);
       }
-      if (initialOrganizerOpen) {
+      // Open organizer in standalone mode when requested from outside
+      if (initialOrganizerOpen && !consumedInitialOrganizer) {
         setIsOrganizerOpen(true);
+        setOpenContext('standaloneOrganizer');
+        setConsumedInitialOrganizer(true);
       }
+    } else {
+      // Reset consumption flags when parent fully closes
+      setConsumedInitialCreate(false);
+      setConsumedInitialOrganizer(false);
+      setOpenContext('normal');
     }
-  }, [isOpen, lecture.id, initialCreateOpen, initialOrganizerOpen]);
+  }, [isOpen, lecture.id, initialCreateOpen, initialOrganizerOpen, consumedInitialCreate, consumedInitialOrganizer, shouldOpenCreate]);
 
   // Listen to global event from LectureItem's quick-create button
   useEffect(() => {
@@ -138,6 +158,11 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
     fetchQuestions();
     setIsCreateDialogOpen(false);
     setSearchQuery(''); // Clear search when new question is added
+    // If opened as standalone create, close parent after create flow ends
+    if (openContext === 'standaloneCreate') {
+      onOpenChange(false);
+      setOpenContext('normal');
+    }
   };
 
   const handleQuestionUpdated = () => {
@@ -202,20 +227,28 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
             
             {/* Add Question Button */}
             <Button
-              onClick={() => setIsCreateDialogOpen(true)}
+              onClick={() => {
+                setOpenContext('normal');
+                setIsCreateDialogOpen(true);
+              }}
               className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               Créer une question
             </Button>
             {/* Organizer */}
-            <Button
-              variant="outline"
-              onClick={() => setIsOrganizerOpen(true)}
-              className="border-blue-200 dark:border-blue-800"
-            >
-              Organiser
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setOpenContext('normal');
+                  setIsOrganizerOpen(true);
+                }}
+                className="border-blue-200 dark:border-blue-800"
+              >
+                Organiser
+              </Button>
+            )}
           </div>
         </div>
 
@@ -257,7 +290,11 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
               // Calculate the original index from the full questions array
               const originalIndex = questions.findIndex(q => q.id === question.id);
               return (
-              <Card key={question.id}>
+              <Card 
+                key={question.id}
+                className="transition hover:ring-1 hover:ring-blue-200 dark:hover:ring-blue-800 cursor-pointer"
+                onClick={() => handleEditQuestion(question)}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -289,7 +326,7 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
                         )}
                       </CardDescription>
                     </div>
-                    <div className="flex space-x-1 ml-4 flex-shrink-0">
+                    <div className="flex space-x-1 ml-4 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -299,34 +336,36 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
                         <Edit className="h-3 w-3" />
                       </Button>
                       
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
-                          >
-                            <Trash className="h-3 w-3" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Supprimer la question</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Êtes-vous sûr de vouloir supprimer cette question ? Cette action est définitive.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annuler</AlertDialogCancel>
-                            <AlertDialogAction 
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={() => handleDeleteQuestion(question.id)}
+                      {isAdmin && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
                             >
-                              Supprimer
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash className="h-3 w-3" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Supprimer la question</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Êtes-vous sûr de vouloir supprimer cette question ? Cette action est définitive.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction 
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={() => handleDeleteQuestion(question.id)}
+                              >
+                                Supprimer
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -392,19 +431,24 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
         <CreateQuestionDialog
           lecture={lecture}
           isOpen={isCreateDialogOpen}
-          onOpenChange={setIsCreateDialogOpen}
+          onOpenChange={(open) => {
+            setIsCreateDialogOpen(open);
+            if (!open && openContext === 'standaloneCreate') {
+              // Close parent dialog if create was opened standalone
+              onOpenChange(false);
+              setOpenContext('normal');
+            }
+          }}
           onQuestionCreated={handleQuestionCreated}
         />
 
-        {/* Edit Question Dialog */}
-        {selectedQuestion && (
-          <EditQuestionDialog
-            question={selectedQuestion}
-            isOpen={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
-            onQuestionUpdated={handleQuestionUpdated}
-          />
-        )}
+        {/* Edit Question Dialog (new editor) */}
+        <QuestionEditDialog
+          question={selectedQuestion}
+          isOpen={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          onQuestionUpdated={handleQuestionUpdated}
+        />
 
         {/* Organizer Dialog */}
         <QuestionOrganizerDialog
@@ -412,7 +456,14 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
           isOpen={isOrganizerOpen}
           onOpenChange={(open) => {
             setIsOrganizerOpen(open);
-            if (!open) fetchQuestions();
+            if (!open) {
+              if (openContext === 'standaloneOrganizer') {
+                onOpenChange(false);
+                setOpenContext('normal');
+              } else {
+                fetchQuestions();
+              }
+            }
           }}
           onSaved={() => fetchQuestions()}
         />

@@ -61,7 +61,18 @@ const headerAliases: Record<string, string> = {
   'reponse(s)': 'reponse',
   'cas n': 'cas n',
   'cas no': 'cas n',
-  'cas n°': 'cas n'
+  'cas n°': 'cas n',
+  // optional columns
+  'explication': 'explication',
+  'explication de la reponse': 'explication',
+  'explication de la réponse': 'explication',
+  'explication reponse': 'explication',
+  'explanation': 'explication',
+  'correction': 'explication',
+  'niveau': 'niveau',
+  'level': 'niveau',
+  'semestre': 'semestre',
+  'semester': 'semestre'
 };
 
 const canonicalizeHeader = (h: string): string => {
@@ -180,12 +191,48 @@ async function processFile(file: File, importId: string) {
       createdSpecialties: 0,
       createdLectures: 0,
       questionsWithImages: 0,
-      createdCases: 0
+      createdCases: 0,
+      errors: [] as string[]
     };
 
-    const createdSpecialties = new Map();
-    const createdLectures = new Map();
-    const createdCases = new Map(); // Track cases by lectureId + caseNumber
+    const createdSpecialties = new Map<string, any>();
+    const createdLectures = new Map<string, any>();
+    const createdCases = new Map<string, any>(); // Track cases by lectureId + caseNumber
+
+    // Preload and cache niveaux and semesters
+    const niveauxCache = new Map<string, { id: string; name: string }>();
+    const semestersCache = new Map<string, { id: string; name: string; order: number; niveauId: string }>();
+    const allNiveaux = await prisma.niveau.findMany();
+    for (const n of allNiveaux) {
+      niveauxCache.set(n.name.toLowerCase(), { id: n.id, name: n.name });
+      niveauxCache.set(n.name.replace(/\s+/g, '').toLowerCase(), { id: n.id, name: n.name });
+    }
+    const allSemesters = await prisma.semester.findMany();
+    for (const s of allSemesters) {
+      const keyByName = `${s.niveauId}:${s.name.toLowerCase()}`;
+      const keyByOrder = `${s.niveauId}:order:${s.order}`;
+      semestersCache.set(keyByName, { id: s.id, name: s.name, order: s.order, niveauId: s.niveauId });
+      semestersCache.set(keyByOrder, { id: s.id, name: s.name, order: s.order, niveauId: s.niveauId });
+    }
+
+    const normalizeNiveauName = (raw?: string | null) => {
+      if (!raw) return '';
+      const s = String(raw).trim();
+      if (!s) return '';
+      const compact = s.replace(/\s+/g, '').toUpperCase();
+      const m = compact.match(/^(PCEM|DCEM)(\d)$/i);
+      if (m) return `${m[1].toUpperCase()}${m[2]}`;
+      return s.toUpperCase();
+    };
+
+    const parseSemesterOrder = (raw?: string | null): number | null => {
+      if (!raw) return null;
+      const s = String(raw).toUpperCase();
+      if (/(^|\W)S?1(\W|$)/.test(s)) return 1;
+      if (/(^|\W)S?2(\W|$)/.test(s)) return 2;
+      const n = parseInt(s, 10);
+      return Number.isFinite(n) ? n : null;
+    };
 
     // Process each sheet
     const sheets = ['qcm', 'qroc', 'cas_qcm', 'cas_qroc'] as const;
@@ -281,6 +328,43 @@ async function processFile(file: File, importId: string) {
             throw new Error('Missing question text');
           }
 
+          // Resolve optional niveau/semestre
+          const niveauRaw = rowData['niveau'] || '';
+          const semestreRaw = rowData['semestre'] || '';
+          let niveauId: string | null = null;
+          let semesterId: string | null = null;
+          if (niveauRaw) {
+            const normalized = normalizeNiveauName(niveauRaw);
+            const found = Array.from(niveauxCache.values()).find(n => n.name.toUpperCase() === normalized);
+            if (found) {
+              niveauId = found.id;
+            } else {
+              const created = await prisma.niveau.create({ data: { name: normalized, order: Math.max(1, allNiveaux.length + 1) } });
+              niveauxCache.set(created.name.toLowerCase(), { id: created.id, name: created.name });
+              niveauxCache.set(created.name.replace(/\s+/g, '').toLowerCase(), { id: created.id, name: created.name });
+              niveauId = created.id;
+              updateProgress(importId, 25, `Created niveau: ${created.name}`, `✅ Created niveau: ${created.name}`);
+            }
+          }
+
+          if (niveauId && semestreRaw) {
+            const order = parseSemesterOrder(semestreRaw);
+            if (order) {
+              const keyByOrder = `${niveauId}:order:${order}`;
+              let sem = semestersCache.get(keyByOrder);
+              if (!sem) {
+                const niveauName = Array.from(niveauxCache.values()).find(n => n.id === niveauId)?.name || 'NIVEAU';
+                const name = `${niveauName} - S${order}`;
+                const created = await prisma.semester.create({ data: { name, order, niveauId } });
+                sem = { id: created.id, name: created.name, order: created.order, niveauId };
+                semestersCache.set(`${niveauId}:order:${order}`, sem);
+                semestersCache.set(`${niveauId}:${created.name.toLowerCase()}`, sem);
+                updateProgress(importId, 25, `Created semester: ${name}`, `✅ Created semester: ${name}`);
+              }
+              semesterId = sem.id;
+            }
+          }
+
           // Find or create specialty
           let specialty = createdSpecialties.get(specialtyName);
           if (!specialty) {
@@ -290,10 +374,28 @@ async function processFile(file: File, importId: string) {
             
             if (!specialty) {
               specialty = await prisma.specialty.create({
-                data: { name: specialtyName }
+                data: { 
+                  name: specialtyName,
+                  ...(niveauId ? { niveauId } : {}),
+                  ...(semesterId ? { semesterId } : {})
+                }
               });
               importStats.createdSpecialties++;
               updateProgress(importId, progress, `Created specialty: ${specialtyName}`, `✅ Created specialty: ${specialtyName}`);
+            }
+            // Update existing specialty if it lacks niveau/semester
+            else {
+              const updates: Prisma.SpecialtyUpdateInput = {};
+              if (niveauId && !specialty.niveauId) {
+                (updates as any).niveau = { connect: { id: niveauId } };
+              }
+              if (semesterId && !specialty.semesterId) {
+                (updates as any).semester = { connect: { id: semesterId } };
+              }
+              if (Object.keys(updates).length > 0) {
+                specialty = await prisma.specialty.update({ where: { id: specialty.id }, data: updates });
+                updateProgress(importId, progress, `Updated specialty`, `ℹ️ Linked specialty to niveau/semester`);
+              }
             }
             createdSpecialties.set(specialtyName, specialty);
           }
@@ -440,7 +542,7 @@ async function processFile(file: File, importId: string) {
             type: questionData.type,
             options: questionData.options ?? undefined,
             correctAnswers: questionData.correctAnswers,
-            explanation: undefined,
+            explanation: rowData['explication'] ? String(rowData['explication']) : undefined,
             courseReminder: questionData.courseReminder,
             number: questionData.number,
             session: questionData.session ?? undefined,
@@ -461,8 +563,9 @@ async function processFile(file: File, importId: string) {
 
         } catch (error) {
           importStats.failed++;
-          const errorMsg = `❌ Row ${i + 1} in ${sheetName}: ${(error as Error).message}`;
-          updateProgress(importId, progress, `Error in row ${i + 1}`, errorMsg);
+          const errorMsg = `Row ${i + 1} in ${sheetName}: ${(error as Error).message}`;
+          updateProgress(importId, progress, `Error in row ${i + 1}`, `❌ ${errorMsg}`);
+          importStats.errors.push(errorMsg);
           console.error(`Error processing row ${i + 1} in ${sheetName}:`, error);
         }
       }
@@ -475,7 +578,7 @@ async function processFile(file: File, importId: string) {
       phase: 'complete',
       message: currentSession.message,
       logs: currentSession.logs,
-      stats: importStats
+  stats: importStats
     });
 
     updateProgress(importId, 100, 'Import completed!', `🎉 Import completed! Total: ${importStats.total}, Imported: ${importStats.imported}, Failed: ${importStats.failed}, Created: ${importStats.createdSpecialties} specialties, ${importStats.createdLectures} lectures, ${importStats.createdCases} cases, ${importStats.questionsWithImages} questions with images`, 'complete');
@@ -515,7 +618,8 @@ async function postHandler(request: AuthenticatedRequest) {
         createdSpecialties: 0,
         createdLectures: 0,
         questionsWithImages: 0,
-        createdCases: 0
+  createdCases: 0,
+  errors: []
       }
     };
     
