@@ -24,7 +24,7 @@ export function ReportQuestionDialog({
 }: ReportQuestionDialogProps) {
   const { user } = useAuth();
   const [reason, setReason] = useState('');
-  const [type, setType] = useState<'mal_placee' | 'erreur_syntaxe' | 'autre' | ''>('');
+  const [type, setType] = useState<'erreur_de_saisie' | 'question_hors_cours' | 'correction_erronee' | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,14 +43,7 @@ export function ReportQuestionDialog({
       toast({ title: 'Erreur de validation', description: 'Le type est requis', variant: 'destructive' });
       return;
     }
-    if (!reason.trim()) {
-      toast({
-        title: 'Erreur de validation',
-        description: 'La raison est requise',
-        variant: "destructive",
-      });
-      return;
-    }
+  // message now optional
     
     try {
       setIsSubmitting(true);
@@ -113,27 +106,26 @@ export function ReportQuestionDialog({
             <Label>Type</Label>
             <RadioGroup value={type} onValueChange={(v) => setType(v as any)} className="grid gap-3">
               <label className="flex items-center gap-2 cursor-pointer">
-                <RadioGroupItem value="mal_placee" />
-                <span>Question mal placée</span>
+                <RadioGroupItem value="erreur_de_saisie" />
+                <span>Erreur de saisie</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
-                <RadioGroupItem value="erreur_syntaxe" />
-                <span>Erreur de syntaxe</span>
+                <RadioGroupItem value="question_hors_cours" />
+                <span>Question hors cours</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
-                <RadioGroupItem value="autre" />
-                <span>Autre</span>
+                <RadioGroupItem value="correction_erronee" />
+                <span>Correction erronée</span>
               </label>
             </RadioGroup>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="reason">Raison</Label>
+            <Label htmlFor="reason">Raison (optionnel)</Label>
             <Textarea 
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder={'Décrivez le problème (erreur, ambiguïté, image manquante, etc.)...'}
-              required
+              placeholder={'Décrivez le problème (facultatif)'}
               rows={4}
             />
           </div>

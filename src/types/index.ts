@@ -98,6 +98,8 @@ export type Lecture = {
   };
   progress?: LectureProgress;
   reportsCount?: number; // Only available for admins
+  commentsCount?: number; // Total comments on lecture
+  culmonNote?: number; // Moyenne sur 20
 };
 
 export type LectureProgress = {

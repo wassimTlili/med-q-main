@@ -23,6 +23,7 @@ interface QuestionEditContentProps {
   updateOptionExplanation: (id: string, explanation: string) => void;
   correctAnswers: string[];
   toggleCorrectAnswer: (id: string) => void;
+  setCorrectAnswers: (answers: string[]) => void;
   mediaUrl?: string;
   mediaType?: 'image' | 'video';
   handleMediaChange: (url: string | undefined, type: 'image' | 'video' | undefined) => void;
@@ -49,6 +50,7 @@ export function QuestionEditContent({
   updateOptionExplanation,
   correctAnswers,
   toggleCorrectAnswer,
+  setCorrectAnswers,
   mediaUrl,
   mediaType,
   handleMediaChange,
@@ -80,6 +82,20 @@ export function QuestionEditContent({
   onReminderMediaChange={handleReminderMediaChange}
       />
 
+      {/* QROC / clinic_croq reference answer (single) */}
+      {(question.type === 'qroc' || question.type === 'clinic_croq') && (
+        <div className="space-y-2">
+          <h3 className="text-base font-semibold">Réponse de référence</h3>
+          <Textarea
+            value={correctAnswers[0] || ''}
+            onChange={e => setCorrectAnswers([e.target.value])}
+            placeholder="Saisir la réponse attendue"
+            className="min-h-[70px]"
+          />
+          <p className="text-xs text-muted-foreground">Affichée après soumission pour l'auto-évaluation.</p>
+        </div>
+      )}
+
       {/* Quick bulk edit (question + options) */}
       {(question.type === 'mcq' || question.type === 'clinic_mcq') && (
         <div className="space-y-3">
@@ -107,6 +123,55 @@ export function QuestionEditContent({
             updateOptionExplanation={updateOptionExplanation}
             toggleCorrectAnswer={toggleCorrectAnswer}
           />
+        </div>
+      )}
+
+  {/* QROC reference answer section removed; edit form now uses unified bottom reminder/reference area */}
+
+      {/* Unified bottom reminder / reference (single place) */}
+      {(question.type === 'qroc' || question.type === 'clinic_croq' || question.type === 'mcq' || question.type === 'clinic_mcq') && (
+        <div className="space-y-2">
+          <h3 className="text-base font-semibold">Rappel du cours (optionnel)</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <Button type="button" variant="outline" size="sm" className="relative">
+              Image du rappel
+              <input
+                type="file"
+                accept="image/*"
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                onChange={async (e) => {
+                  const file = e.currentTarget.files?.[0];
+                  if (!file) return;
+                  if (!file.type.startsWith('image/')) { e.currentTarget.value=''; return; }
+                  const MAX = 2 * 1024 * 1024;
+                  if (file.size > MAX) { toast({ title: 'Image trop lourde', description: 'Max 2 Mo', variant: 'destructive' }); e.currentTarget.value=''; return; }
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const dataUrl = typeof reader.result === 'string' ? reader.result : undefined;
+                    handleReminderMediaChange(dataUrl, dataUrl ? 'image' : undefined);
+                  };
+                  reader.readAsDataURL(file);
+                  e.currentTarget.value='';
+                }}
+              />
+            </Button>
+          </div>
+          <Textarea
+            value={courseReminder}
+            onChange={e => setCourseReminder(e.target.value)}
+            placeholder={question.type === 'qroc' || question.type === 'clinic_croq' ? 'Texte de référence / rappel lié à la correction' : 'Entrer le rappel du cours'}
+            className="min-h-[90px]"
+          />
+          {reminderMediaUrl && reminderMediaType === 'image' && (
+            <div className="mt-2 border rounded-md p-3 bg-muted/30">
+              <div className="aspect-video relative bg-muted rounded-md overflow-hidden">
+                <img src={reminderMediaUrl} alt="Image du rappel" className="w-full h-full object-contain" />
+              </div>
+              <div className="flex justify-end mt-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => handleReminderMediaChange(undefined, undefined)}>Supprimer</Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

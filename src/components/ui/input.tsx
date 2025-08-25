@@ -4,6 +4,10 @@ import { cn } from "@/lib/utils"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
+    // Prevent React warning: value prop on input should not be null
+    if (props && Object.prototype.hasOwnProperty.call(props, 'value') && (props as any).value === null) {
+      (props as any).value = '';
+    }
     return (
       <input
         type={type}

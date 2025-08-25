@@ -8,7 +8,7 @@ export async function PUT(
 ) {
   try {
     const { id: commentId } = await params;
-    const { content } = await request.json();
+  const { content } = await request.json();
 
     if (!content) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
@@ -23,7 +23,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
     }
 
-    const comment = await prisma.comment.update({
+  const comment = await prisma.comment.update({
       where: { id: commentId },
       data: {
         content: content.trim(),

@@ -19,20 +19,33 @@ export async function GET(request: NextRequest) {
 
     const supportsAnonymous = await questionCommentsSupportsAnonymous();
     if (supportsAnonymous) {
-      // @ts-ignore - prisma delegate is generated
-      const comments = await prisma.questionComment.findMany({
+      // Fetch flat then build tree for unlimited depth
+      // @ts-ignore
+  const flat = await (prisma as any).questionComment.findMany({
         where: { questionId },
+        orderBy: { createdAt: 'asc' },
         select: {
           id: true,
           content: true,
           isAnonymous: true,
           createdAt: true,
           updatedAt: true,
+          parentCommentId: true,
           user: { select: { id: true, name: true, email: true, role: true } },
-        },
-        orderBy: { createdAt: 'desc' },
+        }
       });
-      return NextResponse.json(comments);
+      const byId: Record<string, any> = {};
+      flat.forEach((c: any) => { byId[c.id] = { ...c, replies: [] }; });
+      const roots: any[] = [];
+      flat.forEach((c: any) => {
+        if (c.parentCommentId) {
+          const parent = byId[c.parentCommentId];
+          if (parent) parent.replies.push(byId[c.id]);
+        } else roots.push(byId[c.id]);
+      });
+      // newest roots first
+      roots.sort((a,b)=> new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return NextResponse.json(roots);
     }
     // Compatibility path without is_anonymous
     // @ts-ignore - prisma delegate is generated
@@ -58,7 +71,7 @@ export async function GET(request: NextRequest) {
 // POST /api/question-comments
 export async function POST(request: NextRequest) {
   try {
-  const { questionId, userId, content, isAnonymous } = await request.json();
+  const { questionId, userId, content, isAnonymous, parentCommentId } = await request.json();
     if (!questionId || !userId || !content) {
       return NextResponse.json({ error: 'questionId, userId and content are required' }, { status: 400 });
     }
@@ -72,26 +85,27 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const supportsAnonymous = await questionCommentsSupportsAnonymous();
+    if (parentCommentId) {
+      // validate parent exists & belongs to same question
+  const parent = await (prisma as any).questionComment.findUnique({ where: { id: parentCommentId }, select: { id: true, questionId: true } });
+      if (!parent || parent.questionId !== questionId) {
+        return NextResponse.json({ error: 'Invalid parent comment' }, { status: 400 });
+      }
+    }
+
     if (supportsAnonymous) {
-      // @ts-ignore - prisma delegate is generated
-      const comment = await prisma.questionComment.create({
-        data: { questionId, userId, content: String(content).trim(), isAnonymous: !!isAnonymous },
-        select: {
-          id: true,
-          content: true,
-          isAnonymous: true,
-          createdAt: true,
-          updatedAt: true,
-          user: { select: { id: true, name: true, email: true, role: true } },
-        },
+      // @ts-ignore
+      const created = await (prisma as any).questionComment.create({
+        data: { questionId, userId, content: String(content).trim(), isAnonymous: !!isAnonymous, parentCommentId: parentCommentId || null },
+        select: { id: true, content: true, isAnonymous: true, createdAt: true, updatedAt: true, parentCommentId: true, user: { select: { id: true, name: true, email: true, role: true } } }
       });
-      return NextResponse.json(comment, { status: 201 });
+      return NextResponse.json({ ...created, replies: [] }, { status: 201 });
     }
     // Compatibility path without is_anonymous
-    const inserted = await prisma.$queryRaw<Array<{ id: string; content: string; created_at: Date; updated_at: Date }>>`
-      INSERT INTO question_comments (question_id, user_id, content)
-      VALUES (${questionId}::uuid, ${userId}::uuid, ${String(content).trim()})
-      RETURNING id::text, content, created_at, updated_at;
+    const inserted = await prisma.$queryRaw<Array<{ id: string; content: string; created_at: Date; updated_at: Date; parent_comment_id: string | null }>>`
+      INSERT INTO question_comments (question_id, user_id, content, parent_comment_id)
+      VALUES (${questionId}::uuid, ${userId}::uuid, ${String(content).trim()}, ${parentCommentId ? parentCommentId : null}::uuid)
+      RETURNING id::text, content, created_at, updated_at, parent_comment_id;
     `;
     const row = inserted?.[0];
     if (!row) throw new Error('Insert failed without returning row');
@@ -106,7 +120,9 @@ export async function POST(request: NextRequest) {
       content: row.content,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      isAnonymous: false,
+  isAnonymous: false,
+  parentCommentId: row.parent_comment_id,
+  replies: [],
       user: userInfo,
     }, { status: 201 });
   } catch (error) {

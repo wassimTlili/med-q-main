@@ -16,7 +16,7 @@ interface Report {
   id: string
   message: string
   status: 'pending' | 'resolved' | 'dismissed'
-  reportType: 'mal_placee' | 'erreur_syntaxe' | 'autre'
+  reportType: 'erreur_de_saisie' | 'question_hors_cours' | 'correction_erronee'
   createdAt: string
   user: { id: string; email: string; name?: string }
   question: { id: string; text: string; type: string }
@@ -127,9 +127,9 @@ export default function MaintainerReportsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les types</SelectItem>
-                <SelectItem value="mal_placee">Question mal placée</SelectItem>
-                <SelectItem value="erreur_syntaxe">Erreur de syntaxe</SelectItem>
-                <SelectItem value="autre">Autre</SelectItem>
+                <SelectItem value="erreur_de_saisie">Erreur de saisie</SelectItem>
+                <SelectItem value="question_hors_cours">Question hors cours</SelectItem>
+                <SelectItem value="correction_erronee">Correction erronée</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -185,7 +185,7 @@ export default function MaintainerReportsPage() {
                                 <div className="flex items-center gap-2 mb-1">
                                   <p className="font-medium text-gray-900 dark:text-gray-100">Message</p>
                                   <Badge variant="secondary">
-                                    {report.reportType === 'mal_placee' ? 'Question mal placée' : report.reportType === 'erreur_syntaxe' ? 'Erreur de syntaxe' : 'Autre'}
+                                    {report.reportType === 'erreur_de_saisie' ? 'Erreur de saisie' : report.reportType === 'question_hors_cours' ? 'Question hors cours' : 'Correction erronée'}
                                   </Badge>
                                 </div>
                                 <p className="text-gray-700 dark:text-gray-300">{report.message}</p>

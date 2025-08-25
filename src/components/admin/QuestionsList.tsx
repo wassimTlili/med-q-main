@@ -26,8 +26,9 @@ export function QuestionsList({ lectureId, refreshTrigger }: QuestionsListProps)
 
   // Group clinical case questions
   useEffect(() => {
-    const regularQuestions: (Question | ClinicalCase)[] = [];
-    const clinicalCaseMap = new Map<number, Question[]>();
+  const regularQuestions: (Question | ClinicalCase)[] = [];
+  const clinicalCaseMap = new Map<number, Question[]>();
+  const multiQrocMap = new Map<number, Question[]>();
 
     // Group clinical case questions
     questions.forEach(question => {
@@ -36,12 +37,17 @@ export function QuestionsList({ lectureId, refreshTrigger }: QuestionsListProps)
           clinicalCaseMap.set(question.caseNumber, []);
         }
         clinicalCaseMap.get(question.caseNumber)!.push(question);
+      } else if (question.caseNumber && question.type === 'qroc') {
+        if (!multiQrocMap.has(question.caseNumber)) {
+          multiQrocMap.set(question.caseNumber, []);
+        }
+        multiQrocMap.get(question.caseNumber)!.push(question);
       } else {
         regularQuestions.push(question);
       }
     });
 
-    // Convert clinical case groups to ClinicalCase objects
+  // Convert clinical case groups to ClinicalCase objects
     clinicalCaseMap.forEach((caseQuestions, caseNumber) => {
       // Sort questions by caseQuestionNumber
       const sortedQuestions = caseQuestions.sort((a, b) => 
@@ -56,6 +62,11 @@ export function QuestionsList({ lectureId, refreshTrigger }: QuestionsListProps)
       };
       
       regularQuestions.push(clinicalCase);
+    });
+
+    // Multi QROC: DO NOT wrap as clinical case; push individual questions back so they appear under QROC
+    multiQrocMap.forEach(groupQuestions => {
+      groupQuestions.forEach(q => regularQuestions.push(q));
     });
 
     // Sort all questions by number

@@ -149,6 +149,7 @@ export function LectureItem({ lecture, onDelete, onUpdate }: LectureItemProps) {
                   setIsQuestionsDialogOpen(true);
                   // Use a microtask to ensure dialog state propagates before opening nested create
                   queueMicrotask(() => {
+                    try { window.dispatchEvent(new Event('qmd:close-children')); } catch {}
                     const ev = new CustomEvent('open-create-question', { detail: { lectureId: lecture.id } });
                     window.dispatchEvent(ev);
                   });

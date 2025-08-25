@@ -47,11 +47,17 @@ interface PopularCourse {
   isFree: boolean;
 }
 
+interface PerformanceSummary { correct: number; wrong: number; partial: number; total: number; windowDays?: number; percentCorrect?: number; percentPartial?: number; percentWrong?: number; }
+interface SpecialtyAverage { id: string; name: string; average: number; pinned?: boolean; }
+
 interface DashboardData {
   stats: DashboardStats | null;
   dailyActivity: DailyActivity[];
   recentResults: RecentResult[];
   popularCourses: PopularCourse[];
+  coursesToReview: PopularCourse[]; // courses with low score (needs review)
+  performance: PerformanceSummary | null;
+  specialtyAverages: SpecialtyAverage[];
   isLoading: boolean;
   error: string | null;
 }
@@ -63,6 +69,9 @@ export function useDashboardData(): DashboardData {
     dailyActivity: [],
     recentResults: [],
     popularCourses: [],
+    coursesToReview: [],
+    performance: null,
+    specialtyAverages: [],
     isLoading: true,
     error: null
   });
@@ -77,32 +86,50 @@ export function useDashboardData(): DashboardData {
       try {
         setData(prev => ({ ...prev, isLoading: true, error: null }));
 
-        // Fetch all data in parallel
-        const [statsRes, dailyRes, resultsRes, coursesRes] = await Promise.all([
+        // Fetch all data in parallel (added performance endpoint)
+        const [statsRes, dailyRes, resultsRes, coursesRes, performanceRes] = await Promise.all([
           fetch('/api/dashboard/stats'),
-          fetch('/api/dashboard/daily-activity'),
+          fetch('/api/dashboard/daily-activity?days=14'),
           fetch('/api/dashboard/recent-results'),
-          fetch('/api/dashboard/popular-courses')
+          fetch('/api/dashboard/popular-courses'),
+          fetch('/api/dashboard/performance')
         ]);
 
-        // Check if all requests were successful
-        if (!statsRes.ok || !dailyRes.ok || !resultsRes.ok || !coursesRes.ok) {
+        if (!statsRes.ok || !dailyRes.ok || !resultsRes.ok || !coursesRes.ok || !performanceRes.ok) {
           throw new Error('Failed to fetch dashboard data');
         }
 
-        // Parse responses
-        const [stats, dailyActivity, recentResults, popularCourses] = await Promise.all([
+        const [stats, dailyActivity, recentResults, popularCourses, performance] = await Promise.all([
           statsRes.json(),
           dailyRes.json(),
           resultsRes.json(),
-          coursesRes.json()
+          coursesRes.json(),
+          performanceRes.json()
         ]);
+
+        // Courses to review: low averageScore (<50%)
+        const coursesToReview: PopularCourse[] = popularCourses.filter((c: PopularCourse) => c.averageScore < 50).slice(0, 10);
+
+        // Specialty averages from popular courses
+        const specialtyMap: Record<string, { name: string; scores: number[] }> = {};
+        popularCourses.forEach((c: PopularCourse) => {
+          if (!specialtyMap[c.specialty.name]) specialtyMap[c.specialty.name] = { name: c.specialty.name, scores: [] };
+          specialtyMap[c.specialty.name].scores.push(c.averageScore);
+        });
+        const specialtyAverages = Object.entries(specialtyMap).map(([name, v], i) => ({
+          id: `spec-${i}`,
+          name,
+          average: v.scores.reduce((a,b)=>a+b,0)/v.scores.length
+        })).sort((a,b)=> b.average - a.average).slice(0,15);
 
         setData({
           stats,
           dailyActivity,
           recentResults,
           popularCourses,
+          coursesToReview,
+          performance: performance.total ? performance : null,
+          specialtyAverages,
           isLoading: false,
           error: null
         });
@@ -120,4 +147,4 @@ export function useDashboardData(): DashboardData {
   }, [user]);
 
   return data;
-} 
+}

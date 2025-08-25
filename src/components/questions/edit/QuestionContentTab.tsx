@@ -143,49 +143,7 @@ export function QuestionContentTab({
         )}
       </div>
       
-      <div className="space-y-2">
-        <Label htmlFor="course-reminder">
-          {questionType === 'mcq' ? 'Rappel du cours' : 'Réponse de référence'}
-        </Label>
-        {/* Bouton dédié à l'image du rappel (distinct de l'image de la question) */}
-        {onReminderMediaChange && (
-          <div className="mb-2">
-            <Button type="button" variant="outline" size="sm" className="relative">
-              <Image className="h-4 w-4 mr-2" /> Image du rappel
-              <input
-                type="file"
-                accept="image/*"
-                className="absolute inset-0 opacity-0 cursor-pointer"
-                onChange={handleReminderImagePick}
-              />
-            </Button>
-          </div>
-        )}
-        <Textarea
-          id="course-reminder"
-          value={courseReminder}
-          onChange={(e) => setCourseReminder(e.target.value)}
-          placeholder={questionType === 'mcq' 
-            ? 'Entrer le rappel du cours'
-            : 'Entrer la réponse de référence'}
-          className="min-h-32"
-        />
-        {/* Aperçu de l'image du rappel */}
-        {reminderMediaUrl && reminderMediaType === 'image' && (
-          <div className="mt-2 border rounded-md p-3 bg-muted/30">
-            <div className="aspect-video relative bg-muted rounded-md overflow-hidden">
-              <img src={reminderMediaUrl} alt="Image du rappel" className="w-full h-full object-contain" />
-            </div>
-            {onReminderMediaChange && (
-              <div className="flex justify-end mt-2">
-                <Button type="button" variant="ghost" size="sm" onClick={() => onReminderMediaChange(undefined, undefined)}>
-                  <X className="h-4 w-4 mr-1" /> Supprimer
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+  {/* Rappel du cours removed here; handled once in parent edit component */}
     </>
   );
 }

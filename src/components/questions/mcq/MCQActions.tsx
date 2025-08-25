@@ -1,6 +1,6 @@
 
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, ArrowRight, Keyboard, RotateCcw } from 'lucide-react';
+import { CheckCircle, XCircle, ArrowRight, Keyboard, RotateCcw, StickyNote } from 'lucide-react';
 import { 
   Tooltip,
   TooltipContent,
@@ -17,6 +17,8 @@ interface MCQActionsProps {
   onReAnswer?: () => void;
   hasSubmitted?: boolean; // Track if question has been submitted (for clinical cases)
   buttonRef?: React.RefObject<HTMLButtonElement>; // Ref for direct button control
+  showNotesArea?: boolean;
+  onToggleNotes?: () => void;
 }
 
 export function MCQActions({ 
@@ -27,7 +29,9 @@ export function MCQActions({
   onNext,
   onReAnswer,
   hasSubmitted = false,
-  buttonRef
+  buttonRef,
+  showNotesArea,
+  onToggleNotes
 }: MCQActionsProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-4">
@@ -83,7 +87,19 @@ export function MCQActions({
               </div>
             )}
           </div>
-          <div className="flex gap-2 justify-end flex-wrap">
+          <div className="flex gap-2 justify-end flex-wrap items-center">
+      {onToggleNotes && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+        onClick={onToggleNotes}
+        className="flex items-center gap-1"
+              >
+                <StickyNote className="h-4 w-4" />
+        <span className="hidden sm:inline">{showNotesArea ? 'Fermer les notes' : 'Prendre une note'}</span>
+              </Button>
+            )}
             {onReAnswer && (
               <Button 
                 variant="outline" 

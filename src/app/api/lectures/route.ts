@@ -85,7 +85,7 @@ async function getHandler(request: AuthenticatedRequest) {
             }
           }
         },
-  _count: { select: { questions: true } }
+  _count: { select: { questions: true, comments: true } }
       }
     });
 
@@ -101,12 +101,19 @@ async function getHandler(request: AuthenticatedRequest) {
         });
 
   const totalQuestions = (lecture as any)._count?.questions ?? 0;
+  const commentsCount = (lecture as any)._count?.comments ?? 0;
         const completedQuestions = userProgress.filter(p => p.completed).length;
         const correctAnswers = userProgress.filter(p => p.completed && (p.score || 0) > 0.7).length;
         const partialAnswers = userProgress.filter(p => p.completed && (p.score || 0) > 0.3 && (p.score || 0) <= 0.7).length;
         const incorrectAnswers = userProgress.filter(p => p.completed && (p.score || 0) <= 0.3).length;
 
         const percentage = totalQuestions > 0 ? (completedQuestions / totalQuestions) * 100 : 0;
+
+  // Culmon note (/20): average score of completed questions (0..1) scaled to 20 (two decimals)
+  const answeredEntries = userProgress.filter(p => p.completed && typeof p.score === 'number');
+  const avgScore = answeredEntries.length > 0 ? answeredEntries.reduce((sum, p) => sum + (p.score || 0), 0) / answeredEntries.length : 0;
+  const culmonNote = Math.round(avgScore * 20 * 100) / 100;
+
 
         // Get reports count for admins
         let reportsCount = 0;
@@ -134,7 +141,9 @@ async function getHandler(request: AuthenticatedRequest) {
                 userProgress[0].lastAccessed
               ) : undefined
           },
-          reportsCount: user.role === 'admin' ? reportsCount : undefined
+          reportsCount: user.role === 'admin' ? reportsCount : undefined,
+          commentsCount
+          ,culmonNote
         };
       })
     );

@@ -1,4 +1,4 @@
-
+"use client";
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Question } from '@/types';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 import { QuestionNotes } from './QuestionNotes';
+import { logActivity } from '@/lib/logActivity';
 import { QuestionComments } from './QuestionComments';
 
 interface MCQQuestionProps {
@@ -34,6 +35,10 @@ interface MCQQuestionProps {
   userAnswer?: string[];
   hideImmediateResults?: boolean;
   onQuestionUpdate?: (questionId: string, updates: Partial<Question>) => void;
+  hideActions?: boolean;
+  hideNotes?: boolean;
+  hideComments?: boolean;
+  highlightConfirm?: boolean;
 }
 
 export function MCQQuestion({ 
@@ -47,7 +52,11 @@ export function MCQQuestion({
   answerResult, 
   userAnswer,
   hideImmediateResults = false,
-  onQuestionUpdate
+  onQuestionUpdate,
+  hideActions,
+  hideNotes,
+  hideComments,
+  highlightConfirm
 }: MCQQuestionProps) {
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
@@ -58,6 +67,12 @@ export function MCQQuestion({
   const [hasSubmitted, setHasSubmitted] = useState(false); // Track if question has been submitted
   const [isSubmitting, setIsSubmitting] = useState(false); // Track if currently submitting
   const [isPinned, setIsPinned] = useState(false); // Track if question is pinned
+  const [showNotesArea, setShowNotesArea] = useState(false); // control notes/comments visibility
+  // Server aggregated stats
+  const [optionStats, setOptionStats] = useState<Record<string, number>>({});
+  const [totalSubmissions, setTotalSubmissions] = useState(0);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const notesRef = useRef<HTMLDivElement | null>(null);
   const hasSubmittedRef = useRef(false); // Ref for immediate access to submission state
   const buttonRef = useRef<HTMLButtonElement>(null); // Ref to directly control button
   const { t } = useTranslation();
@@ -126,6 +141,7 @@ export function MCQQuestion({
           title: "Question Pinned",
           description: "This question has been pinned to your collection.",
         });
+  window.dispatchEvent(new Event('pinned-updated'));
       } else {
         toast({
           title: "Error",
@@ -142,7 +158,6 @@ export function MCQQuestion({
       });
     }
   }, [user?.id, question.id]);
-
   const handleUnpinQuestion = useCallback(async () => {
     if (!user?.id) return;
     
@@ -157,6 +172,7 @@ export function MCQQuestion({
           title: "Question Unpinned",
           description: "This question has been removed from your pinned collection.",
         });
+  window.dispatchEvent(new Event('pinned-updated'));
       } else {
         toast({
           title: "Error",
@@ -234,6 +250,26 @@ export function MCQQuestion({
     }
   }, [question.id, isAnswered, answerResult, question.options, question.correctAnswers, question.correct_answers, hideImmediateResults]);
 
+  // Load existing stats whenever question changes (initial load)
+  useEffect(() => {
+    let abort = false;
+    const load = async () => {
+      setLoadingStats(true);
+      try {
+        const res = await fetch(`/api/question-option-stats?questionId=${question.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (abort) return;
+        const counts: Record<string, number> = {};
+        (data.options || []).forEach((o: any) => { counts[o.optionId] = o.count; });
+        setOptionStats(counts);
+        setTotalSubmissions(data.total || 0);
+      } catch {} finally { if (!abort) setLoadingStats(false); }
+    };
+    load();
+    return () => { abort = true; };
+  }, [question.id]);
+
   // Normalize options to ensure they have the correct format
   const normalizedOptions = useMemo(() => {
     if (!question.options) return [];
@@ -310,10 +346,26 @@ export function MCQQuestion({
     }
     // If hideImmediateResults is true, keep submitted as false to show checkboxes
     
-    // Check if answer is completely correct (all correct options selected and no incorrect ones)
-    const allCorrectSelected = correctAnswers.every(id => selectedOptionIds.includes(id));
-    const noIncorrectSelected = selectedOptionIds.every(id => correctAnswers.includes(id));
-    const isAnswerCorrect = allCorrectSelected && noIncorrectSelected;
+    // Compute detailed scoring (fractional credit)
+    const correctSet = new Set(correctAnswers);
+    const selectedSet = new Set(selectedOptionIds);
+    const totalCorrect = correctAnswers.length || 1; // avoid division by zero
+    let numCorrectChosen = 0;
+    let numWrongChosen = 0;
+    selectedSet.forEach(id => {
+      if (correctSet.has(id)) numCorrectChosen++; else numWrongChosen++;
+    });
+
+    // Basic proportional credit: credit for each correct selected, penalty for each wrong selected
+    // Penalty ratio: each wrong answer subtracts one correct-equivalent.
+    let rawScore = (numCorrectChosen - numWrongChosen) / totalCorrect;
+    // Clamp between 0 and 1
+    if (rawScore < 0) rawScore = 0;
+    if (rawScore > 1) rawScore = 1;
+
+    const isAnswerCorrect = rawScore === 1;
+    // Determine qualitative result for UI (treat any 0<score<1 as partial)
+    const qualitative: boolean | 'partial' = isAnswerCorrect ? true : (rawScore > 0 ? 'partial' : false);
     setIsCorrect(isAnswerCorrect);
     
     // Auto-expand explanations for incorrect answers and correct answers that weren't selected
@@ -338,9 +390,9 @@ export function MCQQuestion({
       setExpandedExplanations(autoExpandIds);
     }
     
-    // Track progress if lectureId is provided
+    // Track progress if lectureId is provided (pass rawScore for fine-grained credit)
     if (lectureId) {
-      trackQuestionProgress(lectureId, question.id, isAnswerCorrect);
+      trackQuestionProgress(lectureId, question.id, qualitative, rawScore);
     }
     // Persist attempt + score
     if (user?.id) {
@@ -352,13 +404,39 @@ export function MCQQuestion({
             userId: user.id,
             questionId: question.id,
             incrementAttempts: true,
-            lastScore: isAnswerCorrect ? 1 : 0,
+      lastScore: rawScore,
           }),
+        });
+        // Log activity (central helper)
+        logActivity('question_attempt', () => {
+          window.dispatchEvent(new CustomEvent('activity-attempt'));
         });
       } catch {}
     }
+
+    // Post option selection stats only upon submission
+    try {
+      fetch('/api/question-option-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: question.id, optionIds: selectedOptionIds })
+      })
+        .then(() => {
+          // Refresh stats after posting
+          fetch(`/api/question-option-stats?questionId=${question.id}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+              if (!data) return;
+              const counts: Record<string, number> = {};
+              (data.options || []).forEach((o: any) => { counts[o.optionId] = o.count; });
+              setOptionStats(counts);
+              setTotalSubmissions(data.total || 0);
+            }).catch(()=>{});
+        })
+        .catch(()=>{});
+    } catch {}
     
-    onSubmit(selectedOptionIds, isAnswerCorrect);
+    onSubmit(selectedOptionIds, isAnswerCorrect); // existing signature expects boolean
     // Don't automatically move to next question - let user see the result first
   };
 
@@ -386,42 +464,57 @@ export function MCQQuestion({
     } catch {}
   };
 
-  // Add keyboard shortcuts for submitting answer and selecting options
+  // Keyboard shortcuts (numbers 1-9, letters A-I, Enter/Space submit-next, Backspace clears)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Don't process keyboard shortcuts when focus is on input elements
-      if (event.target instanceof HTMLInputElement || 
-          event.target instanceof HTMLTextAreaElement) {
-        return;
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (target as any).isContentEditable) return; // don't intercept typing contexts
+        if (['BUTTON','A','SELECT','LABEL'].includes(tag)) return; // skip UI controls focus
       }
-      
-      // Number keys 1-5 select options A-E (only if options exist)
-      if (!submitted && question.options && ['1', '2', '3', '4', '5'].includes(event.key)) {
-        const index = parseInt(event.key) - 1;
-        if (index < question.options.length) {
-          const optionId = question.options[index].id;
-          handleOptionSelect(optionId);
+
+      // Ignore if no options
+      const opts = question.options || [];
+      if (!opts.length) return;
+
+      // Select by number (1-based) if not submitted
+      if (!submitted && /^[1-9]$/.test(event.key)) {
+        const idx = parseInt(event.key, 10) - 1;
+        if (idx >= 0 && idx < opts.length) {
+          handleOptionSelect(opts[idx].id);
+          event.preventDefault();
+          return;
         }
       }
-      
-      // Spacebar to submit answer or go to next question
-      if (event.key === ' ' || event.key === 'Spacebar') {
-        event.preventDefault(); // Prevent page scrolling
-        
-        if (!submitted && selectedOptionIds.length > 0) {
-          handleSubmit();
-        } else if (submitted) {
-          // If already submitted, move to next question
+      // Select by letter A-I
+      if (!submitted && /^[a-i]$/i.test(event.key)) {
+        const idx = event.key.toUpperCase().charCodeAt(0) - 65; // A=0
+        if (idx >= 0 && idx < opts.length) {
+          handleOptionSelect(opts[idx].id);
+          event.preventDefault();
+          return;
+        }
+      }
+      // Backspace clears all before submit
+      if (!submitted && event.key === 'Backspace' && selectedOptionIds.length > 0) {
+        setSelectedOptionIds([]);
+        event.preventDefault();
+        return;
+      }
+      // Enter or Space: submit or next
+      if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+        if (event.key !== 'Enter') event.preventDefault(); // prevent scroll on space
+        if (!submitted) {
+          if (selectedOptionIds.length > 0) handleSubmit();
+        } else {
           onNext();
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [question.options, submitted, selectedOptionIds, onNext]);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [question.options, submitted, selectedOptionIds, onNext, handleSubmit]);
 
   return (
     <motion.div
@@ -434,7 +527,7 @@ export function MCQQuestion({
       
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div className="flex-1 min-w-0">
-          <MCQHeader 
+          <MCQHeader
             questionText={question.text}
             isSubmitted={submitted}
             questionNumber={question.number}
@@ -442,6 +535,7 @@ export function MCQQuestion({
             lectureTitle={lectureTitle}
             specialtyName={specialtyName}
             questionId={question.id}
+            highlightConfirm={highlightConfirm}
           />
           {/* Inline media attached to the question (not the reminder) */}
           {(() => {
@@ -463,7 +557,8 @@ export function MCQQuestion({
           })()}
         </div>
         
-        <div className="flex flex-col gap-1 flex-shrink-0 items-end">
+  {!hideActions && (
+  <div className="flex flex-col gap-1 flex-shrink-0 items-end">
           <div className="flex gap-2 items-center">
             <Button 
               variant="outline" 
@@ -570,6 +665,7 @@ export function MCQQuestion({
             </div>
           )}
         </div>
+  )}
       </div>
       
   {/* Media for explanation is displayed inside the "Rappel du cours" section below */}
@@ -588,6 +684,8 @@ export function MCQQuestion({
             expandedExplanations={expandedExplanations}
             toggleExplanation={toggleExplanation}
             hideImmediateResults={hideImmediateResults}
+            totalAttempts={totalSubmissions}
+            optionPickCount={optionStats[option.id] || 0}
           />
         ))}
       </div>
@@ -601,7 +699,7 @@ export function MCQQuestion({
         return (
           <Card className="mt-2">
             <CardHeader className="py-3">
-              <Collapsible defaultOpen>
+              <Collapsible defaultOpen={false}>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <BookOpen className="h-4 w-4" />
@@ -631,24 +729,37 @@ export function MCQQuestion({
         );
       })()}
 
-       <MCQActions 
-         isSubmitted={submitted}
-         canSubmit={!hasSubmitted && !isSubmitting && selectedOptionIds.length > 0}
-         isCorrect={isCorrect}
-         onSubmit={handleSubmit}
-         onNext={onNext}
-         onReAnswer={handleReAnswer}
-         hasSubmitted={hasSubmitted || isSubmitting}
-         buttonRef={buttonRef}
-       />
+      {!hideActions && (
+        <MCQActions 
+          isSubmitted={submitted}
+          canSubmit={!hasSubmitted && !isSubmitting && selectedOptionIds.length > 0}
+          isCorrect={isCorrect}
+          onSubmit={handleSubmit}
+          onNext={onNext}
+          onReAnswer={handleReAnswer}
+          hasSubmitted={hasSubmitted || isSubmitting}
+          buttonRef={buttonRef}
+          showNotesArea={showNotesArea}
+          onToggleNotes={() => {
+            setShowNotesArea(prev => !prev);
+            setTimeout(() => {
+              if (!showNotesArea && notesRef.current) {
+                notesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 30);
+          }}
+        />
+      )}
       
   {/* Notes (après soumission) */}
-  {submitted && (
-        <QuestionNotes questionId={question.id} />
+  {submitted && showNotesArea && !hideNotes && (
+        <div ref={notesRef}>
+          <QuestionNotes questionId={question.id} />
+        </div>
       )}
 
       {/* Commentaires (après soumission) */}
-      {submitted && <QuestionComments questionId={question.id} />}
+  {submitted && !hideComments && <QuestionComments questionId={question.id} />}
       
       <QuestionEditDialog
         question={question}

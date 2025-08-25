@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -13,13 +13,14 @@ import { ProfileCompletionGuard } from '@/components/ProfileCompletionGuard';
 import { UserStats } from '@/components/dashboard/UserStats';
 import { ContinueLearning } from '@/components/dashboard/ContinueLearning';
 import { DailyLearningChart } from '@/components/dashboard/DailyLearningChart';
-import { RecentResults } from '@/components/dashboard/RecentResults';
-import { PopularCourses } from '@/components/dashboard/PopularCourses';
+import { PerformancePie } from '@/components/dashboard/PerformancePie';
+import { CoursesToReview } from '@/components/dashboard/CoursesToReview';
+import { SpecialtyAverageSlider } from '@/components/dashboard/SpecialtyAverageSlider';
+import { QuickCommentBox } from '@/components/dashboard/QuickCommentBox';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
-// Disable static generation to prevent SSR issues with useAuth
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
@@ -28,20 +29,11 @@ export default function DashboardPage() {
   const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
   const [isUpsellDismissed, setIsUpsellDismissed] = useState(false);
   const { t } = useTranslation();
-  
-  const { stats, dailyActivity, recentResults, popularCourses, isLoading, error } = useDashboardData();
+  const { stats, dailyActivity, coursesToReview, isLoading, error } = useDashboardData();
 
-  // Show upsell banner for free users who haven't dismissed it
   const shouldShowUpsell = !hasActiveSubscription && !isAdmin && !isUpsellDismissed;
-
-  const handleUpgrade = () => {
-    setIsUpgradeDialogOpen(true);
-  };
-
-  const handleUpgradeComplete = () => {
-    setIsUpgradeDialogOpen(false);
-    // Optionally refresh the page or update subscription status
-  };
+  const handleUpgrade = () => setIsUpgradeDialogOpen(true);
+  const handleUpgradeComplete = () => setIsUpgradeDialogOpen(false);
 
   return (
     <ProtectedRoute>
@@ -87,38 +79,32 @@ export default function DashboardPage() {
             />
 
             {/* Main Dashboard Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {/* Continue Learning */}
-              <div className="lg:col-span-1">
-                <ContinueLearning
-                  lastLecture={stats?.lastLecture}
-                  isLoading={isLoading}
-                />
+            <div className="hidden xl:grid gap-6" style={{gridTemplateColumns: '330px 1fr'}}>
+              {/* Left column stacked */}
+              <div className="flex flex-col gap-6">
+                <ContinueLearning lastLecture={stats?.lastLecture} isLoading={isLoading} />
+                <SpecialtyAverageSlider />
+                <QuickCommentBox />
               </div>
+              {/* Right column stacked */}
+              <div className="flex flex-col gap-6">
+                <PerformancePie />
+                <div className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg rounded-lg">
+                  <DailyLearningChart data={dailyActivity} isLoading={isLoading} streak={stats?.learningStreak} />
+                </div>
+                <CoursesToReview />
+              </div>
+            </div>
 
-              {/* Daily Learning Chart */}
-              <div className="lg:col-span-2">
-                <DailyLearningChart
-                  data={dailyActivity}
-                  isLoading={isLoading}
-                />
-              </div>
-
-              {/* Recent Results */}
-              <div className="lg:col-span-1">
-                <RecentResults
-                  results={recentResults}
-                  isLoading={isLoading}
-                />
-              </div>
-
-              {/* Popular Courses */}
-              <div className="lg:col-span-2">
-                <PopularCourses
-                  courses={popularCourses}
-                  isLoading={isLoading}
-                />
-              </div>
+            {/* Responsive fallback below xl: stack original simple grid */}
+            <div className="xl:hidden grid gap-6 md:grid-cols-2">
+              <ContinueLearning lastLecture={stats?.lastLecture} isLoading={isLoading} />
+              <ContinueLearning lastLecture={stats?.lastLecture} isLoading={isLoading} />
+              <PerformancePie />
+              <DailyLearningChart data={dailyActivity} isLoading={isLoading} streak={stats?.learningStreak} />
+              <SpecialtyAverageSlider />
+              <CoursesToReview />
+              <QuickCommentBox />
             </div>
 
             <UpgradeDialog

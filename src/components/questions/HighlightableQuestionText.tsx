@@ -9,6 +9,8 @@ interface HighlightableQuestionTextProps {
   questionId: string;
   text: string;
   className?: string;
+  /** When true, show a confirmation bubble (Souligner) instead of immediate highlight */
+  confirmMode?: boolean;
 }
 
 function mergeRanges(ranges: TextHighlight[]): TextHighlight[] {
@@ -27,7 +29,7 @@ function mergeRanges(ranges: TextHighlight[]): TextHighlight[] {
   return merged;
 }
 
-export const HighlightableQuestionText: React.FC<HighlightableQuestionTextProps> = ({ questionId, text, className }) => {
+export const HighlightableQuestionText: React.FC<HighlightableQuestionTextProps> = ({ questionId, text, className, confirmMode = false }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const storageKey = useMemo(() => `q-highlights:${user?.id ?? 'anon'}:${questionId}`, [user?.id, questionId]);
@@ -135,14 +137,18 @@ export const HighlightableQuestionText: React.FC<HighlightableQuestionTextProps>
     const start = pre.toString().length;
     const selectedText = range.toString();
     const end = start + selectedText.length;
-    // Show floating confirm button near selection instead of auto-highlighting
-    const rect = range.getBoundingClientRect();
-    const rootRect = root.getBoundingClientRect();
-    const x = rect.left - rootRect.left + rect.width / 2;
-    const y = rect.top - rootRect.top; // place above selection
-    setPending({ start, end });
-    setBubble({ x, y });
-  }, [addHighlight]);
+    if (!confirmMode) {
+      addHighlight({ start, end });
+      sel.removeAllRanges();
+    } else {
+      const rect = range.getBoundingClientRect();
+      const rootRect = root.getBoundingClientRect();
+      const x = rect.left - rootRect.left + rect.width / 2;
+      const y = rect.top - rootRect.top;
+      setPending({ start, end });
+      setBubble({ x, y });
+    }
+  }, [addHighlight, confirmMode]);
 
   const parts = useMemo(() => {
     if (!highlights.length) return [{ text, highlighted: false, index: -1 }];
@@ -162,34 +168,25 @@ export const HighlightableQuestionText: React.FC<HighlightableQuestionTextProps>
     return segments;
   }, [text, highlights]);
 
-  // Dismiss bubble on outside click / escape / scroll
+  // Dismiss bubble when clicking outside/escape/scroll (confirmMode only)
   useEffect(() => {
+    if (!confirmMode) return;
     const onDown = (e: MouseEvent) => {
-      const root = wrapperRef.current;
-      if (!root) return;
-      const target = e.target as Node;
-      // If click inside the bubble or selection region, keep
-      const bubbleEl = root.querySelector('[data-hl-bubble="1"]');
-      if (bubbleEl && bubbleEl.contains(target)) return;
-      // Otherwise hide
-      if (bubble) { setBubble(null); setPending(null); }
+      const root = wrapperRef.current; if (!root) return;
+      const t = e.target as Node; if (root.contains(t)) return; setBubble(null); setPending(null);
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setBubble(null); setPending(null); const sel = window.getSelection(); sel?.removeAllRanges(); } };
     const onScroll = () => { if (bubble) { setBubble(null); setPending(null); } };
     document.addEventListener('mousedown', onDown);
     window.addEventListener('keydown', onKey);
     window.addEventListener('scroll', onScroll, true);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('scroll', onScroll, true);
-    };
-  }, [bubble]);
+    return () => { document.removeEventListener('mousedown', onDown); window.removeEventListener('keydown', onKey); window.removeEventListener('scroll', onScroll, true); };
+  }, [bubble, confirmMode]);
 
   return (
     <div
       ref={wrapperRef}
-      className={[className, 'relative'].filter(Boolean).join(' ')}
+  className={[className, 'relative', 'whitespace-pre-wrap'].filter(Boolean).join(' ')}
       onMouseUp={handleMouseUp}
       onTouchEnd={handleMouseUp}
       onContextMenu={(e) => e.preventDefault()}
@@ -199,40 +196,30 @@ export const HighlightableQuestionText: React.FC<HighlightableQuestionTextProps>
       {parts.map((p, i) => p.highlighted ? (
         <mark
           key={`hl-${i}`}
-          className="bg-yellow-200 px-0.5 rounded cursor-pointer"
+          className="bg-lime-300/90 dark:bg-lime-300/60 ring-1 ring-lime-400 shadow-[0_0_4px_rgba(163,230,53,0.8)] text-black px-0.5 rounded-sm cursor-pointer transition-colors hover:bg-lime-200 dark:hover:bg-lime-300/70"
           onClick={(e) => { e.stopPropagation(); removeHighlightAt(p.index); }}
-          title="Click to remove highlight"
+          title="Cliquer pour retirer le surlignage"
         >
           {p.text}
         </mark>
       ) : (
         <React.Fragment key={`tx-${i}`}>{p.text}</React.Fragment>
       ))}
-      {bubble && pending && (
+      {confirmMode && bubble && pending && (
         <div
           data-hl-bubble="1"
           className="absolute z-50 -translate-x-1/2 -translate-y-full bg-white dark:bg-neutral-900 border rounded shadow px-2 py-1 flex items-center gap-2 text-xs"
           style={{ left: bubble.x, top: Math.max(0, bubble.y - 6) }}
         >
           <button
-            className="px-2 py-0.5 rounded bg-yellow-300 text-black hover:bg-yellow-400"
+            className="px-2 py-0.5 rounded bg-lime-300 text-black hover:bg-lime-200 ring-1 ring-lime-400 shadow-[0_0_4px_rgba(163,230,53,0.8)]"
             onClick={(e) => {
               e.stopPropagation();
-              addHighlight(pending);
+              if (pending) addHighlight(pending);
               const sel = window.getSelection(); sel?.removeAllRanges();
               setBubble(null); setPending(null);
             }}
-            title="Souligner"
-          >
-            Souligner
-          </button>
-          <button
-            className="px-2 py-0.5 rounded border hover:bg-neutral-50 dark:hover:bg-neutral-800"
-            onClick={(e) => { e.stopPropagation(); const sel = window.getSelection(); sel?.removeAllRanges(); setBubble(null); setPending(null); }}
-            title="Annuler"
-          >
-            Annuler
-          </button>
+          >Souligner</button>
         </div>
       )}
     </div>

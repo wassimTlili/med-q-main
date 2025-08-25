@@ -5,39 +5,36 @@ export function useProgress() {
   const { user } = useAuth();
 
   const trackQuestionProgress = useCallback((
-    lectureId: string, 
-    questionId: string, 
-    isCorrect: boolean | 'partial',
-    score?: number
+    lectureId: string,
+    questionId: string,
+    result: boolean | 'partial',
+    score?: number // optional explicit numeric score (0..1). If provided it always wins.
   ) => {
     if (!user?.id) return;
 
-    // Convert the result to a numeric score for database storage
+    // Determine numeric score (allow fine‑grained partial credit)
     let numericScore: number;
-    if (isCorrect === true) {
-      numericScore = score || 1;
-    } else if (isCorrect === 'partial') {
-      numericScore = 0.5; // Use 0.5 to represent partial correctness
+    if (typeof score === 'number' && !Number.isNaN(score)) {
+      numericScore = Math.min(1, Math.max(0, score));
+    } else if (result === true) {
+      numericScore = 1;
+    } else if (result === 'partial') {
+      numericScore = 0.5; // legacy fallback when caller doesn't supply a fractional score
     } else {
       numericScore = 0;
     }
 
-    // Fire and forget - don't block the UI
     fetch('/api/progress', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         lectureId,
         questionId,
         completed: true,
         score: numericScore,
         userId: user.id
-      }),
-    }).catch(error => {
-      console.error('Error tracking progress:', error);
-    });
+      })
+    }).catch(error => console.error('Error tracking progress:', error));
   }, [user]);
 
   const trackLectureProgress = useCallback((
@@ -78,7 +75,8 @@ export function useProgress() {
         // Convert numeric scores back to boolean/partial format
         return progressData.map((item: any) => ({
           ...item,
-          result: item.score === 1 ? true : item.score === 0.5 ? 'partial' : false
+            // Treat any 0 < score < 1 as partial for status display
+          result: item.score === 1 ? true : (item.score > 0 ? 'partial' : false)
         }));
       }
     } catch (error) {
@@ -90,8 +88,8 @@ export function useProgress() {
   // Helper function to convert numeric score to result format
   const convertScoreToResult = useCallback((score: number | null): boolean | 'partial' | false => {
     if (score === null || score === undefined) return false;
-    if (score === 1) return true;
-    if (score === 0.5) return 'partial';
+    if (score >= 1) return true;
+    if (score > 0) return 'partial';
     return false;
   }, []);
 

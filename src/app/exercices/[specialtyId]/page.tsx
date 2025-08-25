@@ -58,11 +58,13 @@ import {
   ExternalLink,
   ArrowLeft,
   AlertTriangle,
+  MessageCircle,
+  ArrowUpDown
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/hooks/use-toast'
 import { Checkbox } from '@/components/ui/checkbox'
-// import { LectureComments } from '@/components/lectures/LectureComments'
+import { LectureComments } from '@/components/lectures/LectureComments'
 
 // Disable static generation to prevent SSR issues with useAuth
 export const dynamic = 'force-dynamic'
@@ -74,6 +76,8 @@ export default function SpecialtyPageRoute() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedFilter, setSelectedFilter] = useState('all')
+  const [sortOption, setSortOption] = useState<'default' | 'name' | 'note' | 'lastAccessed'>('default')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   // const [selectedLecture, setSelectedLecture] = useState<any>(null)
   // const [commentsDialogOpen, setCommentsDialogOpen] = useState(false)
   // const [questionTypeDialogOpen, setQuestionTypeDialogOpen] = useState(false)
@@ -89,6 +93,8 @@ export default function SpecialtyPageRoute() {
   const [newGroupName, setNewGroupName] = useState('')
   const [editingGroup, setEditingGroup] = useState<string | null>(null)
   const [selectedCourseIds, setSelectedCourseIds] = useState<Record<string, boolean>>({})
+  // Comments modal state
+  const [commentsLectureId, setCommentsLectureId] = useState<string | null>(null)
 
   const { isAdmin, user } = useAuth()
   const specialtyId = params?.specialtyId as string
@@ -100,7 +106,7 @@ export default function SpecialtyPageRoute() {
   } = useSpecialty(specialtyId)
 
   if (!specialtyId) {
-    return <div>Specialty ID not found</div>
+    return <div>Identifiant de spécialité introuvable</div>
   }
 
   // Load course groups from database
@@ -268,7 +274,7 @@ export default function SpecialtyPageRoute() {
         <AppSidebarProvider>
           <AppSidebar />
           <SidebarInset className="flex-1 flex flex-col">
-            <UniversalHeader title="Loading..." />
+            <UniversalHeader title="Chargement..." />
             <div className="flex-1 bg-gray-50 dark:bg-gray-900 p-8">
               <div className="animate-pulse space-y-4">
                 <div className="h-8 bg-gray-200 rounded w-1/3"></div>
@@ -287,9 +293,9 @@ export default function SpecialtyPageRoute() {
         <AppSidebarProvider>
           <AppSidebar />
           <SidebarInset className="flex-1 flex flex-col">
-            <UniversalHeader title="Specialty not found" />
+            <UniversalHeader title="Spécialité introuvable" />
             <div className="flex-1 bg-gray-50 dark:bg-gray-900 p-8">
-              <p>Specialty not found</p>
+              <p>Spécialité introuvable</p>
             </div>
           </SidebarInset>
         </AppSidebarProvider>
@@ -307,17 +313,57 @@ export default function SpecialtyPageRoute() {
     return matchesSearch && matchesFilter
   })
 
+  // Apply sorting
+  const sortedLectures = (() => {
+    if (sortOption === 'default') return filteredLectures
+    const arr = [...filteredLectures]
+    switch (sortOption) {
+      case 'name':
+        arr.sort((a, b) => {
+          const comp = a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' })
+          return sortDirection === 'asc' ? comp : -comp
+        })
+        break
+      case 'note':
+        arr.sort((a: any, b: any) => {
+          const missingHigh = sortDirection === 'asc'
+          const an = typeof a.culmonNote === 'number' ? a.culmonNote : (missingHigh ? Infinity : -Infinity)
+          const bn = typeof b.culmonNote === 'number' ? b.culmonNote : (missingHigh ? Infinity : -Infinity)
+          if (an !== bn) {
+            const comp = an - bn // ascending base
+            return sortDirection === 'asc' ? comp : -comp
+          }
+          const titleComp = a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' })
+          return sortDirection === 'asc' ? titleComp : -titleComp
+        })
+        break
+      case 'lastAccessed':
+        arr.sort((a: any, b: any) => {
+          const ad = a.progress?.lastAccessed ? new Date(a.progress.lastAccessed).getTime() : 0
+          const bd = b.progress?.lastAccessed ? new Date(b.progress.lastAccessed).getTime() : 0
+          if (ad !== bd) {
+            const comp = ad - bd // ascending base (oldest first)
+            return sortDirection === 'asc' ? comp : -comp
+          }
+          const titleComp = a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' })
+          return sortDirection === 'asc' ? titleComp : -titleComp
+        })
+        break
+    }
+    return arr
+  })()
+
   // Build groups -> lectures map from current data
   const groupedLectures = Object.keys(courseGroups).reduce((acc, groupName) => {
     const ids = courseGroups[groupName]
-    const list = filteredLectures.filter(l => ids.includes(l.id))
+    const list = sortedLectures.filter(l => ids.includes(l.id))
     if (list.length > 0) acc[groupName] = list
     return acc
   }, {} as Record<string, typeof lectures>)
 
   // Ungrouped are those not in any group
   const assignedLectureIds = Object.values(courseGroups).flat()
-  const ungroupedLectures = filteredLectures.filter(l => !assignedLectureIds.includes(l.id))
+  const ungroupedLectures = sortedLectures.filter(l => !assignedLectureIds.includes(l.id))
 
   const getCourseGroup = (courseId: string): string => {
     for (const [gn, ids] of Object.entries(courseGroups)) {
@@ -337,7 +383,7 @@ export default function SpecialtyPageRoute() {
 
   // Per-lecture mode helpers
   const getLectureMode = (lectureId: string): ModeKey => selectedModes[lectureId] || 'study'
-  const getModeLabel = (mode: ModeKey) => mode === 'study' ? 'Study' : mode === 'revision' ? 'Revision' : 'Pinned'
+  const getModeLabel = (mode: ModeKey) => mode === 'study' ? 'Étude' : mode === 'revision' ? 'Révision' : 'Épinglé'
   const getModePath = (mode: ModeKey) => mode === 'study' ? '' : mode === 'revision' ? '/revision' : '/pinned-test'
   const setLectureMode = (lectureId: string, mode: ModeKey) => setSelectedModes(prev => ({ ...prev, [lectureId]: mode }))
   const goToLectureMode = (lectureId: string) => {
@@ -363,7 +409,7 @@ export default function SpecialtyPageRoute() {
                   className="flex items-center gap-1 px-2 py-1 h-auto hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   <ArrowLeft className="h-3 w-3" />
-                  Exercises
+                  Exercices
                 </Button>
                 <span>/</span>
                 <span className="text-gray-900 dark:text-gray-100 font-medium">{specialty.name}</span>
@@ -390,22 +436,22 @@ export default function SpecialtyPageRoute() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
                           <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{specialty.progress?.totalLectures || 0}</div>
-                          <div className="text-sm text-blue-600 dark:text-blue-400">Total Lectures</div>
+                          <div className="text-sm text-blue-600 dark:text-blue-400">Cours totaux</div>
                         </div>
                         <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
                           <div className="text-2xl font-bold text-green-700 dark:text-green-300">{specialty.progress?.completedLectures || 0}</div>
-                          <div className="text-sm text-green-600 dark:text-green-400">Completed</div>
+                          <div className="text-sm text-green-600 dark:text-green-400">Terminés</div>
                         </div>
                         <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
                           <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{Math.round(specialty.progress?.questionProgress || 0)}%</div>
-                          <div className="text-sm text-purple-600 dark:text-purple-400">Progress</div>
+                          <div className="text-sm text-purple-600 dark:text-purple-400">Progression</div>
                         </div>
                       </div>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Overall Progress</span>
+                      <span className="text-gray-600 dark:text-gray-400">Progression globale</span>
                       <span className="font-semibold text-blue-600 dark:text-blue-400">{Math.round(specialty.progress?.questionProgress || 0)}%</span>
                     </div>
                     <div className="relative h-2 w-full overflow-hidden rounded-full bg-gray-200">
@@ -468,14 +514,41 @@ export default function SpecialtyPageRoute() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="flex items-center gap-2">
                       <Filter className="w-4 h-4" />
-                      Filter
+                      Filtrer
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setSelectedFilter('all')}>All Courses</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedFilter('completed')}>Completed</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedFilter('in-progress')}>In Progress</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedFilter('not-started')}>Not Started</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedFilter('all')}>Tous les cours</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedFilter('completed')}>Terminés</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedFilter('in-progress')}>En cours</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedFilter('not-started')}>Non commencés</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <ArrowUpDown className="w-4 h-4" />
+                      {(() => {
+                        if (sortOption === 'default') return 'Trier';
+                        const dirArrow = sortDirection === 'asc' ? '↑' : '↓';
+                        if (sortOption === 'name') return `Nom ${dirArrow}`;
+                        if (sortOption === 'note') return `Note ${dirArrow}`;
+                        if (sortOption === 'lastAccessed') return `Accès ${dirArrow}`;
+                        return 'Trier';
+                      })()}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => { setSortOption('default'); setSortDirection('asc'); }}>Par défaut</DropdownMenuItem>
+                    <div className="px-2 py-1 text-xs text-gray-500">Nom</div>
+                    <DropdownMenuItem onClick={() => { setSortOption('name'); setSortDirection('asc'); }}>Nom A→Z</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setSortOption('name'); setSortDirection('desc'); }}>Nom Z→A</DropdownMenuItem>
+                    <div className="px-2 pt-2 pb-1 text-xs text-gray-500">Note /20</div>
+                    <DropdownMenuItem onClick={() => { setSortOption('note'); setSortDirection('desc'); }}>Note haute→basse</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setSortOption('note'); setSortDirection('asc'); }}>Note basse→haute</DropdownMenuItem>
+                    <div className="px-2 pt-2 pb-1 text-xs text-gray-500">Dernier accès</div>
+                    <DropdownMenuItem onClick={() => { setSortOption('lastAccessed'); setSortDirection('desc'); }}>Plus récent</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setSortOption('lastAccessed'); setSortDirection('asc'); }}>Plus ancien</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -503,23 +576,23 @@ export default function SpecialtyPageRoute() {
                             />
                           </TableHead>
                         )}
-                        <TableHead>Course</TableHead>
-                        {isAdmin && <TableHead>Reports</TableHead>}
-                        <TableHead>Notes</TableHead>
-                        <TableHead className="w-64">Progress</TableHead>
-                        {/* Comments column removed */}
+                        <TableHead>Cours</TableHead>
+                        {isAdmin && <TableHead>Rapports</TableHead>}
+                        <TableHead>Note /20</TableHead>
+                        <TableHead className="w-64">Progression</TableHead>
+                        <TableHead>Commentaires</TableHead>
                         <TableHead>Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {isAdmin && Object.values(selectedCourseIds).some(v => v) && (
                         <TableRow className="bg-blue-50/40 dark:bg-blue-900/10">
-                          <TableCell colSpan={isAdmin ? 6 : 4}>
+                          <TableCell colSpan={isAdmin ? 7 : 5}>
                             <div className="flex items-center gap-2">
-                              <span className="text-sm text-gray-700 dark:text-gray-300 mr-2">Bulk assign selected to group:</span>
+                              <span className="text-sm text-gray-700 dark:text-gray-300 mr-2">Affecter en masse au groupe :</span>
                               <Select onValueChange={(v) => v && bulkAssignToGroup(v)}>
                                 <SelectTrigger className="w-56">
-                                  <SelectValue placeholder="Choose group" />
+                                  <SelectValue placeholder="Choisir un groupe" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {Object.keys(courseGroups).map((groupName) => (
@@ -527,7 +600,7 @@ export default function SpecialtyPageRoute() {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <Button variant="ghost" size="sm" onClick={() => setSelectedCourseIds({})}>Clear selection</Button>
+                              <Button variant="ghost" size="sm" onClick={() => setSelectedCourseIds({})}>Effacer la sélection</Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -569,7 +642,12 @@ export default function SpecialtyPageRoute() {
                             </TableCell>
                           )}
                           <TableCell>
-                            <span className="text-sm text-gray-500">No notes available</span>
+                            {(() => {
+                              const note = lecture.culmonNote;
+                              if (note == null || isNaN(note)) return <span className="text-xs text-gray-400">-</span>;
+                              const color = note >= 16 ? 'bg-green-100 text-green-700 border-green-300' : note >= 12 ? 'bg-blue-100 text-blue-700 border-blue-300' : note >= 8 ? 'bg-yellow-100 text-yellow-700 border-yellow-300' : 'bg-red-100 text-red-700 border-red-300';
+                              return <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${color}`}>{note.toFixed(2)}</span>;
+                            })()}
                           </TableCell>
                           <TableCell className="w-64">
                             <div className="space-y-1">
@@ -597,7 +675,20 @@ export default function SpecialtyPageRoute() {
                               </div>
                             </div>
                           </TableCell>
-                          {/* Comments cell removed */}
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setCommentsLectureId(lecture.id)}
+                              className="group flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-2"
+                              aria-label="View comments"
+                            >
+                              <span className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-500/15 group-hover:bg-blue-500/25 transition-colors">
+                                <MessageCircle className="w-6 h-6 text-blue-400 group-hover:text-blue-300" />
+                              </span>
+                              <span className="font-semibold text-base leading-none tabular-nums text-blue-300 group-hover:text-blue-200">{lecture.commentsCount ?? 0}</span>
+                            </Button>
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Button
@@ -620,9 +711,9 @@ export default function SpecialtyPageRoute() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'study')}>Study</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'revision')}>Revision</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'pinned')}>Pinned</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'study')}>Étude</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'revision')}>Révision</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'pinned')}>Épinglé</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
@@ -633,7 +724,7 @@ export default function SpecialtyPageRoute() {
                       {/* Grouped rows */}
                       {Object.entries(groupedLectures).map(([groupName, glist]) => [
                         <TableRow key={`group-${groupName}`} className="bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                          <TableCell colSpan={isAdmin ? 6 : 4}>
+                          <TableCell colSpan={isAdmin ? 7 : 5}>
                             <Button variant="ghost" onClick={() => setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }))} className="flex items-center gap-2 p-0 h-auto font-medium text-gray-900 dark:text-gray-100">
                               <Folder className="w-4 h-4 text-blue-600" />
                               {expandedGroups[groupName] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -672,9 +763,12 @@ export default function SpecialtyPageRoute() {
                               </TableCell>
                             )}
                             <TableCell>
-                              <span className="text-sm text-gray-500">
-                                No notes available
-                              </span>
+                              {(() => {
+                                const note = (lecture as any).culmonNote;
+                                if (note == null || isNaN(note)) return <span className="text-xs text-gray-400">-</span>;
+                                const color = note >= 16 ? 'bg-green-100 text-green-700 border-green-300' : note >= 12 ? 'bg-blue-100 text-blue-700 border-blue-300' : note >= 8 ? 'bg-yellow-100 text-yellow-700 border-yellow-300' : 'bg-red-100 text-red-700 border-red-300';
+                                return <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${color}`}>{note.toFixed(2)}</span>;
+                              })()}
                             </TableCell>
                             <TableCell className="w-64">
                               <div className="space-y-1">
@@ -723,7 +817,20 @@ export default function SpecialtyPageRoute() {
                                 </div>
                             </div>
                           </TableCell>
-                          {/* Comments cell removed */}
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setCommentsLectureId(lecture.id)}
+                              className="group flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-2"
+                              aria-label="View comments"
+                            >
+                              <span className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-500/15 group-hover:bg-blue-500/25 transition-colors">
+                                <MessageCircle className="w-6 h-6 text-blue-400 group-hover:text-blue-300" />
+                              </span>
+                              <span className="font-semibold text-base leading-none tabular-nums text-blue-300 group-hover:text-blue-200">{lecture.commentsCount ?? 0}</span>
+                            </Button>
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Button
@@ -746,9 +853,9 @@ export default function SpecialtyPageRoute() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'study')}>Study</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'revision')}>Revision</DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'pinned')}>Pinned</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'study')}>Étude</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'revision')}>Révision</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setLectureMode(lecture.id, 'pinned')}>Épinglé</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
@@ -763,7 +870,17 @@ export default function SpecialtyPageRoute() {
             </div>
           </div>
 
-          {/* Comments Dialog removed */}
+          {/* Lecture Comments Modal */}
+          <Dialog open={!!commentsLectureId} onOpenChange={(open) => { if (!open) setCommentsLectureId(null) }}>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Lecture Comments</DialogTitle>
+              </DialogHeader>
+              {commentsLectureId && (
+                <LectureComments lectureId={commentsLectureId} />
+              )}
+            </DialogContent>
+          </Dialog>
 
            <EditSpecialtyDialog specialty={specialty} isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} onSpecialtyUpdated={handleSpecialtyUpdated} />
          </SidebarInset>

@@ -6,9 +6,10 @@ import { useTranslation } from 'react-i18next';
 
 interface OpenQuestionSelfAssessmentProps {
   onAssessment: (rating: 'correct' | 'wrong' | 'partial') => void;
+  userAnswerText?: string;
 }
 
-export function OpenQuestionSelfAssessment({ onAssessment }: OpenQuestionSelfAssessmentProps) {
+export function OpenQuestionSelfAssessment({ onAssessment, userAnswerText }: OpenQuestionSelfAssessmentProps) {
   const { t } = useTranslation();
 
   const handleRatingSelect = (rating: 'correct' | 'wrong' | 'partial') => {
@@ -23,9 +24,19 @@ export function OpenQuestionSelfAssessment({ onAssessment }: OpenQuestionSelfAss
       className="space-y-4 w-full max-w-full"
     >
       <div className="p-4 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-        <h4 className="font-medium mb-4 text-blue-900 dark:text-blue-200">
-          {t('questions.rateYourAnswer')}
+        <h4 className="font-medium mb-3 text-blue-900 dark:text-blue-200">
+          {t('questions.rateYourAnswer')}{":"}
         </h4>
+
+        {userAnswerText && (
+          <div className="mb-4 grid gap-3 text-sm">
+            {userAnswerText && (
+              <div className="rounded-md border border-blue-200/60 dark:border-blue-800/60 bg-white/70 dark:bg-blue-900/30 p-3">
+                <div className="whitespace-pre-wrap leading-relaxed">{userAnswerText}</div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-2">
           <Button

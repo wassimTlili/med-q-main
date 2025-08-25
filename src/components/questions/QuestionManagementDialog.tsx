@@ -47,6 +47,8 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
   const [shouldOpenCreate, setShouldOpenCreate] = useState(false);
   // Track how the dialog was opened to avoid unwanted cascades
   const [openContext, setOpenContext] = useState<'normal' | 'standaloneCreate' | 'standaloneOrganizer'>('normal');
+  // If a child dialog was opened from the parent, we will re-open the parent after it closes
+  const [reopenParentAfterChild, setReopenParentAfterChild] = useState(false);
   // Ensure initial flags are consumed once per parent open
   const [consumedInitialCreate, setConsumedInitialCreate] = useState(false);
   const [consumedInitialOrganizer, setConsumedInitialOrganizer] = useState(false);
@@ -55,18 +57,28 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
     if (isOpen) {
       fetchQuestions();
       setSearchQuery('');
-      // Open create in standalone mode when requested from outside
+      // Standalone open: immediately close the parent to avoid stacked modals
       if ((initialCreateOpen && !consumedInitialCreate) || shouldOpenCreate) {
+  // Ensure other children are closed
+  setIsOrganizerOpen(false);
+  setIsEditDialogOpen(false);
         setIsCreateDialogOpen(true);
         setOpenContext('standaloneCreate');
         setShouldOpenCreate(false);
         setConsumedInitialCreate(true);
+        setReopenParentAfterChild(false);
+        // Close the parent right away to prevent background modal
+        onOpenChange(false);
       }
-      // Open organizer in standalone mode when requested from outside
       if (initialOrganizerOpen && !consumedInitialOrganizer) {
+  // Ensure other children are closed
+  setIsCreateDialogOpen(false);
+  setIsEditDialogOpen(false);
         setIsOrganizerOpen(true);
         setOpenContext('standaloneOrganizer');
         setConsumedInitialOrganizer(true);
+        setReopenParentAfterChild(false);
+        onOpenChange(false);
       }
     } else {
       // Reset consumption flags when parent fully closes
@@ -74,7 +86,7 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
       setConsumedInitialOrganizer(false);
       setOpenContext('normal');
     }
-  }, [isOpen, lecture.id, initialCreateOpen, initialOrganizerOpen, consumedInitialCreate, consumedInitialOrganizer, shouldOpenCreate]);
+  }, [isOpen, lecture.id, initialCreateOpen, initialOrganizerOpen, consumedInitialCreate, consumedInitialOrganizer, shouldOpenCreate, onOpenChange]);
 
   // Listen to global event from LectureItem's quick-create button
   useEffect(() => {
@@ -83,12 +95,25 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
       if (custom?.detail?.lectureId === lecture.id) {
         // open parent dialog first if not open
         if (!isOpen) onOpenChange(true);
+        // ask other instances to close their children
+        try { window.dispatchEvent(new Event('qmd:close-children')); } catch {}
         setShouldOpenCreate(true);
       }
     };
     window.addEventListener('open-create-question', handler as EventListener);
     return () => window.removeEventListener('open-create-question', handler as EventListener);
   }, [lecture.id, isOpen, onOpenChange]);
+
+  // Global: close child dialogs if requested by another instance
+  useEffect(() => {
+    const closeChildren = () => {
+      setIsCreateDialogOpen(false);
+      setIsOrganizerOpen(false);
+      setIsEditDialogOpen(false);
+    };
+    window.addEventListener('qmd:close-children', closeChildren);
+    return () => window.removeEventListener('qmd:close-children', closeChildren);
+  }, []);
 
   // Filter questions based on search query
   useEffect(() => {
@@ -181,6 +206,7 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-blue-200/60 dark:border-blue-900/40">
         <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-blue-100/80 dark:border-blue-900/40 bg-gradient-to-b from-blue-50/60 to-transparent dark:from-blue-950/30">
@@ -226,10 +252,18 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
             </div>
             
             {/* Add Question Button */}
-            <Button
+      <Button
               onClick={() => {
+                // Open child and close parent to avoid stacked dialogs
                 setOpenContext('normal');
+        // close any child dialogs in other instances
+        try { window.dispatchEvent(new Event('qmd:close-children')); } catch {}
+                // Close other child dialogs to avoid background overlays
+                setIsOrganizerOpen(false);
+                setIsEditDialogOpen(false);
                 setIsCreateDialogOpen(true);
+                setReopenParentAfterChild(true);
+                onOpenChange(false);
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
             >
@@ -238,11 +272,19 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
             </Button>
             {/* Organizer */}
             {isAdmin && (
-              <Button
+        <Button
                 variant="outline"
                 onClick={() => {
+                  // Open child and close parent to avoid stacked dialogs
                   setOpenContext('normal');
+          // close any child dialogs in other instances
+          try { window.dispatchEvent(new Event('qmd:close-children')); } catch {}
+                  // Close other child dialogs to avoid background overlays
+                  setIsCreateDialogOpen(false);
+                  setIsEditDialogOpen(false);
                   setIsOrganizerOpen(true);
+                  setReopenParentAfterChild(true);
+                  onOpenChange(false);
                 }}
                 className="border-blue-200 dark:border-blue-800"
               >
@@ -426,48 +468,55 @@ export function QuestionManagementDialog({ lecture, isOpen, onOpenChange, initia
             )})
           )}
         </div>
-
-        {/* Create Question Dialog */}
-        <CreateQuestionDialog
-          lecture={lecture}
-          isOpen={isCreateDialogOpen}
-          onOpenChange={(open) => {
-            setIsCreateDialogOpen(open);
-            if (!open && openContext === 'standaloneCreate') {
-              // Close parent dialog if create was opened standalone
-              onOpenChange(false);
-              setOpenContext('normal');
-            }
-          }}
-          onQuestionCreated={handleQuestionCreated}
-        />
-
-        {/* Edit Question Dialog (new editor) */}
-        <QuestionEditDialog
-          question={selectedQuestion}
-          isOpen={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          onQuestionUpdated={handleQuestionUpdated}
-        />
-
-        {/* Organizer Dialog */}
-        <QuestionOrganizerDialog
-          lecture={lecture}
-          isOpen={isOrganizerOpen}
-          onOpenChange={(open) => {
-            setIsOrganizerOpen(open);
-            if (!open) {
-              if (openContext === 'standaloneOrganizer') {
-                onOpenChange(false);
-                setOpenContext('normal');
-              } else {
-                fetchQuestions();
-              }
-            }
-          }}
-          onSaved={() => fetchQuestions()}
-        />
       </DialogContent>
     </Dialog>
+    {/* Child dialogs rendered outside parent to avoid stacking/unmount issues */}
+    <CreateQuestionDialog
+      lecture={lecture}
+      isOpen={isCreateDialogOpen}
+      onOpenChange={(open) => {
+        setIsCreateDialogOpen(open);
+        if (!open) {
+          // When child closes, optionally reopen the parent if it was the source
+          if (reopenParentAfterChild) {
+            setTimeout(() => onOpenChange(true), 0);
+            setReopenParentAfterChild(false);
+          }
+          // If opened as standalone, keep parent closed
+          if (openContext === 'standaloneCreate') {
+            setOpenContext('normal');
+          }
+        }
+      }}
+      onQuestionCreated={handleQuestionCreated}
+    />
+
+    <QuestionEditDialog
+      question={selectedQuestion}
+      isOpen={isEditDialogOpen}
+      onOpenChange={setIsEditDialogOpen}
+      onQuestionUpdated={handleQuestionUpdated}
+    />
+
+    <QuestionOrganizerDialog
+      lecture={lecture}
+      isOpen={isOrganizerOpen}
+      onOpenChange={(open) => {
+        setIsOrganizerOpen(open);
+        if (!open) {
+          if (reopenParentAfterChild) {
+            setTimeout(() => onOpenChange(true), 0);
+            setReopenParentAfterChild(false);
+          }
+          if (openContext === 'standaloneOrganizer') {
+            setOpenContext('normal');
+          } else {
+            fetchQuestions();
+          }
+        }
+      }}
+      onSaved={() => fetchQuestions()}
+    />
+    </>
   );
 }

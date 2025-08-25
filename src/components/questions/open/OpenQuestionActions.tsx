@@ -1,6 +1,6 @@
 
-import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, RotateCcw, Keyboard } from 'lucide-react';
+import { Button } from '@/components/ui/button'; // updated to include user answer display
+import { ChevronLeft, ChevronRight, RotateCcw, Keyboard, StickyNote, SendHorizontal, CheckCircle2 } from 'lucide-react';
 
 interface OpenQuestionActionsProps {
   isSubmitted: boolean;
@@ -12,6 +12,8 @@ interface OpenQuestionActionsProps {
   showNext?: boolean;
   onReAnswer?: () => void;
   hasSubmitted?: boolean; // Track if question has been submitted (for clinical cases)
+  showNotesArea?: boolean;
+  onToggleNotes?: () => void; // toggle unified notes area
 }
 
 export function OpenQuestionActions({
@@ -23,7 +25,9 @@ export function OpenQuestionActions({
   showPrevious = false,
   showNext = true,
   onReAnswer,
-  hasSubmitted = false
+  hasSubmitted = false,
+  showNotesArea,
+  onToggleNotes
 }: OpenQuestionActionsProps) {
   return (
     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mt-6">
@@ -45,27 +49,53 @@ export function OpenQuestionActions({
       )}
       
       <div className={`flex gap-2 ${showPrevious ? 'sm:ml-auto' : ''} justify-end flex-wrap`}>
+        <div className="flex gap-2 items-center flex-wrap">
         {!isSubmitted ? (
-          <Button 
-            onClick={onSubmit} 
+          <Button
+            onClick={onSubmit}
             disabled={hasSubmitted || !canSubmit}
             className="flex items-center gap-1 w-full sm:w-auto"
           >
-            {hasSubmitted ? "Répondu" : "Soumettre"}
+            {hasSubmitted ? (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Répondu</span>
+              </>
+            ) : (
+              <>
+                <SendHorizontal className="h-4 w-4" />
+                <span className="hidden sm:inline">Soumettre</span>
+              </>
+            )}
           </Button>
         ) : (
-          <div className="flex gap-2">
+          <>
+      {onToggleNotes && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+        onClick={onToggleNotes}
+        className="flex items-center gap-1"
+              >
+                <StickyNote className="h-4 w-4" />
+        <span className="hidden sm:inline">{showNotesArea ? 'Fermer les notes' : 'Prendre une note'}</span>
+              </Button>
+            )}
             {onReAnswer && (
               <Button 
                 variant="outline"
+                size="sm"
                 onClick={onReAnswer}
+                className="flex items-center gap-1"
               >
-                <RotateCcw className="h-4 w-4 sm:mr-2" />
+                <RotateCcw className="h-4 w-4" />
                 <span className="hidden sm:inline">Répondre à nouveau</span>
               </Button>
             )}
             {showNext && (
               <Button 
+                size="sm"
                 onClick={onNext}
                 className="flex items-center gap-1"
               >
@@ -73,8 +103,9 @@ export function OpenQuestionActions({
                 <ChevronRight className="h-4 w-4" />
               </Button>
             )}
-          </div>
+          </>
         )}
+        </div>
       </div>
     </div>
   );

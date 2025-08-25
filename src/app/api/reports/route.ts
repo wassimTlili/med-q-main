@@ -40,18 +40,33 @@ async function getHandler(request: AuthenticatedRequest) {
     if (questionId) where.questionId = questionId;
     if (status) where.status = status;
     if (typeParam) {
-      // Accept friendly values and map to enum
+      // Accept friendly values and map to new enum values
       const t = typeParam.toLowerCase();
       const map: Record<string, string> = {
-        'mal_placee': 'mal_placee',
-        'mal-placée': 'mal_placee',
-        'mal placée': 'mal_placee',
-        'misplaced': 'mal_placee',
-        'erreur_syntaxe': 'erreur_syntaxe',
-        'erreur syntaxe': 'erreur_syntaxe',
-        'syntax': 'erreur_syntaxe',
-        'autre': 'autre',
-        'other': 'autre'
+        'erreur_de_saisie': 'erreur_de_saisie',
+        'erreur de saisie': 'erreur_de_saisie',
+        'saisie': 'erreur_de_saisie',
+        'typo': 'erreur_de_saisie',
+        'question_hors_cours': 'question_hors_cours',
+        'question hors cours': 'question_hors_cours',
+        'hors_cours': 'question_hors_cours',
+        'hors cours': 'question_hors_cours',
+        'outofscope': 'question_hors_cours',
+        'correction_erronee': 'correction_erronee',
+        'correction erronée': 'correction_erronee',
+        'correction erronee': 'correction_erronee',
+        'erronee': 'correction_erronee',
+  'wrong_correction': 'correction_erronee',
+  // legacy values (map to new)
+  'mal_placee': 'question_hors_cours',
+  'mal-placée': 'question_hors_cours',
+  'mal placée': 'question_hors_cours',
+  'misplaced': 'question_hors_cours',
+  'erreur_syntaxe': 'correction_erronee',
+  'erreur syntaxe': 'correction_erronee',
+  'syntax': 'correction_erronee',
+  'autre': 'erreur_de_saisie',
+  'other': 'erreur_de_saisie'
       };
       const mapped = map[t] || t;
       (where as any).reportType = mapped;
@@ -128,46 +143,59 @@ async function postHandler(request: AuthenticatedRequest) {
       );
     }
 
-  if (!questionId || !lectureId || !message) {
-      return NextResponse.json(
-        { error: 'questionId, lectureId, and message are required' },
-        { status: 400 }
-      );
+    if (!questionId || !lectureId) {
+      return NextResponse.json({ error: 'questionId and lectureId are required' }, { status: 400 });
     }
 
-  const report = await (prisma as any).report.create({
-      data: {
-        questionId,
-        lectureId,
-  message,
-    // default handled by prisma schema if not provided
-    reportType: reportType ?? undefined,
-        userId,
-        status: 'pending'
-      },
-      include: {
-        question: {
-          select: {
-            id: true,
-            text: true,
-            type: true
-          }
+    // Coerce empty / whitespace-only / undefined message to null so DB constraint (if any) passes
+    let nullableMessage: string | null = null;
+    if (typeof message === 'string') {
+      const trimmed = message.trim();
+      if (trimmed.length > 0) nullableMessage = trimmed; // keep meaningful text
+    }
+    let report;
+    try {
+      report = await (prisma as any).report.create({
+        data: {
+          questionId,
+          lectureId,
+          message: nullableMessage, // may be null if DB migrated
+          reportType: reportType ?? undefined,
+          userId,
+          status: 'pending'
         },
-        lecture: {
-          select: {
-            id: true,
-            title: true
-          }
-        },
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true
-          }
+        include: {
+          question: { select: { id: true, text: true, type: true } },
+          lecture: { select: { id: true, title: true } },
+          user: { select: { id: true, email: true, name: true } }
         }
+      });
+    } catch (e: any) {
+      // Constraint blocking NULL? Provide minimal placeholder so not blank constraint passes, else rethrow
+      if ((e?.code === 'P2011' || e?.code === '23514') && nullableMessage === null) {
+        try {
+          report = await (prisma as any).report.create({
+            data: {
+              questionId,
+              lectureId,
+              message: '-', // minimal placeholder
+              reportType: reportType ?? undefined,
+              userId,
+              status: 'pending'
+            },
+            include: {
+              question: { select: { id: true, text: true, type: true } },
+              lecture: { select: { id: true, title: true } },
+              user: { select: { id: true, email: true, name: true } }
+            }
+          });
+        } catch (inner) {
+          throw inner;
+        }
+      } else {
+        throw e;
       }
-    });
+    }
 
     return NextResponse.json(report, { status: 201 });
   } catch (error) {

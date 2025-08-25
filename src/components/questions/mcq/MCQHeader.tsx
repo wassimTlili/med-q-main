@@ -10,9 +10,10 @@ interface MCQHeaderProps {
   lectureTitle?: string;
   specialtyName?: string;
   questionId?: string;
+  highlightConfirm?: boolean;
 }
 
-export function MCQHeader({ questionText, isSubmitted, questionNumber, session, lectureTitle, specialtyName, questionId }: MCQHeaderProps) {
+export function MCQHeader({ questionText, isSubmitted, questionNumber, session, lectureTitle, specialtyName, questionId, highlightConfirm }: MCQHeaderProps) {
   const { t } = useTranslation();
   const sessionLabel = (() => {
     if (!session) return '';
@@ -42,11 +43,12 @@ export function MCQHeader({ questionText, isSubmitted, questionNumber, session, 
           <HighlightableQuestionText
             questionId={questionId}
             text={questionText}
-            className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words"
+            className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words whitespace-pre-wrap"
+            confirmMode={highlightConfirm}
           />
         </div>
       ) : (
-        <h3 className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words">{questionText}</h3>
+        <h3 className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words whitespace-pre-wrap">{questionText}</h3>
       )}
       <p className="text-sm text-muted-foreground dark:text-gray-300">
         {isSubmitted ? t('questions.reviewAnswers') : t('questions.selectAllCorrect')}

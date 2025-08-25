@@ -1,4 +1,4 @@
-
+"use client";
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Question } from '@/types';
 import { motion } from 'framer-motion';
@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 import { QuestionNotes } from './QuestionNotes';
+import { logActivity } from '@/lib/logActivity';
 import { QuestionComments } from './QuestionComments';
 import ZoomableImage from './ZoomableImage';
 
@@ -37,6 +38,13 @@ interface OpenQuestionProps {
   showDeferredSelfAssessment?: boolean; // Show self-assessment after results are revealed
   onSelfAssessmentUpdate?: (questionId: string, result: boolean | 'partial') => void; // Update result after self-assessment
   onQuestionUpdate?: (questionId: string, updates: Partial<Question>) => void;
+  hideNotes?: boolean;
+  hideComments?: boolean;
+  hideActions?: boolean;
+  highlightConfirm?: boolean;
+  resetSignal?: number; // external trigger to reset state (for grouped QROC re-answer)
+  keepInputAfterSubmit?: boolean; // keep textarea mounted (grouped subquestions)
+  suppressReminder?: boolean; // hide reminder section (grouped QROC shows one shared)
 }
 
 export function OpenQuestion({ 
@@ -52,7 +60,14 @@ export function OpenQuestion({
   hideImmediateResults = false,
   showDeferredSelfAssessment = false,
   onSelfAssessmentUpdate,
-  onQuestionUpdate
+  onQuestionUpdate,
+  hideNotes,
+  hideComments,
+  hideActions,
+  highlightConfirm,
+  resetSignal,
+  keepInputAfterSubmit,
+  suppressReminder,
 }: OpenQuestionProps) {
   const [answer, setAnswer] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -63,6 +78,8 @@ export function OpenQuestion({
   const [hasSubmitted, setHasSubmitted] = useState(false); // Track if question has been submitted
   const [deferredAssessmentResult, setDeferredAssessmentResult] = useState<boolean | 'partial' | null>(null); // Track deferred self-assessment
   const [isPinned, setIsPinned] = useState(false); // Track if question is pinned
+  const [showNotesArea, setShowNotesArea] = useState(false); // Control showing notes/comments after click
+  const notesRef = useRef<HTMLDivElement | null>(null);
   const hasSubmittedRef = useRef(false); // Immediate synchronous access to submission state
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -79,6 +96,21 @@ export function OpenQuestion({
   useEffect(() => {
     setLocalHidden(undefined);
   }, [question.id]);
+
+  // External reset (e.g., grouped QROC re-answer)
+  useEffect(() => {
+    if (resetSignal !== undefined) {
+      // If not preserving input, clear it; else keep content
+      if (!keepInputAfterSubmit) {
+        setAnswer('');
+      }
+      setSubmitted(false);
+      setShowSelfAssessment(false);
+      setAssessmentCompleted(false);
+      setHasSubmitted(false);
+      hasSubmittedRef.current = false;
+    }
+  }, [resetSignal]);
 
   // Clear local override once parent prop reflects the new state
   useEffect(() => {
@@ -131,6 +163,7 @@ export function OpenQuestion({
           title: "Question Pinned",
           description: "This question has been pinned to your collection.",
         });
+  window.dispatchEvent(new Event('pinned-updated'));
       } else {
         toast({
           title: "Error",
@@ -162,6 +195,7 @@ export function OpenQuestion({
           title: "Question Unpinned",
           description: "This question has been removed from your pinned collection.",
         });
+  window.dispatchEvent(new Event('pinned-updated'));
       } else {
         toast({
           title: "Error",
@@ -242,6 +276,13 @@ export function OpenQuestion({
       // For regular questions, show self-assessment
       setShowSelfAssessment(true);
     }
+
+    // Log activity immediately for open/QROC so it appears in daily chart even before self-assessment
+    if (user?.id) {
+      logActivity('open_question_attempt', () => {
+        window.dispatchEvent(new CustomEvent('activity-attempt'));
+      });
+    }
   };
 
   const handleSelfAssessment = async (rating: 'correct' | 'wrong' | 'partial') => {
@@ -280,6 +321,10 @@ export function OpenQuestion({
             incrementAttempts: true,
             lastScore: resultValue === true ? 1 : resultValue === 'partial' ? 0.5 : 0,
           }),
+        });
+        // Log a generic activity event (question attempt)
+        logActivity('open_question_attempt', () => {
+          window.dispatchEvent(new CustomEvent('activity-attempt'));
         });
       } catch {}
     }
@@ -364,12 +409,20 @@ export function OpenQuestion({
 
   // Reset question state to allow re-answering
   const handleReAnswer = () => {
+    // Allow user to try again: clear evaluation state but keep original answer for optional review? For now clear.
     setAnswer('');
     setSubmitted(false);
     setShowSelfAssessment(false);
     setAssessmentCompleted(false);
     setHasSubmitted(false);
-    hasSubmittedRef.current = false; // Reset the ref too!
+    hasSubmittedRef.current = false;
+    // Scroll back to input smoothly
+    requestAnimationFrame(() => {
+      const textarea = document.querySelector<HTMLTextAreaElement>('textarea');
+      if (textarea) {
+        textarea.focus();
+      }
+    });
   };
 
   // Keyboard shortcuts: Enter to submit (or next), 1/2/3 to rate during self-assessment
@@ -437,6 +490,7 @@ export function OpenQuestion({
             lectureTitle={lectureTitle}
             specialtyName={specialtyName}
             questionId={question.id}
+            highlightConfirm={highlightConfirm}
           />
           {/* Inline media attached to the question (not the reminder) */}
           {(() => {
@@ -458,7 +512,8 @@ export function OpenQuestion({
           })()}
         </div>
 
-        <div className="flex flex-col gap-1 flex-shrink-0 items-end">
+  {!hideActions && (
+  <div className="flex flex-col gap-1 flex-shrink-0 items-end">
           <div className="flex gap-2 items-center">
             <Button 
               variant="outline" 
@@ -485,7 +540,7 @@ export function OpenQuestion({
               <span className="hidden sm:inline">Signaler</span>
             </Button>
           </div>
-
+          {/* Comment panel removed for grouped context */}
           {(isAdmin || isMaintainer) && (
             <div className="flex gap-2 items-center mt-1">
               <Button 
@@ -530,79 +585,110 @@ export function OpenQuestion({
             </div>
           )}
         </div>
+  )}
       </div>
       
   {/* Media is now displayed inside the "Rappel du cours" section on the page */}
 
-      <OpenQuestionInput
-        answer={answer}
-        setAnswer={setAnswer}
-        isSubmitted={submitted}
-        onSubmit={handleSubmit}
-      />
-
-  {/* Rappel du cours (après soumission) */}
-  {submitted && (() => {
-        const text = (question as any).course_reminder || (question as any).courseReminder || question.explanation;
-        const reminderMediaUrl = (question as any).course_reminder_media_url || (question as any).courseReminderMediaUrl;
-        const reminderMediaType = (question as any).course_reminder_media_type || (question as any).courseReminderMediaType;
-        if (!text && !reminderMediaUrl) return null;
-        return (
-          <Card className="mt-2">
-            <CardHeader className="py-3">
-              <Collapsible defaultOpen>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <BookOpen className="h-4 w-4" />
-                    Rappel du cours
-                  </CardTitle>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="px-2 group">
-                      <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-                <CollapsibleContent>
-                  <CardContent className="space-y-3 pt-3">
-                    {reminderMediaUrl && (reminderMediaType === 'image' || /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(reminderMediaUrl)) && (
-                      <ZoomableImage src={reminderMediaUrl} alt="Image du rappel" />
-                    )}
-                    {text && (
-                      <div className="prose dark:prose-invert max-w-none text-sm">
-                        <div className="whitespace-pre-wrap text-foreground">{text}</div>
-                      </div>
-                    )}
-                  </CardContent>
-                </CollapsibleContent>
-              </Collapsible>
-            </CardHeader>
-          </Card>
-        );
-      })()}
-
-      {showSelfAssessment && (!hideImmediateResults || showDeferredSelfAssessment) && (
-        <OpenQuestionSelfAssessment
-          onAssessment={handleSelfAssessment}
+    {(!submitted || keepInputAfterSubmit) && (
+        <OpenQuestionInput
+          answer={answer}
+          setAnswer={setAnswer}
+      isSubmitted={submitted && !keepInputAfterSubmit}
+          onSubmit={handleSubmit}
         />
       )}
 
-      <OpenQuestionActions
-        isSubmitted={submitted}
-        canSubmit={!hasSubmitted && answer.trim().length > 0}
-        onSubmit={handleSubmit}
-        onNext={onNext}
-        showNext={assessmentCompleted}
-        onReAnswer={handleReAnswer}
-        hasSubmitted={hasSubmitted}
-      />
+  {/* Reference answer now shown inside self-assessment panel */}
 
-  {/* Notes area under buttons (after submitting) */}
-  {submitted && (
-        <QuestionNotes questionId={question.id} />
+  {showSelfAssessment && (!hideImmediateResults || showDeferredSelfAssessment) && (() => {
+        const correctArr: string[] = (question as any).correctAnswers || (question as any).correct_answers || [];
+        const expectedFromArray = Array.isArray(correctArr) && correctArr.length > 0 ? correctArr.filter(Boolean).join(' / ') : '';
+        const expected = expectedFromArray || (question as any).course_reminder || (question as any).courseReminder || question.explanation || (question as any).correctAnswer || '';
+        return (
+          <>
+            {submitted && expected && (
+              <div className="mt-4 rounded-md border border-emerald-200/60 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-900/20 p-3" role="note">
+                <div className="text-[11px] uppercase tracking-wide font-semibold text-emerald-700 dark:text-emerald-300 mb-1">Réponse de référence</div>
+                <div className="whitespace-pre-wrap leading-relaxed text-sm">{expected}</div>
+              </div>
+            )}
+            <OpenQuestionSelfAssessment
+              onAssessment={handleSelfAssessment}
+              userAnswerText={submitted ? answer : undefined}
+            />
+          </>
+        );
+      })()}
+
+      {!hideActions && (
+        <OpenQuestionActions
+          isSubmitted={submitted}
+          canSubmit={!hasSubmitted && answer.trim().length > 0}
+          onSubmit={handleSubmit}
+          onNext={onNext}
+          showNext={assessmentCompleted}
+          onReAnswer={handleReAnswer}
+          hasSubmitted={hasSubmitted}
+          showNotesArea={showNotesArea}
+          onToggleNotes={() => {
+            setShowNotesArea(prev => !prev);
+            setTimeout(() => {
+              if (!showNotesArea && notesRef.current) {
+                notesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 30);
+          }}
+        />
       )}
 
-  {/* Commentaires (après soumission) */}
-  {submitted && <QuestionComments questionId={question.id} />}
+  {/* Rappel du cours (après soumission) */}
+  {submitted && !suppressReminder && (() => {
+    const text = (question as any).course_reminder || (question as any).courseReminder || question.explanation;
+    const reminderMediaUrl = (question as any).course_reminder_media_url || (question as any).courseReminderMediaUrl;
+    const reminderMediaType = (question as any).course_reminder_media_type || (question as any).courseReminderMediaType;
+    if (!text && !reminderMediaUrl) return null;
+    return (
+      <Card className="mt-2">
+        <CardHeader className="py-3">
+          <Collapsible defaultOpen={false}>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BookOpen className="h-4 w-4" />
+                Rappel du cours
+              </CardTitle>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="px-2 group">
+                  <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent>
+              <CardContent className="space-y-3 pt-3">
+                {reminderMediaUrl && (reminderMediaType === 'image' || /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(reminderMediaUrl)) && (
+                  <ZoomableImage src={reminderMediaUrl} alt="Image du rappel" />
+                )}
+                {text && (
+                  <div className="prose dark:prose-invert max-w-none text-sm">
+                    <div className="whitespace-pre-wrap text-foreground">{text}</div>
+                  </div>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardHeader>
+      </Card>
+    );
+  })()}
+
+  {/* Notes & comments only when user chooses to open */}
+  {submitted && showNotesArea && !hideNotes && (
+        <div ref={notesRef}>
+          <QuestionNotes questionId={question.id} />
+        </div>
+      )}
+  {/* Comments (after submission) */}
+  {submitted && !hideComments && <QuestionComments questionId={question.id} />}
       
       <QuestionEditDialog
         question={question}

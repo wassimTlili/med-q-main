@@ -15,9 +15,9 @@ enum Role {
 
 // Type of user-submitted report (French slugs)
 enum ReportType {
-  mal_placee      // Question mal placée
-  erreur_syntaxe  // Erreur de syntaxe
-  autre           // Autre
+  erreur_de_saisie      // Erreur de saisie
+  question_hors_cours   // Question hors cours
+  correction_erronee    // Correction erronée
 }
 
 model User {
@@ -54,6 +54,8 @@ model User {
   notifications         Notification[]
   questionUserData      QuestionUserData[]
   questionComments      QuestionComment[]
+  commentLikes          CommentLike[]
+  activities            UserActivity[]
 
   @@map("profiles")
 }
@@ -156,11 +158,32 @@ model Comment {
   content   String
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  // New fields for anonymity & threaded replies
+  isAnonymous     Boolean  @default(false) @map("is_anonymous")
+  parentCommentId String?  @map("parent_comment_id") @db.Uuid
   lecture   Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentToComment", fields: [parentCommentId], references: [id])
+  replies   Comment[] @relation("CommentToComment")
+  likes     CommentLike[]
 
   @@index([lectureId], map: "idx_comments_lecture")
+  @@index([parentCommentId], map: "idx_comments_parent")
   @@map("comments")
+}
+
+// Track comment likes (hearts)
+model CommentLike {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commentId String   @map("comment_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId], map: "unique_comment_like")
+  @@index([userId], map: "idx_comment_likes_user")
+  @@map("comment_likes")
 }
 
 model Notification {
@@ -205,6 +228,7 @@ model Question {
   pinnedQuestions    PinnedQuestion[]
   userData           QuestionUserData[]
   questionComments   QuestionComment[]
+  optionStats        QuestionOptionStat[]
 
   @@index([number], map: "idx_questions_number")
   @@index([caseNumber, caseQuestionNumber], map: "idx_questions_case")
@@ -241,10 +265,28 @@ model QuestionComment {
   updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentCommentId String? @map("parent_comment_id") @db.Uuid
+  parent    QuestionComment? @relation("QuestionCommentToQuestionComment", fields: [parentCommentId], references: [id])
+  replies   QuestionComment[] @relation("QuestionCommentToQuestionComment")
 
   @@index([questionId], map: "idx_question_comments_question")
   @@index([userId], map: "idx_question_comments_user")
+  @@index([parentCommentId], map: "idx_question_comments_parent")
   @@map("question_comments")
+}
+
+// Aggregated statistics for MCQ option selections and total submissions.
+// optionId NULL row stores total submissions for the question.
+model QuestionOptionStat {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionId String   @map("question_id") @db.Uuid
+  optionKey  String   @map("option_key") // 'TOTAL' row stores aggregate submissions
+  count      Int      @default(0)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, optionKey], map: "unique_question_option_key")
+  @@index([questionId], map: "idx_question_option_stats_question")
+  @@map("question_option_stats")
 }
 
 model UserProgress {
@@ -266,15 +308,27 @@ model UserProgress {
   @@map("user_progress")
 }
 
+// Generic user activity events (e.g., question attempts) for lightweight daily counting
+model UserActivity {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  type      String   @default("question_attempt")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt], map: "idx_user_activity_user_date")
+  @@map("user_activity")
+}
+
 model Report {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   questionId String   @map("question_id") @db.Uuid
   lectureId  String   @map("lecture_id") @db.Uuid
-  message    String
+  message    String?  // now optional to allow type-only reports
   userId     String?  @map("user_id") @db.Uuid
   status     String   @default("pending")
   // New field: report type (mapped to DB column "type")
-  reportType ReportType @default(autre) @map("type")
+  reportType ReportType @default(erreur_de_saisie) @map("type")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   lecture    Lecture  @relation(fields: [lectureId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   question   Question @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction)

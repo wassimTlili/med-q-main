@@ -21,26 +21,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Lecture not found' }, { status: 404 })
     }
 
-    const comments = await prisma.comment.findMany({
-      where: {
-        lectureId,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    })
+    // Fetch all comments for the lecture (single query) then build a tree for unlimited nesting
+    const flat = await (prisma as any).comment.findMany({
+      where: { lectureId },
+      orderBy: { createdAt: 'asc' },
+      include: { user: { select: { id: true, name: true, email: true, role: true } } }
+    });
 
-    return NextResponse.json(comments)
+    const byId: Record<string, any> = {};
+    (flat as any[]).forEach((c: any) => { byId[c.id] = { ...c, replies: [] }; });
+    const roots: any[] = [];
+    (flat as any[]).forEach((c: any) => {
+      if (c.parentCommentId) {
+        const parent = byId[c.parentCommentId];
+        if (parent) parent.replies.push(byId[c.id]);
+      } else {
+        roots.push(byId[c.id]);
+      }
+    });
+    // Order roots newest first, replies oldest first already (asc above)
+    roots.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return NextResponse.json(roots)
   } catch (error) {
     console.error('Error fetching comments:', error)
     return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 })
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 // POST /api/comments - Create a new comment
 export async function POST(request: NextRequest) {
   try {
-    const { lectureId, userId, content } = await request.json()
+    const { lectureId, userId, content, isAnonymous = false, parentCommentId } = await request.json()
 
     if (!lectureId || !userId || !content) {
       return NextResponse.json({ error: 'Lecture ID, user ID, and content are required' }, { status: 400 })
@@ -76,23 +77,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const comment = await prisma.comment.create({
+    // If parentCommentId provided ensure it exists and belongs to same lecture (allow unlimited nesting)
+    if (parentCommentId) {
+      const parent = await prisma.comment.findUnique({ where: { id: parentCommentId }, select: { id: true, lectureId: true } })
+      if (!parent || parent.lectureId !== lectureId) {
+        return NextResponse.json({ error: 'Invalid parent comment' }, { status: 400 })
+      }
+    }
+
+    const created = await (prisma as any).comment.create({
       data: {
         lectureId,
         userId,
         content: content.trim(),
+        isAnonymous: !!isAnonymous,
+        parentCommentId: parentCommentId || null,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
-    })
+      include: { user: { select: { id: true, name: true, email: true, role: true } } }
+    });
+
+    const comment = { ...created, replies: [], _count: { likes: 0 } };
 
     return NextResponse.json(comment, { status: 201 })
   } catch (error) {

@@ -9,9 +9,10 @@ interface OpenQuestionHeaderProps {
   lectureTitle?: string;
   specialtyName?: string;
   questionId?: string;
+  highlightConfirm?: boolean;
 }
 
-export function OpenQuestionHeader({ questionText, questionNumber, session, lectureTitle, specialtyName, questionId }: OpenQuestionHeaderProps) {
+export function OpenQuestionHeader({ questionText, questionNumber, session, lectureTitle, specialtyName, questionId, highlightConfirm }: OpenQuestionHeaderProps) {
   const { t } = useTranslation();
   const typeLabel = t('questions.openQuestion');
   const sessionLabel = (() => {
@@ -40,11 +41,12 @@ export function OpenQuestionHeader({ questionText, questionNumber, session, lect
           <HighlightableQuestionText
             questionId={questionId}
             text={questionText}
-            className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words"
+            className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words whitespace-pre-wrap"
+            confirmMode={highlightConfirm}
           />
         </div>
       ) : (
-        <h3 className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words">{questionText}</h3>
+        <h3 className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words whitespace-pre-wrap">{questionText}</h3>
       )}
     </div>
   );

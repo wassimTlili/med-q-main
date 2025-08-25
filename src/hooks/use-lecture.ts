@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
@@ -45,8 +46,10 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
       return [];
     }
     
-    const mcqQuestions: Question[] = [];
-    const qrocQuestions: Question[] = [];
+  const mcqQuestions: Question[] = [];
+  const qrocQuestions: Question[] = [];
+  // Multi QROC grouping map (caseNumber -> questions)
+  const multiQrocMap = new Map<number, Question[]>();
   const clinicalCaseMap = new Map<number, Question[]>();
   const textCaseMap = new Map<string, number>(); // map caseText -> synthetic caseNumber
   let nextSyntheticCase = 100000; // large range to avoid collisions with real numbers
@@ -74,18 +77,38 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
       }
       if (question.type === 'mcq') {
         mcqQuestions.push(question);
+      } else if (question.type === 'qroc' && question.caseNumber) {
+        if (!multiQrocMap.has(question.caseNumber)) multiQrocMap.set(question.caseNumber, []);
+        multiQrocMap.get(question.caseNumber)!.push(question);
       } else {
-        // Put ALL other question types (qroc, open, etc.) into qrocQuestions
         qrocQuestions.push(question);
+      }
+    });
+
+    // Promote multi QROC groups (only groups with >1)
+    const multiQrocCases: ClinicalCase[] = [];
+    multiQrocMap.forEach((list, num) => {
+      if (list.length > 1) {
+        list.sort((a,b)=> (a.caseQuestionNumber||0)-(b.caseQuestionNumber||0));
+        multiQrocCases.push({
+          caseNumber: num,
+          caseText: '',
+          questions: list,
+          totalQuestions: list.length
+        });
+      } else {
+        // single item fallback to normal bucket
+        qrocQuestions.push(list[0]);
       }
     });
 
     // Sort each group by their number
     mcqQuestions.sort((a, b) => (a.number || 0) - (b.number || 0));
     qrocQuestions.sort((a, b) => (a.number || 0) - (b.number || 0));
+    multiQrocCases.sort((a,b)=> a.caseNumber - b.caseNumber);
 
     // Convert clinical case groups to ClinicalCase objects and sort by case number
-    const clinicalCases: ClinicalCase[] = [];
+  const clinicalCases: ClinicalCase[] = [];
   Array.from(clinicalCaseMap.entries())
       .sort(([a], [b]) => a - b) // Sort by case number
       .forEach(([caseNumber, caseQuestions]) => {
@@ -108,6 +131,7 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
     const result: (Question | ClinicalCase)[] = [
       ...mcqQuestions,
       ...qrocQuestions,
+      ...multiQrocCases,
       ...clinicalCases
     ];
 
@@ -116,7 +140,8 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
       totalGroupedItems: result.length,
       mcqCount: mcqQuestions.length,
       qrocCount: qrocQuestions.length,
-      clinicalCasesCount: clinicalCases.length
+  clinicalCasesCount: clinicalCases.length,
+  multiQrocGroups: multiQrocCases.length
     });
 
     return result;
@@ -140,9 +165,25 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
       // Single optimized API call to fetch lecture with questions
       const response = await fetch(`/api/lectures/${lectureId}?includeQuestions=true`);
       if (!response.ok) {
-        throw new Error('Failed to fetch lecture data');
+        let serverMsg: string | undefined;
+        try {
+          const errJson = await response.json();
+          serverMsg = errJson?.error || errJson?.message;
+        } catch {}
+        console.error('Failed lecture fetch', { lectureId, status: response.status, serverMsg });
+        toast({
+          title: 'Lecture load failed',
+          description: serverMsg || `Request failed with status ${response.status}`,
+          variant: 'destructive'
+        });
+        // Redirect only on 404 (not found / access) or 401
+        if (response.status === 404 || response.status === 401) {
+          router.push('/exercices');
+        }
+        setIsLoading(false);
+        return;
       }
-      
+
       const data = await response.json();
       
       console.log('Raw API response data:', {
@@ -187,10 +228,10 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
     hasSyncedProgress.current = false;
   }, [fetchLectureData]);
 
-  // Load pinned questions if in pinned mode
+  // Load pinned questions (needed to show pin icon in navigation regardless of mode)
   useEffect(() => {
     const loadPinnedQuestions = async () => {
-      if (mode === 'pinned' && user?.id) {
+      if (user?.id) {
         try {
           const response = await fetch(`/api/pinned-questions?userId=${user.id}`);
           if (response.ok) {
@@ -206,6 +247,23 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
 
     loadPinnedQuestions();
   }, [mode, user?.id]);
+
+  // Listen for global pinned updates dispatched by question components
+  useEffect(() => {
+    const handler = () => {
+      if (!user?.id) return;
+      fetch(`/api/pinned-questions?userId=${user.id}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data) {
+            setPinnedQuestionIds(data.map((pq: any) => pq.questionId));
+          }
+        })
+        .catch(()=>{});
+    };
+    window.addEventListener('pinned-updated', handler);
+    return () => window.removeEventListener('pinned-updated', handler);
+  }, [user?.id]);
 
   // Clear cache when adding questions
   useEffect(() => {
@@ -345,6 +403,7 @@ export function useLecture(lectureId: string | undefined, mode?: string | null) 
     handleBackToSpecialty,
     clearSessionData,
     handleQuestionUpdate,
-    refetch: fetchLectureData
+  refetch: fetchLectureData,
+  pinnedQuestionIds
   };
 }

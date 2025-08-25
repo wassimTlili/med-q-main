@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useLecture } from '@/hooks/use-lecture'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { LectureTimer } from '@/components/lectures/LectureTimer'
@@ -11,11 +11,16 @@ import { QuestionControlPanel } from '@/components/lectures/QuestionControlPanel
 import { MCQQuestion } from '@/components/questions/MCQQuestion'
 import { OpenQuestion } from '@/components/questions/OpenQuestion'
 import { ClinicalCaseQuestion } from '@/components/questions/ClinicalCaseQuestion'
+import { QuestionNotes } from '@/components/questions/QuestionNotes'
+import { QuestionComments } from '@/components/questions/QuestionComments'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, PlusCircle, ListOrdered } from 'lucide-react'
+import { ArrowLeft, PlusCircle, ListOrdered, Pin, PinOff, Flag, Pencil, Eye, EyeOff, Trash2, StickyNote, RotateCcw, ChevronRight, BookOpen } from 'lucide-react'
+import { GroupedQrocEditDialog } from '@/components/questions/edit/GroupedQrocEditDialog'
 import { useTranslation } from 'react-i18next'
 import { ClinicalCase, Question } from '@/types'
-// removed card/collapsible imports; reminder now lives in question components
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+// Card/collapsible also reused for grouped QROC shared reminder
 import { QuestionManagementDialog } from '@/components/questions/QuestionManagementDialog'
 import { useAuth } from '@/contexts/AuthContext'
 // import ZoomableImage from '@/components/questions/ZoomableImage'
@@ -45,7 +50,8 @@ export default function LecturePageRoute() {
     isLoading,
     isComplete,
     currentQuestion,
-    progress,
+  progress,
+  pinnedQuestionIds,
     handleAnswerSubmit,
     handleClinicalCaseSubmit,
     handleNext,
@@ -72,7 +78,7 @@ export default function LecturePageRoute() {
       <ProtectedRoute>
         <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-blue-50/50 dark:from-blue-950/20 dark:via-gray-900 dark:to-blue-950/20">
           <div className="container mx-auto px-4 py-6">
-            <LectureLoadingState />
+             <LectureLoadingState />
           </div>
         </div>
       </ProtectedRoute>
@@ -163,8 +169,15 @@ export default function LecturePageRoute() {
   };
 
   const handleClinicalCaseComplete = (caseNumber: number, caseAnswers: Record<string, any>, caseResults: Record<string, boolean | 'partial'>) => {
-
     handleClinicalCaseSubmit(caseNumber, caseAnswers, caseResults);
+    // Log one activity event per clinical case completion
+    try {
+      fetch('/api/user-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'clinical_case_attempt' })
+      }).catch(()=>{});
+    } catch {}
   };
 
   const renderCurrentQuestion = () => {
@@ -179,9 +192,10 @@ export default function LecturePageRoute() {
       return null;
     }
 
-    // Check if current question is a clinical case
+    // Check if current question is a clinical case or a grouped multi-QROC (all subquestions type qroc)
     if ('caseNumber' in currentQuestion && 'questions' in currentQuestion) {
       const clinicalCase = currentQuestion as ClinicalCase;
+      const isGroupedQrocOnly = clinicalCase.questions.every(q => q.type === 'qroc');
       
       // Add null checks for questions array
       if (!clinicalCase.questions || !Array.isArray(clinicalCase.questions)) {
@@ -206,19 +220,38 @@ export default function LecturePageRoute() {
         }
       });
 
+      if (!isGroupedQrocOnly) {
+        return (
+          <ClinicalCaseQuestion
+            clinicalCase={clinicalCase}
+            onSubmit={handleClinicalCaseComplete}
+            onNext={handleNext}
+            lectureId={lectureId}
+            lectureTitle={lecture?.title}
+            specialtyName={lecture?.specialty?.name}
+            isAnswered={isAnswered}
+            answerResult={caseAnswerResult}
+            userAnswers={caseUserAnswers}
+            answerResults={caseAnswerResults}
+            onAnswerUpdate={handleAnswerSubmit}
+          />
+        );
+      }
+
       return (
-        <ClinicalCaseQuestion
+        <GroupedQrocContainer
           clinicalCase={clinicalCase}
-          onSubmit={handleClinicalCaseComplete}
-          onNext={handleNext}
+          answers={answers}
+          answerResults={answerResults}
+          pinnedQuestionIds={pinnedQuestionIds}
+          user={user}
+          lecture={lecture}
           lectureId={lectureId}
-          lectureTitle={lecture?.title}
-          specialtyName={lecture?.specialty?.name}
-          isAnswered={isAnswered}
-          answerResult={caseAnswerResult}
-          userAnswers={caseUserAnswers}
-          answerResults={caseAnswerResults}
-          onAnswerUpdate={handleAnswerSubmit}
+          specialtyId={specialtyId as string}
+          onAnswerSubmit={handleAnswerSubmit}
+          onNext={handleNext}
+          onQuestionUpdate={handleQuestionUpdate}
+          setOpenQuestionsDialog={setOpenQuestionsDialog}
         />
       );
     }
@@ -243,6 +276,7 @@ export default function LecturePageRoute() {
           answerResult={answerResult}
           userAnswer={userAnswer}
           onQuestionUpdate={handleQuestionUpdate}
+          highlightConfirm
         />
       );
     } else {
@@ -258,6 +292,7 @@ export default function LecturePageRoute() {
           answerResult={answerResult}
           userAnswer={userAnswer}
           onQuestionUpdate={handleQuestionUpdate}
+          highlightConfirm
         />
       );
     }
@@ -326,6 +361,7 @@ export default function LecturePageRoute() {
                 onPrevious={handlePrevious}
                 onNext={handleNext}
                 isComplete={isComplete}
+                pinnedIds={pinnedQuestionIds}
               />
             </div>
           </div>
@@ -341,8 +377,10 @@ export default function LecturePageRoute() {
               onPrevious={handlePrevious}
               onNext={handleNext}
               isComplete={isComplete}
+              pinnedIds={pinnedQuestionIds}
             />
           </div>
+            
         </div>
       </div>
     {/* Admin and Maintainer: Maintainers can create/edit, but not organizer */}
@@ -358,3 +396,212 @@ export default function LecturePageRoute() {
     </ProtectedRoute>
   )
 }
+// Local helper component: grouped QROC aggregated notes gating
+function GroupedQrocContainer({ clinicalCase, answers, answerResults, pinnedQuestionIds, user, lecture, lectureId, specialtyId, onAnswerSubmit, onNext, onQuestionUpdate, setOpenQuestionsDialog }: any) {
+  const [openNotes, setOpenNotes] = useState(false);
+  const [resetCounter, setResetCounter] = useState(0);
+  const [openGroupEdit, setOpenGroupEdit] = useState(false);
+  const notesRef = useRef<HTMLDivElement | null>(null);
+
+  const groupAnswered = clinicalCase.questions.every((q: any) => answers[q.id] !== undefined);
+  const groupPinned = clinicalCase.questions.some((q: any) => pinnedQuestionIds.includes(q.id));
+  const groupHidden = clinicalCase.questions.every((q: any) => (q as any).hidden);
+
+  const toggleGroupPin = async () => {
+    for (const q of clinicalCase.questions) {
+      try {
+        if (!groupPinned) {
+          await fetch('/api/pinned-questions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user?.id, questionId: q.id }) });
+        } else {
+          await fetch(`/api/pinned-questions?userId=${user?.id}&questionId=${q.id}`, { method: 'DELETE' });
+        }
+      } catch {}
+    }
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('pinned-updated'));
+  };
+
+  const toggleGroupHidden = async () => {
+    for (const q of clinicalCase.questions) {
+      try {
+        await fetch(`/api/questions/${q.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ hidden: !groupHidden }) });
+        onQuestionUpdate(q.id, { hidden: !groupHidden });
+      } catch {}
+    }
+  };
+
+  const handleReAnswerGroup = () => {
+    setResetCounter(c => c + 1); // triggers each OpenQuestion to exit submitted state but keep answers
+    setOpenNotes(false);
+    setTimeout(() => {
+      const first = document.querySelector('[data-grouped-qroc] textarea');
+      if (first instanceof HTMLTextAreaElement) first.focus();
+    }, 40);
+    try {
+      fetch('/api/user-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'qroc_group_restart' })
+      }).catch(()=>{});
+    } catch {}
+  };
+
+  return (
+    <div className="space-y-6" data-grouped-qroc>
+      <div className="rounded-xl border bg-white/90 dark:bg-gray-800/90 p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Groupe QROC #{clinicalCase.caseNumber}</h2>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{clinicalCase.totalQuestions} QROC</div>
+        </div>
+        <div className="flex flex-wrap justify-end gap-2 mb-4">
+          <Button variant="outline" size="sm" onClick={toggleGroupPin} className="flex items-center gap-1">
+            {groupPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">{groupPinned ? 'Unpin' : 'Pin'}</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => { window.location.href = `/exercices/${specialtyId}/lecture/${lectureId}?report=${clinicalCase.questions[0].id}`; }} className="flex items-center gap-1">
+            <Flag className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Signaler</span>
+          </Button>
+          {(user?.role === 'admin' || user?.role === 'maintainer') && (
+            <Button variant="outline" size="sm" onClick={() => setOpenGroupEdit(true)} className="flex items-center gap-1" title="Edit bloc QROC">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {(user?.role === 'admin' || user?.role === 'maintainer') && (
+            <Button variant="outline" size="sm" onClick={toggleGroupHidden} className="flex items-center gap-1" title={groupHidden ? 'Unhide' : 'Hide'}>
+              {groupHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            </Button>
+          )}
+          {user?.role === 'admin' && (
+            <Button variant="outline" size="sm" className="flex items-center gap-1 text-destructive" onClick={async () => { if (!confirm('Delete all questions in group?')) return; for (const q of clinicalCase.questions) { try { await fetch(`/api/questions/${q.id}`, { method: 'DELETE', credentials: 'include' }); } catch {} } window.location.reload(); }}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+        <div className="grid gap-6">
+          {clinicalCase.questions.map((q: any) => {
+            const answered = answers[q.id] !== undefined;
+            const resultVal = answerResults[q.id];
+            const userAnswerVal = answers[q.id];
+            return (
+              <OpenQuestion
+                key={q.id}
+                question={q as any}
+                onSubmit={(ans, res) => {
+                  onAnswerSubmit(q.id, ans, res);
+                  try {
+                    fetch('/api/user-activity', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ type: 'qroc_attempt' })
+                    }).catch(()=>{});
+                  } catch {}
+                }}
+                onNext={onNext}
+                lectureId={lectureId}
+                lectureTitle={lecture?.title}
+                specialtyName={lecture?.specialty?.name}
+                isAnswered={answered}
+                answerResult={resultVal}
+                userAnswer={userAnswerVal}
+                hideNotes
+                hideComments
+                hideActions
+                highlightConfirm
+                onQuestionUpdate={onQuestionUpdate}
+                resetSignal={resetCounter}
+                // behave like simple QROC: hide textarea after submit, so do not keep input mounted
+                suppressReminder
+              />
+            );
+          })}
+        </div>
+        {/* Single shared reminder displayed once after all sub-questions answered */}
+        {groupAnswered && (() => {
+          const firstWithReminder = clinicalCase.questions.find((q: any) => (q.course_reminder || (q as any).courseReminder || (q as any).course_reminder_media_url));
+          const text = firstWithReminder ? ((firstWithReminder as any).course_reminder || (firstWithReminder as any).courseReminder || firstWithReminder.explanation) : '';
+          const mediaUrl = firstWithReminder ? ((firstWithReminder as any).course_reminder_media_url || (firstWithReminder as any).courseReminderMediaUrl) : undefined;
+          const mediaType = firstWithReminder ? ((firstWithReminder as any).course_reminder_media_type || (firstWithReminder as any).courseReminderMediaType) : undefined;
+          if (!text && !mediaUrl) return null;
+          return (
+            <Card className="mt-4">
+              <CardHeader className="py-3">
+                <Collapsible defaultOpen={false}>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <BookOpen className="h-4 w-4" />
+                      Rappel du cours
+                    </CardTitle>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="px-2 group">
+                        <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CollapsibleContent>
+                    <CardContent className="space-y-3 pt-3">
+                      {mediaUrl && (mediaType === 'image' || /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(mediaUrl)) && (
+                        <img src={mediaUrl} alt="Image du rappel" className="max-h-80 w-auto object-contain rounded-md border" />
+                      )}
+                      {text && (
+                        <div className="prose dark:prose-invert max-w-none text-sm">
+                          <div className="whitespace-pre-wrap text-foreground">{text}</div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </CollapsibleContent>
+                </Collapsible>
+              </CardHeader>
+            </Card>
+          );
+        })()}
+        {groupAnswered && (
+          <div className="mt-8 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setOpenNotes(p => !p);
+                    if (!openNotes) setTimeout(() => { notesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 30);
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  <StickyNote className="h-4 w-4" />
+                  <span className="hidden sm:inline">{openNotes ? 'Fermer les notes' : 'Prendre une note'}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReAnswerGroup}
+                  className="flex items-center gap-1"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  <span className="hidden sm:inline">Répondre à nouveau</span>
+                </Button>
+                <Button onClick={onNext} size="sm" className="flex items-center gap-1">
+                  <span className="hidden sm:inline">Suivant</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div ref={notesRef} className="space-y-6">
+              {openNotes && <QuestionNotes questionId={`group-qroc-${clinicalCase.caseNumber}`} />}
+              <QuestionComments questionId={`group-qroc-${clinicalCase.caseNumber}`} />
+            </div>
+          </div>
+        )}
+      </div>
+      {openGroupEdit && (
+        <GroupedQrocEditDialog
+          caseNumber={clinicalCase.caseNumber}
+          questions={clinicalCase.questions}
+          isOpen={openGroupEdit}
+          onOpenChange={setOpenGroupEdit}
+          onSaved={() => { try { window.location.reload(); } catch {} }}
+        />
+      )}
+    </div>
+  );
+}
+            

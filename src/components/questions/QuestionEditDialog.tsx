@@ -41,6 +41,7 @@ export function QuestionEditDialog({
     updateOptionText,
     updateOptionExplanation,
     toggleCorrectAnswer,
+  setCorrectAnswers,
     handleSubmit
   } = useQuestionEdit({
     question,
@@ -73,6 +74,7 @@ export function QuestionEditDialog({
             updateOptionExplanation={updateOptionExplanation}
             correctAnswers={correctAnswers}
             toggleCorrectAnswer={toggleCorrectAnswer}
+            setCorrectAnswers={setCorrectAnswers}
             mediaUrl={mediaUrl}
             mediaType={mediaType}
             handleMediaChange={handleMediaChange}

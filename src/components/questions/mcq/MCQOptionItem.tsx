@@ -18,6 +18,9 @@ interface MCQOptionItemProps {
   expandedExplanations: string[];
   toggleExplanation: (id: string) => void;
   hideImmediateResults?: boolean;
+  // Added stats
+  totalAttempts?: number; // total submissions for this question
+  optionPickCount?: number; // how many times this option was chosen
 }
 
 export function MCQOptionItem({
@@ -30,7 +33,9 @@ export function MCQOptionItem({
   onSelect,
   expandedExplanations,
   toggleExplanation,
-  hideImmediateResults = false
+  hideImmediateResults = false,
+  totalAttempts,
+  optionPickCount
 }: MCQOptionItemProps) {
   // Get expanded state from parent component
   const isExpanded = expandedExplanations.includes(option.id);
@@ -45,29 +50,42 @@ export function MCQOptionItem({
   
   if (isSubmitted && !hideImmediateResults) {
     if (isSelected && isCorrect) {
-      bgColorClass = 'bg-green-50 dark:bg-green-900/20';
-      borderColorClass = 'border-green-300 dark:border-green-700';
+      // Correct & selected: stronger green
+      bgColorClass = 'bg-green-100 dark:bg-green-900/40';
+      borderColorClass = 'border-green-500 dark:border-green-500';
+      textColorClass = 'text-green-900 dark:text-green-200';
     } else if (isSelected && !isCorrect) {
-      bgColorClass = 'bg-red-50 dark:bg-red-900/20';
-      borderColorClass = 'border-red-300 dark:border-red-700';
+      // Selected but wrong: stronger red
+      bgColorClass = 'bg-red-100 dark:bg-red-900/40';
+      borderColorClass = 'border-red-500 dark:border-red-500';
+      textColorClass = 'text-red-900 dark:text-red-300';
     } else if (!isSelected && isCorrect) {
-      bgColorClass = 'bg-amber-50 dark:bg-amber-900/20';
-      borderColorClass = 'border-amber-300 dark:border-amber-700';
-      textColorClass = 'text-amber-700 dark:text-amber-300';
+      // Missed correct option: stronger amber/orange highlight
+      bgColorClass = 'bg-amber-100 dark:bg-amber-900/40';
+      borderColorClass = 'border-amber-500 dark:border-amber-500';
+      textColorClass = 'text-amber-900 dark:text-amber-200';
     }
   } else if (isSelected) {
-    bgColorClass = 'bg-primary-50 dark:bg-primary/20';
-    borderColorClass = 'border-primary-200 dark:border-primary/30';
+    // Not submitted yet but selected: bump primary contrast
+    bgColorClass = 'bg-primary/10 dark:bg-primary/30';
+    borderColorClass = 'border-primary-400 dark:border-primary-500';
+    textColorClass = 'text-primary-900 dark:text-primary-200';
   }
   
+  // Compute percentage (only when submitted & stats available & not hiding results)
+  let percentage: number | null = null;
+  if (isSubmitted && !hideImmediateResults && totalAttempts && totalAttempts > 0 && typeof optionPickCount === 'number') {
+    percentage = Math.round((optionPickCount / totalAttempts) * 100);
+  }
+
   return (
     <div 
-      className={`rounded-lg border ${borderColorClass} p-4 ${bgColorClass} transition-colors duration-200 w-full max-w-full`}
+      className={`rounded-lg border ${borderColorClass} p-4 ${bgColorClass} transition-colors duration-200 w-full max-w-full relative`}
       onClick={() => onSelect(option.id)}
     >
       <div className="flex items-start gap-3 w-full">
-        <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center 
-          ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+        <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center transition-colors
+          ${isSelected ? 'bg-primary text-primary-foreground ring-2 ring-primary/40' : 'bg-muted text-muted-foreground'}`}
         >
           {optionLetter}
         </div>
@@ -109,15 +127,18 @@ export function MCQOptionItem({
         </div>
         
         {isSelected && (
-          <div className={`flex-shrink-0 h-5 w-5 rounded border ${isSelected ? 'border-primary bg-primary' : 'border-muted bg-background'} flex items-center justify-center`}>
-            {isSelected && (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-white dark:text-black">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            )}
+          <div className={`flex-shrink-0 h-5 w-5 rounded border border-primary bg-primary flex items-center justify-center shadow-inner shadow-primary/40`}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-white dark:text-black">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
           </div>
         )}
       </div>
+      {percentage !== null && (
+        <div className="absolute bottom-2 right-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 backdrop-blur border border-border flex items-center gap-1 pointer-events-none">
+          <span className="tabular-nums">{percentage}%</span>
+        </div>
+      )}
     </div>
   );
 }

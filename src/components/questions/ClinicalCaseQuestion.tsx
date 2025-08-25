@@ -5,12 +5,17 @@ import { motion } from 'framer-motion';
 import { ClinicalCase, Question } from '@/types';
 import { MCQQuestion } from './MCQQuestion';
 import { OpenQuestion } from './OpenQuestion';
-import { ClinicalCaseDisplay } from './ClinicalCaseDisplay';
+import { QuestionNotes } from './QuestionNotes';
+import { QuestionComments } from './QuestionComments';
+// import { ClinicalCaseDisplay } from './ClinicalCaseDisplay'; // replaced inline positioning
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CheckCircle, Circle, AlertCircle, Eye, FileText } from 'lucide-react';
+import { CheckCircle, Circle, AlertCircle, Eye, FileText, Pin, PinOff, EyeOff, Trash2, Pencil, StickyNote, RotateCcw, ChevronRight } from 'lucide-react';
+import { HighlightableCaseText } from './HighlightableCaseText';
+import { ClinicalCaseEditDialog } from './edit/ClinicalCaseEditDialog';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 interface ClinicalCaseQuestionProps {
@@ -41,11 +46,18 @@ export function ClinicalCaseQuestion({
   onAnswerUpdate
 }: ClinicalCaseQuestionProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [answers, setAnswers] = useState<Record<string, any>>(userAnswers);
   const [questionResults, setQuestionResults] = useState<Record<string, boolean | 'partial'>>(answerResults);
   const [isCaseComplete, setIsCaseComplete] = useState(isAnswered);
   const [showResults, setShowResults] = useState(isAnswered);
   const [showCaseDialog, setShowCaseDialog] = useState(false);
+  const [groupPinned, setGroupPinned] = useState(false);
+  const [groupHidden, setGroupHidden] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isTogglingHidden, setIsTogglingHidden] = useState(false);
+  const [showNotesArea, setShowNotesArea] = useState(false);
+  const [openCaseEdit, setOpenCaseEdit] = useState(false);
   
   // Refs to track question elements for auto-scrolling
   const questionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -62,6 +74,68 @@ export function ClinicalCaseQuestion({
       setShowResults(false);
     }
   }, [clinicalCase.caseNumber, isAnswered]);
+
+  // Derive group pinned / hidden status
+  useEffect(() => {
+    // Consider group pinned if ALL questions pinned (strict) or any? We'll use ANY for usability
+    // We don't have pinned list here, so we fetch quickly (best-effort)
+    const fetchPinned = async () => {
+      try {
+        if (!user?.id) return;
+        const res = await fetch(`/api/pinned-questions?userId=${user.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const pinnedSet = new Set(data.map((d: any) => d.questionId));
+        const anyPinned = clinicalCase.questions.some(q => pinnedSet.has(q.id));
+        setGroupPinned(anyPinned);
+      } catch {}
+    };
+    fetchPinned();
+    // Hidden if all are hidden
+    const allHidden = clinicalCase.questions.every(q => (q as any).hidden);
+    setGroupHidden(allHidden);
+  }, [clinicalCase.questions, user?.id]);
+
+  const toggleGroupPin = async () => {
+    if (!user?.id) return;
+    try {
+      for (const q of clinicalCase.questions) {
+        if (!groupPinned) {
+          await fetch('/api/pinned-questions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.id, questionId: q.id }) });
+        } else {
+          await fetch(`/api/pinned-questions?userId=${user.id}&questionId=${q.id}`, { method: 'DELETE' });
+        }
+      }
+      setGroupPinned(!groupPinned);
+    } catch {}
+  };
+
+  const toggleGroupHidden = async () => {
+    if (!(user?.role === 'admin' || user?.role === 'maintainer')) return;
+    setIsTogglingHidden(true);
+    try {
+      for (const q of clinicalCase.questions) {
+        await fetch(`/api/questions/${q.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ hidden: !groupHidden }) });
+      }
+      setGroupHidden(!groupHidden);
+    } catch {}
+    setIsTogglingHidden(false);
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!user?.role || user.role !== 'admin') return;
+    if (!confirm('Supprimer tout le cas clinique (toutes les sous-questions) ?')) return;
+    setIsDeleting(true);
+    try {
+      for (const q of clinicalCase.questions) {
+        await fetch(`/api/questions/${q.id}`, { method: 'DELETE', credentials: 'include' });
+      }
+      // Simple full reload to refresh list
+      window.location.reload();
+    } catch {
+      setIsDeleting(false);
+    }
+  };
 
   const scrollToNextQuestion = (currentQuestionId: string, updatedAnswers: Record<string, any>) => {
     // Find the current question index
@@ -179,33 +253,42 @@ export function ClinicalCaseQuestion({
           )}
         </div>
 
-    {question.type === 'clinic_mcq' ? (
+        {question.type === 'clinic_mcq' ? (
           <MCQQuestion
             question={question}
             onSubmit={(answer, isCorrect) => handleQuestionAnswer(question.id, answer, isCorrect)}
-            onNext={() => {}} // No auto-next since we&apos;re showing all questions
+            onNext={() => {}} // show all at once
             lectureId={lectureId}
-      lectureTitle={lectureTitle}
-      specialtyName={specialtyName}
-            isAnswered={showResults ? isAnswered : false} // Only show as answered when results are shown
+            lectureTitle={lectureTitle}
+            specialtyName={specialtyName}
+            isAnswered={showResults ? isAnswered : false}
             answerResult={showResults ? answerResult : undefined}
-            userAnswer={userAnswer}
-            hideImmediateResults={!showResults} // Hide results until show results is clicked
+            userAnswer={userAnswer as any}
+            hideImmediateResults={!showResults}
+            // Always hide per-subquestion actions/notes/comments for clinical case aggregation
+            hideActions
+            hideNotes
+            hideComments
+            highlightConfirm
           />
         ) : (
           <OpenQuestion
             question={question}
             onSubmit={(answer, resultValue) => handleQuestionAnswer(question.id, answer, resultValue)}
-            onNext={() => {}} // No auto-next since we're showing all questions
+            onNext={() => {}}
             lectureId={lectureId}
-      lectureTitle={lectureTitle}
-      specialtyName={specialtyName}
-            isAnswered={showResults ? isAnswered : false} // Only show as answered when results are shown
+            lectureTitle={lectureTitle}
+            specialtyName={specialtyName}
+            isAnswered={showResults ? isAnswered : false}
             answerResult={showResults ? answerResult : undefined}
-            userAnswer={userAnswer}
-            hideImmediateResults={!showResults} // Hide results until show results is clicked
-            showDeferredSelfAssessment={showResults && isAnswered && question.type === 'clinic_croq'} // Show self-assessment for clinic_croq when results are shown
+            userAnswer={userAnswer as any}
+            hideImmediateResults={!showResults}
+            showDeferredSelfAssessment={showResults && isAnswered && question.type === 'clinic_croq'}
             onSelfAssessmentUpdate={handleSelfAssessmentUpdate}
+            hideNotes
+            hideComments
+            hideActions
+            highlightConfirm
           />
         )}
       </div>
@@ -223,8 +306,11 @@ export function ClinicalCaseQuestion({
       {/* Clinical Case Header */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 mb-2">
-            <span>Cas Clinique #{clinicalCase.caseNumber}</span>
+          <CardTitle className="flex items-center gap-3 mb-2">
+            <span className="flex items-center gap-2">Cas Clinique #{clinicalCase.caseNumber}
+              {groupPinned && <Pin className="h-4 w-4 text-pink-500" />}
+              {groupHidden && <EyeOff className="h-4 w-4 text-red-500" />}
+            </span>
             {isCaseComplete && showResults && (
               <div className="flex items-center gap-1 text-sm">
                 {answerResult === true && <CheckCircle className="h-4 w-4 text-green-600" />}
@@ -232,13 +318,30 @@ export function ClinicalCaseQuestion({
                 {answerResult === false && <AlertCircle className="h-4 w-4 text-red-600" />}
               </div>
             )}
+            {/* Group-level aggregated actions */}
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={toggleGroupPin} className="flex items-center gap-1">
+                {groupPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                <span className="hidden sm:inline">{groupPinned ? 'Unpin' : 'Pin'}</span>
+              </Button>
+              {(user?.role === 'admin' || user?.role === 'maintainer') && (
+                <Button variant="outline" size="sm" onClick={toggleGroupHidden} disabled={isTogglingHidden} title={groupHidden ? 'Unhide' : 'Hide'}>
+                  {groupHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                </Button>
+              )}
+              {(user?.role === 'admin' || user?.role === 'maintainer') && (
+                <Button variant="outline" size="sm" title="Éditer le cas clinique" onClick={()=> setOpenCaseEdit(true)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              {user?.role === 'admin' && (
+                <Button variant="outline" size="sm" className="text-destructive" disabled={isDeleting} onClick={handleDeleteGroup} title="Delete all">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
           </CardTitle>
-          {/* Show case text only once at the top */}
-          <ClinicalCaseDisplay
-            caseNumber={clinicalCase.caseNumber}
-            caseText={clinicalCase.caseText}
-            lectureId={lectureId}
-          />
+          {/* (Case text moved below card for larger display) */}
         </CardHeader>
         <CardContent>
           {/* Progress Bar */}
@@ -274,12 +377,24 @@ export function ClinicalCaseQuestion({
         </CardContent>
       </Card>
 
+      {/* Clinical case text moved here, larger and still highlightable */}
+      {clinicalCase.caseText && (
+        <div className="rounded-xl border bg-blue-50/60 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-6 text-blue-800 dark:text-blue-200 text-base sm:text-lg leading-relaxed whitespace-pre-wrap">
+          <HighlightableCaseText
+            lectureId={lectureId}
+            text={clinicalCase.caseText}
+            className="break-words"
+          />
+        </div>
+      )}
+
       {/* All Questions */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Questions du cas clinique</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Group-level action bar placeholder (pin/report could be added here) */}
           <div className="space-y-6">
             {clinicalCase.questions.map((question, index) => 
               renderQuestion(question, index)
@@ -288,6 +403,57 @@ export function ClinicalCaseQuestion({
         </CardContent>
       </Card>
 
+  {/* Single aggregated notes & comments for entire clinical case (treat as one question) */}
+  {answeredQuestions === clinicalCase.totalQuestions && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowNotesArea(p=>!p);
+                  if (!showNotesArea) setTimeout(()=>{ document.getElementById(`clinical-case-notes-${clinicalCase.caseNumber}`)?.scrollIntoView({behavior:'smooth', block:'start'}); },30);
+                }}
+                className="flex items-center gap-1"
+              >
+                <StickyNote className="h-4 w-4" />
+                <span className="hidden sm:inline">{showNotesArea ? 'Fermer les notes' : 'Prendre une note'}</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // fully reset case to allow re-answer (clear answers & results)
+                  setAnswers({});
+                  setQuestionResults({});
+                  setIsCaseComplete(false);
+                  setShowResults(false);
+                  setShowNotesArea(false);
+                  // focus first textarea or option after a tick
+                  setTimeout(()=>{
+                    const ta = document.querySelector('[data-clinical-case] textarea, [data-clinical-case] input[type="radio"]');
+                    if (ta instanceof HTMLElement) ta.focus();
+                  },40);
+                }}
+                className="flex items-center gap-1"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span className="hidden sm:inline">Répondre à nouveau</span>
+              </Button>
+              <Button onClick={onNext} size="sm" className="flex items-center gap-1">
+                <span className="hidden sm:inline">Suivant</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div id={`clinical-case-notes-${clinicalCase.caseNumber}`} className="space-y-6">
+            {showNotesArea && <QuestionNotes questionId={`clinical-case-${clinicalCase.caseNumber}`} />}
+            <QuestionComments questionId={`clinical-case-${clinicalCase.caseNumber}`} />
+          </div>
+        </div>
+      )}
+
       {/* Case Complete Actions */}
       <div className="flex justify-between items-center">
         <div className="text-sm text-muted-foreground">
@@ -295,24 +461,16 @@ export function ClinicalCaseQuestion({
             ? "Toutes les questions ont été répondues" 
             : `${clinicalCase.totalQuestions - answeredQuestions} question(s) restante(s)`}
         </div>
-        
         <div className="flex gap-2">
           {answeredQuestions === clinicalCase.totalQuestions && !isCaseComplete && (
             <Button onClick={handleCompleteCase} className="bg-green-600 hover:bg-green-700">
               Terminer le cas clinique
             </Button>
           )}
-          
           {isCaseComplete && !showResults && (
             <Button onClick={handleShowResults} className="bg-blue-600 hover:bg-blue-700">
               <Eye className="h-4 w-4 mr-2" />
               Voir les résultats
-            </Button>
-          )}
-          
-          {isCaseComplete && showResults && (
-            <Button onClick={onNext}>
-              Continuer
             </Button>
           )}
         </div>
@@ -339,13 +497,22 @@ export function ClinicalCaseQuestion({
           </DialogHeader>
           <div className="mt-4">
             <div className="prose max-w-none text-sm leading-relaxed">
-              <p className="whitespace-pre-wrap text-foreground">
-                {clinicalCase.caseText}
-              </p>
+              <div className="whitespace-pre-wrap text-foreground">
+                <HighlightableCaseText lectureId={lectureId} text={clinicalCase.caseText} />
+              </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+      {openCaseEdit && (
+        <ClinicalCaseEditDialog
+          caseNumber={clinicalCase.caseNumber}
+          questions={clinicalCase.questions}
+          isOpen={openCaseEdit}
+          onOpenChange={setOpenCaseEdit}
+          onSaved={() => { try { window.location.reload(); } catch {} }}
+        />
+      )}
     </motion.div>
   );
 } 

@@ -42,6 +42,82 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
   ]);
   const [correctAnswers, setCorrectAnswers] = useState<string[]>([]);
   const [qrocAnswer, setQrocAnswer] = useState('');
+  // Multi QROC builder (non clinical case) state
+  interface QrocSubQuestion { id: string; text: string; answer: string; }
+  const [multiQrocMode, setMultiQrocMode] = useState(false);
+  const [qrocSubs, setQrocSubs] = useState<QrocSubQuestion[]>([]);
+  // Bulk paste helper state
+  const [bulkInput, setBulkInput] = useState('');
+
+  // ===== Clinical Case Builder Mode State =====
+  interface SubQuestion {
+    id: string;
+    type: 'clinic_mcq' | 'clinic_croq';
+    text: string;
+    options: Option[];
+    correctAnswers: string[];
+    qrocAnswer: string;
+    explanation: string;
+  }
+  const emptySubQuestion = (initialType: 'clinic_mcq' | 'clinic_croq' = 'clinic_mcq'): SubQuestion => ({
+    id: `sq_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+    type: initialType,
+    text: '',
+    options: [
+      { id: makeId(), text: '', explanation: '' },
+      { id: makeId(), text: '', explanation: '' },
+      { id: makeId(), text: '', explanation: '' },
+      { id: makeId(), text: '', explanation: '' },
+    ],
+    correctAnswers: [],
+    qrocAnswer: '',
+  explanation: '', // retained in state but UI hidden; always sent as null for clinical cases
+  });
+  // builderMode active when parent type == clinical_case
+  const [builderMode, setBuilderModeInternal] = useState(false); // internal (legacy toggle) but we'll derive below
+  const [caseNumber, setCaseNumber] = useState<number | undefined>(undefined);
+  const [caseText, setCaseText] = useState('');
+  const [subQuestions, setSubQuestions] = useState<SubQuestion[]>([emptySubQuestion()]);
+
+  const addSubQuestion = () => setSubQuestions(prev => [...prev, emptySubQuestion()]);
+  const addSubQuestionOfType = (t: 'clinic_mcq' | 'clinic_croq') => setSubQuestions(prev => [...prev, emptySubQuestion(t)]);
+  const removeSubQuestion = (id: string) => {
+    setSubQuestions(prev => prev.filter(sq => sq.id !== id));
+  };
+  const updateSubQuestion = (id: string, updater: (sq: SubQuestion) => SubQuestion) => {
+    setSubQuestions(prev => prev.map(sq => sq.id === id ? updater(sq) : sq));
+  };
+  const addSubOption = (sqId: string) => {
+    updateSubQuestion(sqId, sq => ({
+      ...sq,
+      options: [...sq.options, { id: makeId(), text: '', explanation: '' }]
+    }));
+  };
+  const removeSubOption = (sqId: string, index: number) => {
+    updateSubQuestion(sqId, sq => {
+      if (sq.options.length <= 2) return sq; // keep at least 2
+      const removedId = sq.options[index].id;
+      return {
+        ...sq,
+        options: sq.options.filter((_, i) => i !== index),
+        correctAnswers: sq.correctAnswers.filter(id => id !== removedId),
+      };
+    });
+  };
+  const toggleSubCorrect = (sqId: string, optionId: string) => {
+    updateSubQuestion(sqId, sq => ({
+      ...sq,
+      correctAnswers: sq.correctAnswers.includes(optionId)
+        ? sq.correctAnswers.filter(id => id !== optionId)
+        : [...sq.correctAnswers, optionId]
+    }));
+  };
+
+  const resetBuilder = () => {
+    setCaseNumber(undefined);
+    setCaseText('');
+    setSubQuestions([emptySubQuestion()]);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -64,6 +140,8 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
     ]);
     setCorrectAnswers([]);
     setQrocAnswer('');
+  setMultiQrocMode(false);
+  setQrocSubs([]);
   };
 
   const handleOptionChange = (index: number, text: string) => {
@@ -88,7 +166,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
     setFormData(prev => ({ ...prev, type: newType }));
     
     // Reset options and correct answers when changing to/from MCQ types
-    if (newType !== 'mcq' && newType !== 'clinic_mcq') {
+  if (newType !== 'mcq' && newType !== 'clinic_mcq') {
       setOptions([]);
       setCorrectAnswers([]);
     } else if (options.length === 0) {
@@ -105,6 +183,20 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
     // Reset QROC answer when not QROC type
     if (newType !== 'qroc' && newType !== 'clinic_croq') {
       setQrocAnswer('');
+    }
+
+    if (newType !== 'qroc') {
+      setMultiQrocMode(false);
+      setQrocSubs([]);
+    }
+
+    // Activate builder mode automatically for clinical_case
+    if (newType === 'clinical_case') {
+      setBuilderModeInternal(true);
+      // Ensure at least one sub-question present
+      if (subQuestions.length === 0) setSubQuestions([emptySubQuestion()]);
+    } else {
+      setBuilderModeInternal(false);
     }
   };
 
@@ -143,6 +235,78 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
   };
 
   const handleSubmit = async () => {
+    // Multi QROC submission path
+    if (formData.type === 'qroc' && multiQrocMode) {
+      if (qrocSubs.length === 0) {
+        toast({ title: 'Erreur', description: 'Ajoutez au moins une sous-question QROC.', variant: 'destructive' });
+        return;
+      }
+      for (const sq of qrocSubs) {
+        if (!sq.text.trim() || !sq.answer.trim()) {
+          toast({ title: 'Erreur', description: 'Chaque sous-question QROC doit avoir un texte et une réponse.', variant: 'destructive' });
+          return;
+        }
+      }
+      try {
+        setIsSubmitting(true);
+        // Auto assign group number if absent: fetch existing max caseNumber among qroc
+        let groupNumber = formData.number;
+        if (!groupNumber) {
+          try {
+            const resp = await fetch(`/api/questions?lectureId=${lecture.id}`);
+            if (resp.ok) {
+              const data = await resp.json();
+              const maxExisting = (data as any[])
+                .filter(q => q.type === 'qroc' && q.caseNumber)
+                .reduce((m, q) => Math.max(m, q.caseNumber || 0), 0);
+              groupNumber = maxExisting + 1;
+            } else {
+              groupNumber = Math.floor(Date.now()/1000); // fallback
+            }
+          } catch {
+            groupNumber = Math.floor(Date.now()/1000);
+          }
+        }
+        let created = 0;
+        for (let i = 0; i < qrocSubs.length; i++) {
+          const sq = qrocSubs[i];
+          const body = {
+            lectureId: lecture.id,
+            text: sq.text.trim(),
+            type: 'qroc',
+            explanation: null,
+            courseReminder: formData.courseReminder.trim() || null,
+            number: null, // individual numbers not used
+            session: formData.session.trim() || null,
+            mediaUrl: null,
+            mediaType: null,
+            courseReminderMediaUrl: formData.reminderMediaUrl || null,
+            courseReminderMediaType: formData.reminderMediaType || null,
+            caseNumber: groupNumber, // reuse/assign as group id
+            caseText: null,
+            caseQuestionNumber: i + 1,
+            options: [],
+            correctAnswers: [sq.answer.trim()],
+          };
+          const resp = await fetch('/api/questions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          if (!resp.ok) {
+            const err = await resp.json().catch(()=>({}));
+            throw new Error(err.error || `Échec sous-question ${i+1}`);
+          }
+          created++;
+        }
+        toast({ title: 'Bloc QROC créé', description: `${created} sous-question(s) ajoutée(s).` });
+        resetForm();
+        onQuestionCreated();
+        onOpenChange(false);
+      } catch(e) {
+        toast({ title: 'Erreur', description: e instanceof Error ? e.message : 'Création échouée.', variant: 'destructive' });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (!formData.text.trim()) {
       toast({
         title: 'Erreur de validation',
@@ -228,7 +392,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
       });
 
       resetForm();
-      onQuestionCreated();
+  onQuestionCreated(); // parent should refetch; ensure parent triggers hook refetch
       onOpenChange(false);
     } catch (error) {
       console.error('Error creating question:', error);
@@ -242,6 +406,153 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
     }
   };
 
+  // ===== Bulk Paste Parsing (MCQ) =====
+  const parseBulkInput = () => {
+    if (!bulkInput.trim()) {
+      toast({ title: 'Aucun contenu', description: 'Collez la question et ses options avant d\'analyser.' });
+      return;
+    }
+    if (!(formData.type === 'mcq' || formData.type === 'clinic_mcq')) {
+      toast({ title: 'Type non supporté', description: 'Le collage automatique est réservé aux QCM.', variant: 'destructive' });
+      return;
+    }
+    const lines = bulkInput.replace(/\r/g,'').split('\n').map(l=>l.trim()).filter(l=>l.length);
+    if (lines.length === 0) {
+      toast({ title: 'Format invalide', description: 'Impossible d\'extraire du texte.' , variant: 'destructive'});
+      return;
+    }
+    const optionRegex = /^(?:[A-Z]|\d+)[\.)\]:\-]?\s+(.*)$/; // captures text after label
+    const detectedOptions: { raw:string; text:string; correct:boolean }[] = [];
+    let questionLines: string[] = [];
+    for (const line of lines) {
+      const m = line.match(optionRegex);
+      if (m) {
+        let optText = m[1].trim();
+        let correct = false;
+        // Detect correctness markers
+        if (/\*+$/.test(optText) || /\bVRAI\b$/i.test(optText) || /(\(x\)|\[x\]|✓)$/i.test(optText)) {
+          correct = true;
+          optText = optText.replace(/(\*+|\(x\)|\[x\]|✓|\bVRAI\b)$/i,'').trim();
+        }
+        detectedOptions.push({ raw: line, text: optText, correct });
+      } else if (detectedOptions.length === 0) {
+        questionLines.push(line);
+      } else {
+        // After options started but line not matching option => append to last option (multi-line option)
+        if (detectedOptions.length) {
+          detectedOptions[detectedOptions.length-1].text += ' ' + line;
+        }
+      }
+    }
+    if (detectedOptions.length < 2) {
+      toast({ title: 'Options insuffisantes', description: 'Au moins 2 options détectées sont requises.', variant: 'destructive' });
+      return;
+    }
+    const newQuestionText = questionLines.join('\n').trim();
+    if (!newQuestionText) {
+      toast({ title: 'Question manquante', description: 'La première ligne (avant les options) doit contenir le texte de la question.', variant: 'destructive' });
+      return;
+    }
+    // Build options
+    const builtOptions: Option[] = detectedOptions.map(o => ({ id: makeId(), text: o.text, explanation: '' }));
+    const builtCorrect = detectedOptions.filter(o=>o.correct).map((o,i,arr)=> builtOptions[detectedOptions.indexOf(o)].id);
+    setFormData(prev => ({ ...prev, text: newQuestionText }));
+    setOptions(builtOptions);
+    setCorrectAnswers(builtCorrect);
+    if (builtCorrect.length === 0) {
+      toast({ title: 'Analyse effectuée', description: `${builtOptions.length} options importées. Sélectionnez les bonnes réponses.` });
+    } else {
+      toast({ title: 'Analyse effectuée', description: `${builtOptions.length} options importées. ${builtCorrect.length} correcte(s) détectée(s).` });
+    }
+  };
+
+  // ===== Builder Submit =====
+  const handleBuilderSubmit = async () => {
+    if (caseNumber === undefined || isNaN(caseNumber)) {
+      toast({ title: 'Erreur de validation', description: 'Numéro de cas requis.', variant: 'destructive' });
+      return;
+    }
+    if (!caseText.trim()) {
+      toast({ title: 'Erreur de validation', description: 'Texte du cas requis.', variant: 'destructive' });
+      return;
+    }
+    if (subQuestions.length === 0) {
+      toast({ title: 'Erreur de validation', description: 'Ajoutez au moins une sous-question.', variant: 'destructive' });
+      return;
+    }
+    // Validate each sub-question
+    for (const sq of subQuestions) {
+      if (!sq.text.trim()) {
+        toast({ title: 'Erreur de validation', description: 'Chaque sous-question doit avoir un énoncé.', variant: 'destructive' });
+        return;
+      }
+      if (sq.type === 'clinic_mcq') {
+        const validOpts = sq.options.filter(o => o.text.trim());
+        if (validOpts.length < 2) {
+          toast({ title: 'Erreur de validation', description: 'Chaque QCM doit avoir au moins 2 options.', variant: 'destructive' });
+          return;
+        }
+        if (sq.correctAnswers.length === 0) {
+          toast({ title: 'Erreur de validation', description: 'Sélectionnez au moins une bonne réponse pour chaque QCM.', variant: 'destructive' });
+          return;
+        }
+      }
+      if (sq.type === 'clinic_croq' && !sq.qrocAnswer.trim()) {
+        toast({ title: 'Erreur de validation', description: 'Chaque QROC doit avoir une réponse.', variant: 'destructive' });
+        return;
+      }
+    }
+    try {
+      setIsSubmitting(true);
+      let created = 0;
+      for (let i = 0; i < subQuestions.length; i++) {
+        const sq = subQuestions[i];
+        const body = {
+          lectureId: lecture.id,
+          text: sq.text.trim(),
+            // Force clinical types
+          type: sq.type,
+          explanation: null, // per-sub explanation removed
+          courseReminder: formData.courseReminder.trim() || null,
+          number: null,
+          session: null,
+          mediaUrl: null,
+          mediaType: null,
+          courseReminderMediaUrl: formData.reminderMediaUrl || null,
+          courseReminderMediaType: formData.reminderMediaType || null,
+          caseNumber: caseNumber,
+          caseText: caseText.trim(),
+          caseQuestionNumber: i + 1,
+          options: sq.type === 'clinic_mcq'
+            ? sq.options.filter(o => o.text.trim()).map(o => ({ id: o.id, text: o.text.trim(), explanation: o.explanation?.trim() || '' }))
+            : [],
+          correctAnswers: sq.type === 'clinic_mcq' ? sq.correctAnswers : [sq.qrocAnswer.trim()],
+        };
+        const resp = await fetch('/api/questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error || `Échec création sous-question ${i + 1}`);
+        }
+        created++;
+      }
+      toast({ title: 'Cas clinique créé', description: `${created} sous-question(s) ajoutée(s).` });
+      resetBuilder();
+  onQuestionCreated(); // parent refetch
+      onOpenChange(false);
+    } catch (e) {
+      toast({ title: 'Erreur', description: e instanceof Error ? e.message : 'Création du cas échouée.', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // derive builderMode from formData.type
+  const builderModeDerived = formData.type === 'clinical_case' || builderMode;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-blue-200/60 dark:border-blue-900/40">
@@ -249,50 +560,143 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
           <DialogTitle className="text-blue-700 dark:text-blue-400">Créer une question pour "{lecture.title}"</DialogTitle>
         </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-6 min-h-0" style={{ maxHeight: 'calc(95vh - 180px)' }}>
-          {/* Métadonnées */}
+  <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-6 min-h-0" style={{ maxHeight: 'calc(95vh - 180px)' }}>
+          {/* Metadata always visible */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="number">Numéro</Label>
-              <Input
-                id="number"
-                type="number"
-                placeholder="N°"
-                value={formData.number === undefined ? '' : formData.number}
-                onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value === '' ? undefined : parseInt(e.target.value, 10) }))}
-              />
+                    {/* Per-sub explanation removed; rely on global rappel du cours below */}
+              <Input id="number" type="number" placeholder="N°" value={formData.number === undefined ? '' : formData.number} onChange={(e)=> setFormData(prev => ({ ...prev, number: e.target.value === '' ? undefined : parseInt(e.target.value,10) }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="session">Session</Label>
-              <Input
-                id="session"
-                placeholder="Ex: Session 2022"
-                value={formData.session}
-                onChange={(e) => setFormData(prev => ({ ...prev, session: e.target.value }))}
-              />
+              <Input id="session" placeholder="Ex: Session 2022" value={formData.session} onChange={(e)=> setFormData(prev => ({ ...prev, session: e.target.value }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="type">Type</Label>
-              <Select 
-                value={formData.type} 
-                onValueChange={handleQuestionTypeChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir le type" />
-                </SelectTrigger>
+              <Select value={formData.type} onValueChange={handleQuestionTypeChange}>
+                <SelectTrigger><SelectValue placeholder="Choisir le type" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="mcq">QCM</SelectItem>
                   <SelectItem value="qroc">QROC</SelectItem>
-                  <SelectItem value="clinic_mcq">CAS QCM</SelectItem>
-                  <SelectItem value="clinic_croq">CAS QROC</SelectItem>
+                  <SelectItem value="clinical_case">Cas clinique (multi)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Énoncé */}
+          {/* Clinical case builder shown when type is clinical_case */}
+          {formData.type === 'clinical_case' && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="pb-3"><CardTitle className="text-sm">Données du cas</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2"><Label htmlFor="caseNumber">Numéro du cas *</Label><Input id="caseNumber" type="number" value={caseNumber === undefined ? '' : caseNumber} onChange={e=> setCaseNumber(e.target.value === '' ? undefined : parseInt(e.target.value,10))} /></div>
+                    <div className="md:col-span-3 space-y-2"><Label htmlFor="caseText">Texte du cas *</Label><Textarea id="caseText" value={caseText} onChange={e=> setCaseText(e.target.value)} rows={4} placeholder="Description clinique partagée..." /></div>
+                  </div>
+                </CardContent>
+              </Card>
+              <div className="space-y-4">
+                {subQuestions.map((sq, idx) => (
+                  <Card key={sq.id} className="border-blue-200/60 dark:border-blue-900/40">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                      <CardTitle className="text-sm">Sous-question {idx + 1}</CardTitle>
+                      {subQuestions.length > 1 && (<Button variant="ghost" size="sm" onClick={()=> removeSubQuestion(sq.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>)}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="space-y-2">
+                          <Label>Type</Label>
+                          <Select value={sq.type} onValueChange={(v:any)=> updateSubQuestion(sq.id, prev => ({ ...prev, type: v, correctAnswers: [], qrocAnswer: '', options: v === 'clinic_mcq' ? prev.options.length ? prev.options : [
+                            { id: makeId(), text: '', explanation: '' },
+                            { id: makeId(), text: '', explanation: '' },
+                            { id: makeId(), text: '', explanation: '' },
+                            { id: makeId(), text: '', explanation: '' },
+                          ] : [] }))}>
+                            <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="clinic_mcq">CAS QCM</SelectItem>
+                              <SelectItem value="clinic_croq">CAS QROC</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="md:col-span-3 space-y-2"><Label>Énoncé *</Label><Textarea value={sq.text} onChange={e=> updateSubQuestion(sq.id, prev => ({ ...prev, text: e.target.value }))} rows={3} placeholder="Énoncé de la sous-question" /></div>
+                      </div>
+                      {sq.type === 'clinic_mcq' && (
+                        <div className="space-y-3">
+                          {sq.options.map((opt,oIdx)=>(
+                            <div key={opt.id} className="flex items-start gap-2 border rounded-md p-2">
+                              <div className="pt-2 text-xs w-5 text-center">{String.fromCharCode(65+oIdx)}</div>
+                              <div className="flex-1 space-y-2">
+                                <Input placeholder={`Option ${oIdx+1}`} value={opt.text} onChange={e=> updateSubQuestion(sq.id, prev => ({ ...prev, options: prev.options.map((o,i)=> i===oIdx ? { ...o, text: e.target.value } : o) }))} />
+                                <Input placeholder="Explication (optionnel)" value={opt.explanation || ''} onChange={e=> updateSubQuestion(sq.id, prev => ({ ...prev, options: prev.options.map((o,i)=> i===oIdx ? { ...o, explanation: e.target.value } : o) }))} />
+                              </div>
+                              <div className="flex flex-col gap-2 items-center">
+                                <label className="text-xs flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={sq.correctAnswers.includes(opt.id)} onChange={()=> toggleSubCorrect(sq.id, opt.id)} />Bonne</label>
+                                <Button type="button" size="sm" variant="ghost" disabled={sq.options.length <= 2} onClick={()=> removeSubOption(sq.id, oIdx)} className="text-destructive hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                              </div>
+                            </div>
+                          ))}
+                          <Button type="button" variant="outline" size="sm" onClick={()=> addSubOption(sq.id)} className="w-full"><Plus className="h-3 w-3 mr-1" /> Ajouter une option</Button>
+                        </div>
+                      )}
+                      {sq.type === 'clinic_croq' && (
+                        <div className="space-y-3">
+                          <div className="space-y-2"><Label>Réponse attendue *</Label><Input value={sq.qrocAnswer} onChange={e=> updateSubQuestion(sq.id, prev => ({ ...prev, qrocAnswer: e.target.value }))} placeholder="Réponse attendue" /></div>
+                          <div><Button type="button" variant="outline" size="sm" onClick={()=> addSubQuestionOfType('clinic_croq')} className="w-full"><Plus className="h-3 w-3 mr-1" /> Ajouter une autre QROC</Button></div>
+                        </div>
+                      )}
+                      {/* Per-sub explanation removed */}
+                    </CardContent>
+                  </Card>
+                ))}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={()=> addSubQuestionOfType('clinic_mcq')} className="flex-1"><Plus className="h-3 w-3 mr-1" /> Ajouter QCM</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={()=> addSubQuestionOfType('clinic_croq')} className="flex-1"><Plus className="h-3 w-3 mr-1" /> Ajouter QROC</Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {formData.type !== 'clinical_case' && (
+            <>
+          {/* Métadonnées */}
+            {/* Bulk paste helper appears only for QCM standard, right under meta inputs */}
+            {formData.type === 'mcq' && (
+              <Card className="border-blue-200/60 dark:border-blue-900/40">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Coller question + options</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Textarea
+                    rows={4}
+                    placeholder={`Collez ici.\nExemple:\nQuestion sur ...?\nA. Première option\nB) Deuxième option *\nC - Troisième option (x)\nD: Quatrième option`}
+                    value={bulkInput}
+                    onChange={e=> setBulkInput(e.target.value)}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={()=> setBulkInput('')} disabled={!bulkInput}>Vider</Button>
+                    <Button type="button" size="sm" onClick={parseBulkInput} disabled={!bulkInput}>Analyser & Remplir</Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-snug">Formats: A., A), A-, 1), etc. Ajoutez * / (x) / [x] / ✓ / VRAI à la fin pour marquer une bonne réponse.</p>
+                </CardContent>
+              </Card>
+            )}
+          {formData.type === 'qroc' && !multiQrocMode && (
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" size="sm" onClick={() => {
+                setMultiQrocMode(true);
+                // seed first sub with current single form values if any
+                setQrocSubs([{ id: makeId(), text: formData.text, answer: qrocAnswer }]);
+              }}>Activer multi QROC</Button>
+            </div>
+          )}
+            </>
+          )}
+
+          {/* Énoncé (single question OR multi QROC group header) */}
           <div className="space-y-2">
-            <Label htmlFor="text">Énoncé de la question *</Label>
+            <Label htmlFor="text">{multiQrocMode && formData.type==='qroc' ? 'Texte commun (optionnel)' : 'Énoncé de la question *'}</Label>
             <Textarea
               id="text"
               placeholder="Saisir l'énoncé de la question..."
@@ -349,63 +753,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
             )}
           </div>
 
-          {/* Rappel du cours / Réponse de référence (texte). L'image jointe est l'image de la question. */}
-          <div className="space-y-2">
-            <Label htmlFor="reminder">{formData.type === 'mcq' || formData.type === 'clinic_mcq' ? 'Rappel du cours (optionnel)' : 'Réponse de référence (optionnel)'}</Label>
-            {/* Bouton dédié à l'image du rappel */}
-            <div className="flex items-center gap-2 mb-1">
-              <Button type="button" variant="outline" size="sm" className="relative">
-                <ImageIcon className="h-4 w-4 mr-2" /> Image du rappel
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  onChange={async (e) => {
-                    const file = e.currentTarget.files?.[0];
-                    if (!file) return;
-                    const MAX = 2 * 1024 * 1024; // 2 Mo
-                    if (file.size > MAX) {
-                      toast({ title: 'Image trop lourde', description: 'Taille maximum 2 Mo.', variant: 'destructive' });
-                      e.currentTarget.value = '';
-                      return;
-                    }
-                    if (!file.type.startsWith('image/')) {
-                      toast({ title: 'Type non supporté', description: "Veuillez choisir une image.", variant: 'destructive' });
-                      e.currentTarget.value = '';
-                      return;
-                    }
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
-                      setFormData(prev => ({ ...prev, reminderMediaUrl: dataUrl, reminderMediaType: 'image' }));
-                    };
-                    reader.readAsDataURL(file);
-                    // reset input so same file can be re-picked
-                    e.currentTarget.value = '';
-                  }}
-                />
-              </Button>
-            </div>
-            <Textarea
-              id="reminder"
-              placeholder={formData.type === 'mcq' || formData.type === 'clinic_mcq' ? 'Résumé ou rappel associé à la question' : 'Texte de référence pour la correction'}
-              value={formData.courseReminder}
-              onChange={(e) => setFormData(prev => ({ ...prev, courseReminder: e.target.value }))}
-              rows={3}
-            />
-            {formData.reminderMediaUrl && formData.reminderMediaType === 'image' && (
-              <div className="mt-2 border rounded-md p-3 bg-muted/30">
-                <div className="aspect-video relative bg-muted rounded-md overflow-hidden">
-                  <img src={formData.reminderMediaUrl} alt="Image du rappel" className="w-full h-full object-contain" />
-                </div>
-                <div className="flex justify-end mt-2">
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setFormData(prev => ({ ...prev, reminderMediaUrl: '', reminderMediaType: undefined }))}>
-                    <X className="h-4 w-4 mr-1" /> Supprimer
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* (Block reference QROC removed; unified bottom section handles all) */}
 
           {/* Options (MCQ) */}
           {(formData.type === 'mcq' || formData.type === 'clinic_mcq') && (
@@ -474,14 +822,14 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
           )}
 
           {/* Réponse QROC */}
-          {(formData.type === 'qroc' || formData.type === 'clinic_croq') && (
+          {(!multiQrocMode && (formData.type === 'qroc')) && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Réponse attendue (QROC)</CardTitle>
+                <CardTitle className="text-sm">Réponse de référence (QROC)</CardTitle>
               </CardHeader>
               <CardContent>
                 <Input
-                  placeholder="Saisir la réponse attendue..."
+                  placeholder="Saisir la réponse de référence..."
                   value={qrocAnswer}
                   onChange={(e) => setQrocAnswer(e.target.value)}
                   className="w-full"
@@ -489,29 +837,118 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
               </CardContent>
             </Card>
           )}
+          {multiQrocMode && formData.type==='qroc' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Sous-questions QROC ({qrocSubs.length})</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {qrocSubs.map((sq, idx) => (
+                  <div key={sq.id} className="border rounded-md p-3 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <div className="text-xs font-medium bg-muted px-2 py-0.5 rounded">QROC {idx+1}</div>
+                      {qrocSubs.length>1 && (
+                        <Button variant="ghost" size="sm" onClick={() => setQrocSubs(prev => prev.filter(s=>s.id!==sq.id))} className="text-destructive">Supprimer</Button>
+                      )}
+                    </div>
+                    <Textarea rows={2} placeholder="Énoncé de la sous-question" value={sq.text} onChange={e=> setQrocSubs(prev => prev.map(s=> s.id===sq.id? {...s, text: e.target.value}: s))} />
+                    <Input placeholder="Réponse de référence" value={sq.answer} onChange={e=> setQrocSubs(prev => prev.map(s=> s.id===sq.id? {...s, answer: e.target.value}: s))} />
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => setQrocSubs(prev => [...prev, { id: makeId(), text: '', answer: '' }])} className="w-full">
+                  <Plus className="h-3 w-3 mr-1" /> Ajouter une QROC
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Explication globale */}
-          <div className="space-y-2">
-            <Label htmlFor="explanation">Explication globale (optionnel)</Label>
-            <Textarea
-              id="explanation"
-              placeholder="Détails d'explication globaux..."
-              value={formData.explanation}
-              onChange={(e) => setFormData(prev => ({ ...prev, explanation: e.target.value }))}
-              rows={3}
-            />
-          </div>
+          {/* Rappel du cours / Réponse de référence (unifié en bas) */}
+          {(formData.type === 'mcq' || formData.type === 'clinic_mcq' || formData.type === 'qroc' || formData.type === 'clinical_case') && (
+            <div className="space-y-2">
+              <Label htmlFor="reminder-bottom">Rappel du cours (optionnel)</Label>
+              <div className="flex items-center gap-2 mb-1">
+                <Button type="button" variant="outline" size="sm" className="relative">
+                  <ImageIcon className="h-4 w-4 mr-2" /> Image du rappel
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={async (e) => {
+                      const file = e.currentTarget.files?.[0];
+                      if (!file) return;
+                      const MAX = 2 * 1024 * 1024;
+                      if (file.size > MAX) {
+                        toast({ title: 'Image trop lourde', description: 'Taille maximum 2 Mo.', variant: 'destructive' });
+                        e.currentTarget.value = '';
+                        return;
+                      }
+                      if (!file.type.startsWith('image/')) {
+                        toast({ title: 'Type non supporté', description: 'Veuillez choisir une image.', variant: 'destructive' });
+                        e.currentTarget.value = '';
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+                        setFormData(prev => ({ ...prev, reminderMediaUrl: dataUrl, reminderMediaType: 'image' }));
+                      };
+                      reader.readAsDataURL(file);
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                </Button>
+              </div>
+              <Textarea
+                id="reminder-bottom"
+                placeholder={formData.type === 'qroc' ? 'Texte de référence / rappel associé à la correction' : 'Résumé ou rappel associé à la question'}
+                value={formData.courseReminder}
+                onChange={(e) => setFormData(prev => ({ ...prev, courseReminder: e.target.value }))}
+                rows={3}
+              />
+              {formData.reminderMediaUrl && formData.reminderMediaType === 'image' && (
+                <div className="mt-2 border rounded-md p-3 bg-muted/30">
+                  <div className="aspect-video relative bg-muted rounded-md overflow-hidden">
+                    <img src={formData.reminderMediaUrl} alt="Image du rappel" className="w-full h-full object-contain" />
+                  </div>
+                  <div className="flex justify-end mt-2">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setFormData(prev => ({ ...prev, reminderMediaUrl: '', reminderMediaType: undefined }))}>
+                      <X className="h-4 w-4 mr-1" /> Supprimer
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end space-x-2 p-6 pt-4 border-t bg-background flex-shrink-0 border-blue-100/80 dark:border-blue-900/40">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="border-blue-200 dark:border-blue-800">
-            Annuler
-          </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
-            <Save className="h-4 w-4 mr-2" />
-            {isSubmitting ? 'Création…' : 'Créer la question'}
-          </Button>
+        <div className="flex justify-between items-center gap-4 p-6 pt-4 border-t bg-background flex-shrink-0 border-blue-100/80 dark:border-blue-900/40 flex-wrap">
+          {builderModeDerived && (
+            <p className="text-xs text-muted-foreground">{subQuestions.length} sous-question(s) prête(s).</p>
+          )}
+          <div className="flex justify-end space-x-2 ml-auto">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="border-blue-200 dark:border-blue-800">
+              Annuler
+            </Button>
+            {!builderModeDerived && !multiQrocMode && (
+              <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                <Save className="h-4 w-4 mr-2" />
+                {isSubmitting ? 'Création…' : 'Créer la question'}
+              </Button>
+            )}
+            {!builderModeDerived && multiQrocMode && (
+              <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                <Save className="h-4 w-4 mr-2" />
+                {isSubmitting ? 'Création…' : 'Créer le bloc QROC'}
+              </Button>
+            )}
+            {builderModeDerived && (
+              <Button onClick={handleBuilderSubmit} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                <Save className="h-4 w-4 mr-2" />
+                {isSubmitting ? 'Création…' : 'Créer le cas'}
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

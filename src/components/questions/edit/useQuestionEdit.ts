@@ -254,7 +254,7 @@ export function useQuestionEdit({
         explanation: opt.explanation
       })) : undefined,
       // Use camelCase to match API route
-      correctAnswers: (question.type === 'mcq' || question.type === 'clinic_mcq') ? correctAnswers : undefined
+      correctAnswers: (question.type === 'mcq' || question.type === 'clinic_mcq' || question.type === 'qroc' || question.type === 'clinic_croq') ? correctAnswers : undefined
     };
 
     await saveQuestion(updatedQuestion);
@@ -286,5 +286,6 @@ export function useQuestionEdit({
     handleSubmit,
     saveQuestion,
     fetchQuestion,
+  setCorrectAnswers,
   };
 }
