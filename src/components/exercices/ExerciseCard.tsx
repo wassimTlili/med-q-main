@@ -48,7 +48,7 @@ export function ExerciseCard({ specialty, onEdit, onDelete, isPinned = false, on
     const colors = [
       'from-blue-400 to-blue-500',
       'from-emerald-400 to-emerald-500',
-      'from-purple-400 to-purple-500',
+  'from-medblue-400 to-medblue-500',
       'from-orange-400 to-orange-500',
       'from-rose-400 to-rose-500',
       'from-cyan-400 to-cyan-500',

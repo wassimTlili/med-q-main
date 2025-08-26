@@ -442,9 +442,9 @@ export default function SpecialtyPageRoute() {
                           <div className="text-2xl font-bold text-green-700 dark:text-green-300">{specialty.progress?.completedLectures || 0}</div>
                           <div className="text-sm text-green-600 dark:text-green-400">Terminés</div>
                         </div>
-                        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
-                          <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{Math.round(specialty.progress?.questionProgress || 0)}%</div>
-                          <div className="text-sm text-purple-600 dark:text-purple-400">Progression</div>
+                        <div className="bg-medblue-50 dark:bg-medblue-900/20 rounded-lg p-4">
+                          <div className="text-2xl font-bold text-medblue-700 dark:text-medblue-300">{Math.round(specialty.progress?.questionProgress || 0)}%</div>
+                          <div className="text-sm text-medblue-600 dark:text-medblue-400">Progression</div>
                         </div>
                       </div>
                     </div>

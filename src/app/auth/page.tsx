@@ -43,11 +43,11 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row overflow-x-hidden">
       {/* Left Panel - Marketing Content */}
-      <div className="hidden md:flex w-full md:w-1/2 bg-gradient-to-br from-purple-600 to-purple-800 text-white p-10 lg:p-12 flex-col justify-center relative overflow-hidden">
+  <div className="hidden md:flex w-full md:w-1/2 bg-gradient-to-br from-medblue-600 to-medblue-800 text-white p-10 lg:p-12 flex-col justify-center relative overflow-hidden">
         <div className="relative z-10">
           <h1 className="text-4xl lg:text-6xl font-bold mb-4">
             La nouvelle plateforme de<br />
-            <span className="text-purple-200">Questions révolutionnaire !</span>
+            <span className="text-medblue-200">Questions révolutionnaire !</span>
           </h1>
           
           <div className="flex items-center mb-8">
@@ -57,7 +57,7 @@ export default function AuthPage() {
             <span className="text-3xl lg:text-4xl font-semibold">MedQ</span>
           </div>
           
-          <p className="text-purple-200 text-lg lg:text-2xl mb-12">
+          <p className="text-medblue-200 text-lg lg:text-2xl mb-12">
             Destinée aux étudiants en<br />
             sciences médicales
           </p>
@@ -79,7 +79,7 @@ export default function AuthPage() {
                   </div>
                 </div>
                 {/* App Interface */}
-                <div className="bg-gradient-to-br from-purple-500 to-purple-700 h-32 p-4">
+                <div className="bg-gradient-to-br from-medblue-500 to-medblue-700 h-32 p-4">
                   <div className="flex items-center mb-3">
                     <div className="w-6 h-6 border-2 border-white rounded-full mr-3 flex items-center justify-center">
                       <Brain className="w-3 h-3" />
@@ -116,7 +116,7 @@ export default function AuthPage() {
                 </div>
               </div>
               {/* App Header */}
-              <div className="h-6 bg-purple-600 flex items-center justify-center">
+              <div className="h-6 bg-medblue-600 flex items-center justify-center">
                 <div className="w-3 h-3 border border-white rounded-full mr-1 flex items-center justify-center">
                   <Brain className="w-1 h-1" />
                 </div>
@@ -129,21 +129,21 @@ export default function AuthPage() {
                   <div className="w-12 h-1 bg-gray-300 rounded mb-1"></div>
                   <div className="w-8 h-1 bg-gray-300 rounded mb-2"></div>
                   <div className="space-y-1">
-                    <div className="w-10 h-1 bg-purple-200 rounded"></div>
-                    <div className="w-8 h-1 bg-purple-200 rounded"></div>
-                    <div className="w-12 h-1 bg-purple-200 rounded"></div>
-                    <div className="w-6 h-1 bg-purple-200 rounded"></div>
+                    <div className="w-10 h-1 bg-medblue-200 rounded"></div>
+                    <div className="w-8 h-1 bg-medblue-200 rounded"></div>
+                    <div className="w-12 h-1 bg-medblue-200 rounded"></div>
+                    <div className="w-6 h-1 bg-medblue-200 rounded"></div>
                   </div>
                 </div>
                 {/* Progress Bar */}
                 <div className="w-full h-1 bg-gray-200 rounded">
-                  <div className="w-1/3 h-full bg-purple-500 rounded"></div>
+                  <div className="w-1/3 h-full bg-medblue-500 rounded"></div>
                 </div>
               </div>
               {/* Bottom Navigation */}
               <div className="h-4 bg-white border-t border-gray-200 flex items-center justify-center">
                 <div className="flex space-x-2">
-                  <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                  <div className="w-1 h-1 bg-medblue-500 rounded-full"></div>
                   <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
                   <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
                 </div>
@@ -157,7 +157,7 @@ export default function AuthPage() {
           <div className="w-6 h-6 bg-white bg-opacity-10 rounded-full animate-pulse"></div>
         </div>
         <div className="absolute bottom-1/3 right-1/3">
-          <div className="w-4 h-4 bg-purple-300 bg-opacity-20 rounded-full animate-pulse delay-1000"></div>
+          <div className="w-4 h-4 bg-medblue-300 bg-opacity-20 rounded-full animate-pulse delay-1000"></div>
         </div>
         <div className="absolute top-1/2 left-1/3">
           <div className="w-3 h-3 bg-white bg-opacity-5 rounded-full animate-pulse delay-500"></div>
@@ -167,14 +167,14 @@ export default function AuthPage() {
       {/* Right Panel - Auth Forms */}
       <div className="w-full md:w-1/2 bg-gray-50 p-6 sm:p-8 flex flex-col justify-center">
         {/* Mobile Hero (visible on small screens only) */}
-        <div className="md:hidden bg-gradient-to-br from-purple-600 to-purple-800 text-white rounded-xl p-5 mb-6">
+  <div className="md:hidden bg-gradient-to-br from-medblue-600 to-medblue-800 text-white rounded-xl p-5 mb-6">
           <div className="flex items-center mb-3">
             <div className="w-12 h-12 border-4 border-white rounded-full flex items-center justify-center mr-3">
               <Brain className="w-6 h-6" />
             </div>
             <span className="text-2xl font-semibold">MedQ</span>
           </div>
-          <p className="text-purple-100 text-sm">
+          <p className="text-medblue-100 text-sm">
             La nouvelle plateforme de questions destinée aux étudiants en sciences médicales
           </p>
         </div>

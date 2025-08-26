@@ -62,11 +62,40 @@ export const PerformancePie: React.FC = () => {
   const total = perf?.total || 0;
   const successPct = perf?.percentCorrect ?? 0;
 
-  if (!mounted) {
-    return <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg p-4 flex items-center justify-center animate-pulse min-h-[480px]">Loading...</Card>;
+  if (!mounted || loadingPerf && !perf) {
+    return (
+      <Card className="relative border border-border/50 bg-white/55 dark:bg-muted/30 backdrop-blur-sm shadow-lg rounded-lg overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary/40 via-primary/10 to-primary/40" />
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-2xl font-semibold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+            <PieIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            Performance
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 flex flex-col items-center justify-center min-h-[420px] gap-6">
+          <div className="relative w-56 h-56">
+            <div className="absolute inset-0 rounded-full bg-muted/40 animate-pulse" />
+          </div>
+          <div className="space-y-2 w-full max-w-xs">
+            {[1,2,3].map(i=> <div key={i} className="h-10 w-full rounded-xl bg-muted/40 animate-pulse" />)}
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
   if (!perf || total === 0) {
-    return <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg p-4 text-sm text-muted-foreground min-h-[480px]">No performance data.</Card>;
+    return (
+      <Card className="relative border border-border/50 bg-white/55 dark:bg-muted/30 backdrop-blur-sm shadow-lg rounded-lg">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary/40 via-primary/10 to-primary/40" />
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-2xl font-semibold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+            <PieIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            Performance
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground min-h-[420px] flex items-center justify-center">Aucune donnée.</CardContent>
+      </Card>
+    );
   }
 
   return (

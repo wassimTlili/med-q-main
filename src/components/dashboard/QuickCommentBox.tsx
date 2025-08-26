@@ -1,60 +1,170 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { useDashboardData } from "@/hooks/useDashboardData";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MessageSquarePlus, RefreshCcw, Send, Loader2 } from 'lucide-react';
 
-interface Comment {
-  id: string; content: string; createdAt: string; author?: { name?: string };
+interface QuickComment {
+  id: string; content: string; createdAt: string; user?: { name?: string; email?: string };
 }
+interface LectureLite { id: string; title: string; specialty: { id: string; name: string } }
+interface SpecialtyLite { id: string; name: string; pinned?: boolean }
 
-// Placeholder simple implementation – would need real endpoints
 export const QuickCommentBox: React.FC = () => {
-  const { recentResults } = useDashboardData();
-  const [selectedLecture, setSelectedLecture] = useState<string>("");
-  const [comment, setComment] = useState("");
+  const { user } = useAuth();
+  const [specialties, setSpecialties] = useState<SpecialtyLite[]>([]);
+  const [lectures, setLectures] = useState<LectureLite[]>([]);
+  const [selectedSpecialty, setSelectedSpecialty] = useState('');
+  const [selectedLecture, setSelectedLecture] = useState('');
+  const [comments, setComments] = useState<QuickComment[]>([]);
+  const [loadingLectures, setLoadingLectures] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(false);
   const [sending, setSending] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comment, setComment] = useState('');
+  const [anon, setAnon] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // We only have lectureTitle in recentResults, so build a unique list
-  const lectures = Array.from(new Set(recentResults.map(r => r.lectureTitle))).map(title => ({ id: title, title }));
+  // Load specialties accessible to user
+  useEffect(() => {
+    let abort = false; (async () => {
+      try { const r = await fetch('/api/dashboard/accessible-specialties'); const j = r.ok ? await r.json() : []; if(!abort && Array.isArray(j)){ setSpecialties(j); if (!selectedSpecialty && j.length) setSelectedSpecialty(j[0].id);} } catch {}
+    })(); return () => { abort = true };
+  }, [user?.id, refreshKey]);
 
-  const loadComments = async (lectureId: string) => {
-    // TODO replace with real fetch
-    setComments([]);
-  };
+  // Load lectures list (global list then filter by specialty name match) – could be optimized with param endpoint later
+  useEffect(() => {
+    let abort = false; (async () => {
+      try { setLoadingLectures(true); const r = await fetch('/api/lectures/list'); const j = r.ok ? await r.json() : []; if(!abort) setLectures(j); } finally { if(!abort) setLoadingLectures(false); } })();
+    return () => { abort = true };
+  }, [refreshKey]);
+
+  // Load comments when lecture changes
+  useEffect(() => {
+    if(!selectedLecture) { setComments([]); return; }
+    let abort = false; (async () => {
+      try { setLoadingComments(true); const r = await fetch(`/api/comments?lectureId=${selectedLecture}`); const j = r.ok ? await r.json() : []; if(!abort) setComments(j); } finally { if(!abort) setLoadingComments(false); } })();
+    return () => { abort = true };
+  }, [selectedLecture]);
+
+  const currentSpec = specialties.find(s => s.id === selectedSpecialty);
+  const filteredLectures = lectures.filter(l => !currentSpec || l.specialty.id === currentSpec.id);
 
   const submit = async () => {
-    if (!comment.trim() || !selectedLecture) return;
-    setSending(true);
+    if(!user?.id || !comment.trim() || !selectedLecture) return; setSending(true);
     try {
-      // TODO real POST /api/comments
-      const newComment: Comment = { id: Date.now().toString(), content: comment, createdAt: new Date().toISOString() };
-      setComments(prev => [newComment, ...prev]);
-      setComment("");
+      const body = { lectureId: selectedLecture, userId: user.id, content: comment.trim(), isAnonymous: anon };
+      const r = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if(r.ok){ const newC = await r.json(); setComments(prev => [newC, ...prev]); setComment(''); setAnon(false); setTimeout(()=> textareaRef.current?.focus(), 50); }
     } finally { setSending(false); }
   };
 
+  const initialLoading = !specialties.length && !selectedSpecialty; // first load state
+
   return (
-    <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 w-full">
-      <CardHeader>
-        <CardTitle className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">Commentaire rapide</CardTitle>
+    <Card className="relative border border-border/50 bg-white/55 dark:bg-muted/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow flex flex-col overflow-hidden rounded-lg">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary/40 via-primary/10 to-primary/40" />
+      <CardHeader className="pb-2 flex flex-row items-start justify-between gap-4">
+        <CardTitle className="flex items-center gap-2 text-xl font-semibold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+          <MessageSquarePlus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          Commentaire rapide
+        </CardTitle>
+        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={()=> setRefreshKey(k=>k+1)} title="Rafraîchir" aria-label="Rafraîchir">
+          <RefreshCcw className="h-4 w-4" />
+        </Button>
       </CardHeader>
-      <CardContent>
-        <select className="w-full mb-2 bg-secondary/40 dark:bg-secondary/30 rounded px-2 py-1 text-sm" value={selectedLecture} onChange={e=>{setSelectedLecture(e.target.value); loadComments(e.target.value);}}>
-          <option value="">Choisir un cours</option>
-          {lectures.map(l=> <option key={l.id} value={l.id}>{l.title}</option>)}
-        </select>
-        <textarea value={comment} onChange={e=>setComment(e.target.value)} placeholder="Votre commentaire..." className="w-full h-20 text-sm rounded bg-secondary/40 dark:bg-secondary/30 p-2 resize-none" />
-        <button disabled={sending || !comment.trim() || !selectedLecture} onClick={submit} className="mt-2 w-full text-sm bg-primary text-primary-foreground rounded py-1 disabled:opacity-50">Envoyer</button>
-        <div className="mt-3 max-h-40 overflow-y-auto space-y-2 text-xs">
-          {comments.map(c => (
-            <div key={c.id} className="p-2 bg-secondary/30 dark:bg-secondary/20 rounded">
-              <div className="whitespace-pre-wrap">{c.content}</div>
-              <div className="text-[10px] text-muted-foreground mt-1">{new Date(c.createdAt).toLocaleString()}</div>
+      <CardContent className="flex flex-col gap-3 pt-0 pb-4">
+        {initialLoading ? (
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex gap-2">
+              <div className="h-8 flex-1 rounded bg-muted/40 animate-pulse" />
+              <div className="h-8 flex-1 rounded bg-muted/40 animate-pulse" />
             </div>
-          ))}
-          {!comments.length && selectedLecture && <div className="text-muted-foreground">Aucun commentaire.</div>}
-        </div>
+            <div className="h-24 rounded bg-muted/40 animate-pulse" />
+            <div className="space-y-2">
+              {[1,2,3].map(i=> <div key={i} className="h-10 rounded-md bg-muted/30 animate-pulse" />)}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Selectors */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 relative group">
+                <select
+                  className="w-full text-xs pl-3 pr-7 py-1.5 rounded-md border bg-white/80 dark:bg-muted/40 text-foreground dark:text-foreground border-border/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none shadow-sm hover:bg-white/95 dark:hover:bg-muted/60"
+                  value={selectedSpecialty}
+                  onChange={e=>{ setSelectedSpecialty(e.target.value); setSelectedLecture(''); }}
+                >
+                  <option value="">Spécialité</option>
+                  {specialties.map(s => <option key={s.id} value={s.id}>{s.name}{s.pinned? ' ★':''}</option>)}
+                </select>
+              </div>
+              <div className="flex-1 relative group">
+                <select
+                  className="w-full text-xs pl-3 pr-7 py-1.5 rounded-md border bg-white/80 dark:bg-muted/40 text-foreground dark:text-foreground border-border/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none shadow-sm hover:bg-white/95 dark:hover:bg-muted/60 disabled:opacity-50"
+                  value={selectedLecture}
+                  disabled={!filteredLectures.length}
+                  onChange={e=> setSelectedLecture(e.target.value)}
+                >
+                  <option value="">Cours</option>
+                  {filteredLectures.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Editor */}
+            <div className="flex flex-col gap-2">
+              <Textarea
+                ref={textareaRef}
+                value={comment}
+                onChange={e=> setComment(e.target.value)}
+                placeholder="Votre commentaire..."
+                disabled={!selectedLecture}
+                className="min-h-[90px] resize-none text-sm bg-background/60 disabled:opacity-50"
+                onKeyDown={e=>{ if(e.key==='Enter' && !e.shiftKey && comment.trim()){ e.preventDefault(); submit(); }}}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <label className="flex items-center gap-2 text-[11px] cursor-pointer select-none">
+                  <Checkbox className="h-3.5 w-3.5" checked={anon} disabled={!selectedLecture} onCheckedChange={v=> setAnon(!!v)} />
+                  <span>Anonyme</span>
+                </label>
+                <Button size="sm" disabled={!comment.trim() || !selectedLecture || sending} onClick={submit} className="gap-1">
+                  {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  {sending? 'Envoi...' : 'Envoyer'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Comments list */}
+            <div className="mt-1 space-y-2 max-h-56 overflow-y-auto pr-1">
+              {loadingComments && (
+                <div className="space-y-2">
+                  {[1,2,3].map(i=> <div key={i} className="h-10 rounded-md bg-muted/30 animate-pulse" />)}
+                </div>
+              )}
+              {!loadingComments && comments.map(c => (
+                <div key={c.id} className="group relative p-3 rounded-md border border-border/40 bg-white/60 dark:bg-muted/40 hover:bg-white/80 dark:hover:bg-muted/60 transition-colors">
+                  <p className="text-xs leading-snug whitespace-pre-wrap text-foreground/90">{c.content}</p>
+                  <div className="mt-1 flex justify-between items-center text-[10px] text-muted-foreground">
+                    <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                    {c.user?.name && <span className="truncate max-w-[120px]">{c.user.name}</span>}
+                  </div>
+                </div>
+              ))}
+              {!loadingComments && selectedLecture && comments.length===0 && (
+                <div className="text-[11px] text-muted-foreground italic py-6 text-center border border-dashed border-border/50 rounded-md">
+                  Aucun commentaire.
+                </div>
+              )}
+              {!selectedLecture && (
+                <div className="text-[11px] text-muted-foreground italic py-4 text-center">Choisissez un cours.</div>
+              )}
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

@@ -205,7 +205,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
             name="email"
             value={formData.email}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medblue-500 focus:border-transparent"
             placeholder="Votre email"
             required
           />
@@ -222,7 +222,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
               name="password"
               value={formData.password}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medblue-500 focus:border-transparent pr-12"
               placeholder="Votre mot de passe"
               required
             />
@@ -248,7 +248,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medblue-500 focus:border-transparent pr-12"
               placeholder="Confirmer le mot de passe"
               required
             />
@@ -271,7 +271,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
             name="specialty"
             value={formData.specialty}
             onChange={(e) => handleSelectChange('specialty', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medblue-500 focus:border-transparent bg-white"
             required
           >
             <option value="">Sélectionner...</option>
@@ -291,7 +291,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
             name="level"
             value={formData.level}
             onChange={(e) => handleSelectChange('level', e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medblue-500 focus:border-transparent bg-white"
             required
             disabled={isLoadingNiveaux}
           >
@@ -311,7 +311,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
             name="acceptTerms"
             checked={formData.acceptTerms}
             onChange={handleInputChange}
-            className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+            className="mt-1 h-4 w-4 text-medblue-600 focus:ring-medblue-500 border-gray-300 rounded"
             required
           />
           <label className="ml-3 text-sm text-gray-600">
@@ -323,7 +323,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
         <button
           type="submit"
           disabled={!formData.acceptTerms || isLoading}
-          className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+          className="w-full bg-medblue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-medblue-700 focus:outline-none focus:ring-2 focus:ring-medblue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
         >
           {isLoading ? (
             <>
@@ -350,7 +350,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
             type="button"
             onClick={handleGoogleSignUp}
             disabled={isGoogleLoading}
-            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-medblue-500 disabled:opacity-50"
           >
             {isGoogleLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -371,7 +371,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
             type="button"
             onClick={handleFacebookSignUp}
             disabled={isFacebookLoading}
-            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-medblue-500 disabled:opacity-50"
           >
             {isFacebookLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -390,7 +390,7 @@ export function RegisterForm({ onToggleForm }: { onToggleForm: () => void }) {
             Déjà membre? {' '}
             <button
               type="button"
-              className="text-purple-600 hover:text-purple-700 font-medium"
+              className="text-medblue-600 hover:text-medblue-700 font-medium"
               onClick={onToggleForm}
             >
               Connectez-vous!

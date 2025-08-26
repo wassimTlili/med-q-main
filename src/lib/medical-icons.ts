@@ -52,8 +52,8 @@ export const MEDICAL_ICONS: Record<string, MedicalIcon> = {
     name: 'brain',
     icon: Brain,
     label: 'Neurologie',
-    color: 'text-purple-500',
-    darkColor: 'dark:text-purple-400',
+  color: 'text-medblue-500',
+  darkColor: 'dark:text-medblue-400',
     keywords: ['neuro', 'brain', 'cerveau', 'neurologie']
   },
   
@@ -272,8 +272,8 @@ export const MEDICAL_ICONS: Record<string, MedicalIcon> = {
     name: 'zap',
     icon: Zap,
     label: 'Oncologie',
-    color: 'text-purple-600',
-    darkColor: 'dark:text-purple-400',
+  color: 'text-medblue-600',
+  darkColor: 'dark:text-medblue-400',
     keywords: ['onco', 'cancer', 'oncologie', 'tumor']
   },
   

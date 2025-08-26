@@ -143,7 +143,7 @@ export function LoginForm({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medblue-500 focus:border-transparent"
             placeholder="name@example.com"
             required
             autoComplete="email"
@@ -159,7 +159,7 @@ export function LoginForm({
             <button
               type="button"
               onClick={onForgotPassword}
-              className="text-sm text-purple-600 hover:text-purple-700"
+              className="text-sm text-medblue-600 hover:text-medblue-700"
             >
               {t('auth.forgotPassword')}
             </button>
@@ -169,7 +169,7 @@ export function LoginForm({
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-medblue-500 focus:border-transparent pr-12"
               placeholder="••••••••"
               required
               autoComplete="current-password"
@@ -192,7 +192,7 @@ export function LoginForm({
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+          className="w-full bg-medblue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-medblue-700 focus:outline-none focus:ring-2 focus:ring-medblue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
         >
           {isLoading ? (
             <>
@@ -219,7 +219,7 @@ export function LoginForm({
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading}
-            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-medblue-500 disabled:opacity-50"
           >
             {isGoogleLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -240,7 +240,7 @@ export function LoginForm({
             type="button"
             onClick={handleFacebookSignIn}
             disabled={isFacebookLoading}
-            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+            className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-medblue-500 disabled:opacity-50"
           >
             {isFacebookLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -259,7 +259,7 @@ export function LoginForm({
             {t('auth.dontHaveAccount')} {' '}
             <button
               type="button"
-              className="text-purple-600 hover:text-purple-700 font-medium"
+              className="text-medblue-600 hover:text-medblue-700 font-medium"
               onClick={onToggleForm}
             >
               {t('auth.signUp')}

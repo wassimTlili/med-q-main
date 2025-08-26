@@ -19,7 +19,7 @@ import {
   useSidebar
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, UserCircle, Settings, Users, LogOut, BookOpen, Moon, Sun, FileText, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, UserCircle, Settings, Users, LogOut, BookOpen, Moon, Sun, FileText, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
@@ -70,7 +70,7 @@ export function AppSidebar() {
 
   return (
     <>
-      <Sidebar className="border-r border-border/40 bg-gradient-to-b from-background to-muted/20" collapsible="icon">
+  <Sidebar className="sticky top-0 h-screen border-r border-border/40 bg-gradient-to-b from-background to-muted/20" collapsible="icon">
         <SidebarHeader className="border-b border-border/40 bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-950/50 dark:to-blue-900/30">
           <div 
             className={`flex items-center justify-center transition-all duration-300 cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/20 ${state === 'expanded' ? 'px-4 py-4' : 'px-2 py-4'}`}
@@ -256,6 +256,37 @@ export function AppSidebar() {
             </Tooltip>
           </div>
         </SidebarFooter>
+        {/* Floating arrow toggle */}
+        {!isMobile && (
+          <button
+            onClick={(e)=> { e.preventDefault(); e.stopPropagation(); toggleSidebar(); }}
+            aria-label={state === 'expanded' ? 'Réduire la barre latérale' : 'Développer la barre latérale'}
+            aria-expanded={state === 'expanded'}
+            className={`group absolute top-[110px] -right-4 z-50 flex items-center justify-center
+              ${state === 'expanded' ? 'w-9' : 'w-8'} h-10 rounded-xl
+              bg-gradient-to-br from-blue-600/90 to-blue-500/80 dark:from-blue-500/80 dark:to-blue-400/70
+              border border-blue-400/40 dark:border-blue-300/30 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30
+              backdrop-blur-md overflow-hidden
+              transition-all duration-300 ease-out
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/70 focus-visible:ring-offset-0
+              ${state === 'expanded' ? 'hover:-translate-x-1' : 'hover:translate-x-0.5'}`}
+          >
+            {/* Decorative glow */}
+            <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.25),transparent_60%)]" />
+            {/* Notch / tail to indicate draggable edge */}
+            <span className={`absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-white/40 to-white/5 dark:from-white/15 dark:to-white/5 transition-transform duration-300 ${state==='expanded' ? 'translate-x-0' : 'translate-x-0.5'}`} />
+            {state === 'expanded' ? (
+              <ChevronLeft className="relative h-4 w-4 text-white drop-shadow-sm transition-transform duration-300 group-hover:-translate-x-0.5" />
+            ) : (
+              <ChevronRight className="relative h-4 w-4 text-white drop-shadow-sm transition-transform duration-300 group-hover:translate-x-0.5" />
+            )}
+            {/* Pulse hint only when collapsed */}
+            {state !== 'expanded' && (
+              <span className="absolute -left-2 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-blue-400 shadow ring-2 ring-blue-300/40 animate-ping" aria-hidden="true" />
+            )}
+            <span className="sr-only">Toggle sidebar</span>
+          </button>
+        )}
       </Sidebar>
       <SidebarRail />
     </>

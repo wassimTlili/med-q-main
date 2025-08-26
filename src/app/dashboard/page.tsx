@@ -30,6 +30,11 @@ export default function DashboardPage() {
   const [isUpsellDismissed, setIsUpsellDismissed] = useState(false);
   const { t } = useTranslation();
   const { stats, dailyActivity, coursesToReview, isLoading, error } = useDashboardData();
+  // Normalize daily activity ensuring we provide a 'total' number for the chart component
+  const activityPoints = (dailyActivity || []).map((d: any) => ({
+    date: d.date,
+    total: typeof d.total === 'number' ? d.total : (typeof d.questions === 'number' ? d.questions : 0)
+  }));
 
   const shouldShowUpsell = !hasActiveSubscription && !isAdmin && !isUpsellDismissed;
   const handleUpgrade = () => setIsUpgradeDialogOpen(true);
@@ -90,21 +95,33 @@ export default function DashboardPage() {
               <div className="flex flex-col gap-6">
                 <PerformancePie />
                 <div className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg rounded-lg">
-                  <DailyLearningChart data={dailyActivity} isLoading={isLoading} streak={stats?.learningStreak} />
+                  <DailyLearningChart data={activityPoints} isLoading={isLoading} streak={stats?.learningStreak} />
                 </div>
                 <CoursesToReview />
               </div>
             </div>
 
-            {/* Responsive fallback below xl: stack original simple grid */}
-            <div className="xl:hidden grid gap-6 md:grid-cols-2">
-              <ContinueLearning lastLecture={stats?.lastLecture} isLoading={isLoading} />
-              <ContinueLearning lastLecture={stats?.lastLecture} isLoading={isLoading} />
-              <PerformancePie />
-              <DailyLearningChart data={dailyActivity} isLoading={isLoading} streak={stats?.learningStreak} />
-              <SpecialtyAverageSlider />
-              <CoursesToReview />
-              <QuickCommentBox />
+            {/* Responsive layout (< xl) */}
+            <div className="xl:hidden grid gap-6 sm:grid-cols-2 lg:grid-cols-3 auto-rows-max">
+              {/* Full width stats already above */}
+              <div className="sm:col-span-2 lg:col-span-1 order-10 sm:order-none">
+                <ContinueLearning lastLecture={stats?.lastLecture} isLoading={isLoading} />
+              </div>
+              <div className="sm:col-span-1 order-20">
+                <PerformancePie />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-2 order-30">
+                <DailyLearningChart data={activityPoints} isLoading={isLoading} streak={stats?.learningStreak} />
+              </div>
+              <div className="sm:col-span-1 order-40">
+                <SpecialtyAverageSlider />
+              </div>
+              <div className="sm:col-span-1 order-50">
+                <QuickCommentBox />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-1 order-60">
+                <CoursesToReview />
+              </div>
             </div>
 
             <UpgradeDialog

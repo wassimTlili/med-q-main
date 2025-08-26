@@ -348,7 +348,7 @@ export function QuestionControlPanel({
                       <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex items-center gap-1">
                         {`${getTypeLabel(question.type)} ${question.number ?? (question.originalIndex + 1)}`}
                         {groupMeta?.multiQroc && (
-                          <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium">
+                          <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-md bg-medblue-100 text-medblue-700 dark:bg-medblue-900/40 dark:text-medblue-300 font-medium">
                             {groupMeta.total}x
                           </span>
                         )}

@@ -45,6 +45,7 @@ interface PopularCourse {
   studentCount: number;
   averageScore: number;
   isFree: boolean;
+  specialtyId?: string; // optional for compatibility (present in courses-to-review endpoint)
 }
 
 interface PerformanceSummary { correct: number; wrong: number; partial: number; total: number; windowDays?: number; percentCorrect?: number; percentPartial?: number; percentWrong?: number; }
@@ -87,28 +88,29 @@ export function useDashboardData(): DashboardData {
         setData(prev => ({ ...prev, isLoading: true, error: null }));
 
         // Fetch all data in parallel (added performance endpoint)
-        const [statsRes, dailyRes, resultsRes, coursesRes, performanceRes] = await Promise.all([
+        const [statsRes, dailyRes, resultsRes, coursesRes, reviewCoursesRes, performanceRes] = await Promise.all([
           fetch('/api/dashboard/stats'),
           fetch('/api/dashboard/daily-activity?days=14'),
           fetch('/api/dashboard/recent-results'),
           fetch('/api/dashboard/popular-courses'),
+          fetch('/api/dashboard/courses-to-review'),
           fetch('/api/dashboard/performance')
         ]);
 
-        if (!statsRes.ok || !dailyRes.ok || !resultsRes.ok || !coursesRes.ok || !performanceRes.ok) {
+        if (!statsRes.ok || !dailyRes.ok || !resultsRes.ok || !coursesRes.ok || !reviewCoursesRes.ok || !performanceRes.ok) {
           throw new Error('Failed to fetch dashboard data');
         }
 
-        const [stats, dailyActivity, recentResults, popularCourses, performance] = await Promise.all([
+        const [stats, dailyActivity, recentResults, popularCourses, coursesToReview, performance] = await Promise.all([
           statsRes.json(),
           dailyRes.json(),
           resultsRes.json(),
           coursesRes.json(),
+          reviewCoursesRes.json(),
           performanceRes.json()
         ]);
 
-        // Courses to review: low averageScore (<50%)
-        const coursesToReview: PopularCourse[] = popularCourses.filter((c: PopularCourse) => c.averageScore < 50).slice(0, 10);
+        // coursesToReview now fetched directly (already filtered by API)
 
         // Specialty averages from popular courses
         const specialtyMap: Record<string, { name: string; scores: number[] }> = {};
@@ -127,7 +129,7 @@ export function useDashboardData(): DashboardData {
           dailyActivity,
           recentResults,
           popularCourses,
-          coursesToReview,
+          coursesToReview: (coursesToReview || []).slice(0,10),
           performance: performance.total ? performance : null,
           specialtyAverages,
           isLoading: false,

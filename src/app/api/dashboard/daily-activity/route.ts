@@ -60,13 +60,13 @@ async function getHandler(request: AuthenticatedRequest) {
       lte: endDate
     };
 
-    // Primary source: UserActivity events (your existing data)
+    // Primary source: UserActivity events (rich types)
     const activityEvents = await prisma.userActivity.findMany({
       where: {
         userId,
         createdAt: { gte: startDate, lte: endDate }
       },
-      select: { createdAt: true },
+      select: { createdAt: true, type: true },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -94,62 +94,103 @@ async function getHandler(request: AuthenticatedRequest) {
       });
     }
 
-    // Helper to produce a LOCAL day key (previously we used toISOString which shifted forward users in +TZ back one day)
-    const dayKey = (d: Date) => {
-      const local = new Date(d);
-      local.setHours(0,0,0,0);
-      // Normalize by removing timezone offset so the date portion reflects local day
-      const adjusted = new Date(local.getTime() - local.getTimezoneOffset() * 60000);
-      return adjusted.toISOString().split('T')[0];
-    };
+  // Use UTC ISO date (YYYY-MM-DD) for stable day keys to prevent local timezone off-by-one
+  const dayKey = (d: Date) => d.toISOString().slice(0,10);
 
     // Build a map dateString -> count (inclusive of today, using local day keys)
     const counts: Record<string, number> = {};
+    const perType: Record<string, Record<string, number>> = {}; // date -> type -> count
+    const today = new Date();
     for (let i = windowDays - 1; i >= 0; i--) {
-      const d = new Date();
+      const d = new Date(today);
       d.setDate(d.getDate() - i);
-      counts[dayKey(d)] = 0;
+      const k = dayKey(d);
+      counts[k] = 0;
+      perType[k] = {};
     }
 
-    const increment = (dt: Date) => {
+    const increment = (dt: Date, type?: string) => {
       const key = dayKey(dt);
-      if (counts[key] !== undefined) counts[key] += 1;
+      // If event day not pre-initialized (timezone drift), add it if within window range
+      if (counts[key] === undefined) {
+        counts[key] = 0;
+        perType[key] = {};
+      }
+      counts[key] += 1;
+      if (type) {
+        const bucket = perType[key];
+        bucket[type] = (bucket[type]||0)+1;
+      }
     };
 
-    // Always prioritize UserActivity (since you have data there)
-    // Force use of userActivity data regardless of count
-    const useActivityEvents = true; // Force this since you have data
-    
+  // Prioritize UserActivity when present; otherwise gracefully fall back
+  const useActivityEvents = activityEvents.length > 0;
     if (useActivityEvents) {
-      activityEvents.forEach((a: any) => increment(a.createdAt));
+      activityEvents.forEach((a: any) => increment(a.createdAt, a.type));
     } else if (questionData.length) {
-      questionData.forEach(q => increment(q.updatedAt));
+      questionData.forEach(q => increment(q.updatedAt, 'questionUserData'));
     } else {
-      progressData.forEach(p => increment(p.lastAccessed));
+      progressData.forEach(p => increment(p.lastAccessed, 'userProgress'));
     }
 
     const dailyData = Object.entries(counts)
-      .map(([date, questions]) => ({ date, questions }))
-      .sort((a, b) => a.date.localeCompare(b.date)); // Ensure chronological order
+      .map(([date, total]) => ({
+        date,
+        total,
+        types: perType[date]
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
     
-    const totalEvents = dailyData.reduce((a,c)=> a + c.questions, 0);
+    const totalEvents = dailyData.reduce((a,c)=> a + c.total, 0);
 
-    if (debug) {
-      return NextResponse.json({
-        windowDays,
-        dailyData,
-        source: useActivityEvents ? 'userActivity' : (questionData.length ? 'questionUserData' : 'userProgress'),
-        activityEventsCount: activityEvents.length,
-        questionDataCount: questionData.length,
-        progressDataCount: progressData.length,
-        totalEvents,
-        serverNow: new Date().toISOString(),
-        tzOffsetMinutes: new Date().getTimezoneOffset(),
-        note: 'Dates are local-day keys (was UTC ISO previously)'
-      });
+    // Metrics
+    const activeDays = dailyData.filter(d=>d.total>0).length;
+    const avgPerWindow = windowDays ? totalEvents / windowDays : 0;
+    const avgPerActiveDay = activeDays ? totalEvents / activeDays : 0;
+    const todayKey = dayKey(new Date());
+    // Current streak (consecutive days ending today with total>0)
+    let streakCurrent = 0;
+    for (let i = dailyData.length-1; i>=0; i--) {
+      const d = dailyData[i];
+      if (i === dailyData.length-1 && d.date !== todayKey) break; // only count streak if today present
+      if (d.total>0) streakCurrent++; else break;
     }
+    // Max streak
+    let maxStreak = 0, cur = 0;
+    dailyData.forEach(d=> { if (d.total>0) { cur++; if (cur>maxStreak) maxStreak=cur; } else { cur=0; } });
+    const firstActive = dailyData.find(d=>d.total>0)?.date || null;
+    const lastActive = [...dailyData].reverse().find(d=>d.total>0)?.date || null;
+    // Aggregate type totals
+    const typeTotals: Record<string, number> = {};
+    Object.values(perType).forEach(dayMap => {
+      Object.entries(dayMap).forEach(([t,c]) => { typeTotals[t] = (typeTotals[t]||0)+c; });
+    });
 
-  return NextResponse.json(dailyData);
+    const responsePayload = {
+      windowDays,
+      dailyData,
+      source: useActivityEvents ? 'userActivity' : (questionData.length ? 'questionUserData' : 'userProgress'),
+      activityEventsCount: activityEvents.length,
+      questionDataCount: questionData.length,
+      progressDataCount: progressData.length,
+      totalEvents,
+      serverNow: new Date().toISOString(),
+      tzOffsetMinutes: new Date().getTimezoneOffset(),
+      note: 'Activity includes per-type breakdown and metrics.',
+      rawSample: debug ? activityEvents.slice(0,5) : undefined,
+      metrics: {
+        activeDays,
+        avgPerWindow: Number(avgPerWindow.toFixed(2)),
+        avgPerActiveDay: Number(avgPerActiveDay.toFixed(2)),
+        streakCurrent,
+        maxStreak,
+        firstActive,
+        lastActive,
+        typeTotals
+      }
+    };
+
+    return NextResponse.json(responsePayload);
   } catch (error) {
     console.error('Error fetching daily activity:', error);
     return NextResponse.json(

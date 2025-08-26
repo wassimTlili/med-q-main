@@ -29,6 +29,19 @@ export default {
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
+        // Medical blue custom palette
+        medblue: {
+          50: '#f2f9fd',
+          100: '#e6f2fa',
+          200: '#c0e0f3',
+          300: '#9acfeb',
+          400: '#55ace0',
+          500: '#1f8fd4',
+          600: '#0d78bb',
+          700: '#0b6095',
+          800: '#094b74',
+          900: '#06324d'
+        },
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))'
