@@ -676,92 +676,49 @@ export default function HomePage() {
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">Fonctionnalités</h2>
             <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">Des outils concrets pour améliorer l’efficacité de chaque session d’étude.</p>
           </div>
-          {/* Row 1: 3 cards */}
-          <div className="grid md:grid-cols-3 gap-10 mb-14">
-            {features.slice(0,3).map(f => (
-              <div key={f.title} className="group relative bg-white border border-gray-100 rounded-3xl shadow-sm hover:shadow-xl transition-all overflow-hidden">
-                <div className="p-5 flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-medblue-100 to-medblue-200 flex items-center justify-center group-hover:scale-110 transition-transform">{f.icon}</div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">{f.title}</h3>
-                    <p className="text-sm text-gray-600 leading-snug">{f.description}</p>
-                  </div>
+          {/* Alternating feature visuals */}
+          <div className="space-y-20 mb-24">
+            {[
+              {
+                img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6YGdgqw82V4ab1DIUikyhFqYJo2B3uSxzctRnZ',
+                title: 'Statistiques détaillées',
+                text: 'Capture dashboard & cours : progression consolidée et détail question par question.'
+              },
+              {
+                img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6Y8ZOLDgtkCERDpSWHOMVGaTLBK9A5g26UIzQP',
+                title: 'Commentaire',
+                text: 'Capture commentaire question + commentaire cours : échange collaboratif et clarification rapide.'
+              },
+              {
+                img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6Y1ylBzOpeyIDiB7lOqj2CsrvSR4PtNdTFZJ6c',
+                title: 'Préparez vous aux sessions plus facilement',
+                text: 'Planification fluide, visualisation de l’avancement et recentrage avant les examens.'
+              },
+              {
+                img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6YfiL4RRoFBmas853W2EIORVTcxitYQ6jz97eD',
+                title: 'Prise de note , Souligner et épingler',
+                text: 'Construis ta mémoire active : notes personnelles, surlignage ciblé, épingles stratégiques.'
+              },
+              {
+                img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6YhkL52pRR6lwGHQc89YTLjIzMsdSbJvePx0pV',
+                title: 'Réviser efficacement et à ton propre rythme',
+                text: 'Filtres cours + 3 study modes pour alterner apprentissage initial, consolidation et rappels.'
+              }
+            ].map((block, i) => (
+              <div key={block.title} className={`flex flex-col md:flex-row items-center gap-10 lg:gap-16 ${i % 2 === 1 ? 'md:flex-row-reverse' : ''}`}>
+                <div className="relative w-full md:w-1/2 aspect-[5/3] rounded-3xl overflow-hidden shadow-xl ring-1 ring-gray-200 bg-gradient-to-br from-gray-50 to-white">
+                  <Image
+                    src={block.img}
+                    alt={block.title}
+                    fill
+                    sizes="(max-width:768px) 100vw, 50vw"
+                    className="object-cover"
+                    priority={i<2}
+                  />
                 </div>
-                <div className="relative mt-2 px-5 pb-5">
-                  <div className="relative rounded-2xl ring-1 ring-gray-200 overflow-hidden bg-gradient-to-br from-gray-50 to-white">
-                    <div className="relative w-full h-0 pb-[62.5%]">{/* 8/5 ratio */}
-                      {/* Fallback si image 404 */}
-                      <Image
-                        src={f.screenshots[0]}
-                        alt={f.alt}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover object-top [&[data-error='true']]:opacity-30"
-                        onError={(e) => {
-                          const el = e.target as HTMLImageElement;
-                          el.setAttribute('data-error','true');
-                          console.warn('Image introuvable:', f.screenshots[0]);
-                        }}
-                      />
-                      <div className="absolute inset-0 hidden items-center justify-center text-xs text-gray-500 gap-2" data-placeholder>
-                        <span>{f.screenshots[0]}</span>
-                      </div>
-                    </div>
-                    {f.screenshots[1] && (
-                      <div className="hidden md:block absolute bottom-3 right-3 w-32 h-20 rounded-lg ring-1 ring-white shadow-lg overflow-hidden bg-white/80">
-                        <Image
-                          src={f.screenshots[1]}
-                          alt={f.alt + ' secondaire'}
-                          fill
-                          sizes="128px"
-                          className="object-cover"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* Row 2: 2 centered cards */}
-          <div className="grid md:grid-cols-2 gap-10 md:max-w-4xl mx-auto">
-            {features.slice(3).map(f => (
-              <div key={f.title} className="group relative bg-white border border-gray-100 rounded-3xl shadow-sm hover:shadow-xl transition-all overflow-hidden">
-                <div className="p-5 flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-medblue-100 to-medblue-200 flex items-center justify-center group-hover:scale-110 transition-transform">{f.icon}</div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-1">{f.title}</h3>
-                    <p className="text-sm text-gray-600 leading-snug">{f.description}</p>
-                  </div>
-                </div>
-                <div className="relative mt-2 px-5 pb-5">
-                  <div className="relative rounded-2xl ring-1 ring-gray-200 overflow-hidden bg-gradient-to-br from-gray-50 to-white">
-                    <div className="relative w-full h-0 pb-[62.5%]">
-                      <Image
-                        src={f.screenshots[0]}
-                        alt={f.alt}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                        className="object-cover object-top [&[data-error='true']]:opacity-30"
-                        onError={(e) => {
-                          const el = e.target as HTMLImageElement;
-                          el.setAttribute('data-error','true');
-                          console.warn('Image introuvable:', f.screenshots[0]);
-                        }}
-                      />
-                    </div>
-                    {f.screenshots[1] && (
-                      <div className="hidden md:block absolute bottom-3 right-3 w-32 h-20 rounded-lg ring-1 ring-white shadow-lg overflow-hidden bg-white/80">
-                        <Image
-                          src={f.screenshots[1]}
-                          alt={f.alt + ' secondaire'}
-                          fill
-                          sizes="128px"
-                          className="object-cover"
-                        />
-                      </div>
-                    )}
-                  </div>
+                <div className="w-full md:w-1/2 space-y-4">
+                  <h3 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">{block.title}</h3>
+                  <p className="text-gray-600 text-lg leading-relaxed">{block.text}</p>
                 </div>
               </div>
             ))}
