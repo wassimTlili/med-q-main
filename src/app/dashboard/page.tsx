@@ -31,7 +31,8 @@ export default function DashboardPage() {
   const { t } = useTranslation();
   const { stats, dailyActivity, coursesToReview, isLoading, error } = useDashboardData();
   // Normalize daily activity ensuring we provide a 'total' number for the chart component
-  const activityPoints = (dailyActivity || []).map((d: any) => ({
+  const safeDaily = Array.isArray(dailyActivity) ? dailyActivity : [];
+  const activityPoints = safeDaily.map((d: any) => ({
     date: d.date,
     total: typeof d.total === 'number' ? d.total : (typeof d.questions === 'number' ? d.questions : 0)
   }));

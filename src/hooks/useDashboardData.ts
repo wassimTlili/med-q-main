@@ -101,7 +101,7 @@ export function useDashboardData(): DashboardData {
           throw new Error('Failed to fetch dashboard data');
         }
 
-        const [stats, dailyActivity, recentResults, popularCourses, coursesToReview, performance] = await Promise.all([
+  const [stats, dailyActivityRaw, recentResults, popularCourses, coursesToReview, performance] = await Promise.all([
           statsRes.json(),
           dailyRes.json(),
           resultsRes.json(),
@@ -124,9 +124,16 @@ export function useDashboardData(): DashboardData {
           average: v.scores.reduce((a,b)=>a+b,0)/v.scores.length
         })).sort((a,b)=> b.average - a.average).slice(0,15);
 
+        // Normalize daily activity (API may return array OR an object { dailyData:[], metrics:... })
+        const normalizedDailyActivity = Array.isArray(dailyActivityRaw)
+          ? dailyActivityRaw
+          : (dailyActivityRaw && Array.isArray((dailyActivityRaw as any).dailyData)
+              ? (dailyActivityRaw as any).dailyData
+              : []);
+
         setData({
           stats,
-          dailyActivity,
+          dailyActivity: normalizedDailyActivity,
           recentResults,
           popularCourses,
           coursesToReview: (coursesToReview || []).slice(0,10),
