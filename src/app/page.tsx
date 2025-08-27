@@ -390,10 +390,10 @@ export default function HomePage() {
             <div className="flex space-x-3 md:space-x-4">
                <Button 
                  variant="outline" 
-                 onClick={() => router.push('/auth')}
-                 className={`bg-transparent text-sm md:text-base px-3 md:px-4 py-1.5 md:py-2 rounded-lg ${isScrolled 
-                   ? 'border-medblue-600 text-medblue-600 hover:bg-medblue-50' 
-                   : 'border-white text-white hover:bg-white hover:text-medblue-600'
+                 onClick={() => router.push('/auth?mode=login')}
+                 className={`bg-transparent text-sm md:text-base px-3 md:px-4 py-1.5 md:py-2 rounded-lg transition-all duration-200 ${isScrolled 
+                   ? 'border-medblue-600 text-medblue-600 hover:bg-medblue-50 hover:border-medblue-700 hover:text-medblue-700 hover:shadow-md hover:-translate-y-0.5' 
+                   : 'border-white text-white hover:bg-white hover:text-medblue-600 hover:shadow-md hover:-translate-y-0.5'
                  }`}
                >
                  Connexion
@@ -435,16 +435,16 @@ export default function HomePage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-12 z-10">
           <div className="grid lg:grid-cols-2 gap-6 md:gap-8 lg:gap-12 items-center">
              <div className="text-white space-y-8">
-               <Badge className="inline-flex bg-white/20 text-white border-white/30 backdrop-blur-sm shadow-lg">
+               <Badge className="inline-flex bg-white/20 text-white border-white/30 backdrop-blur-sm shadow-lg" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
                  1ère plateforme pensée pour les externes en médecine
                </Badge>
-               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight animate-fade-in">
-                 Med<span className="text-medblue-300 bg-gradient-to-r from-medblue-300 to-medblue-400 bg-clip-text text-transparent">Q</span>
+               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight animate-fade-in" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.8), -1px -1px 0px rgba(0,0,0,0.5), 1px -1px 0px rgba(0,0,0,0.5), -1px 1px 0px rgba(0,0,0,0.5), 1px 1px 0px rgba(0,0,0,0.5)' }}>
+                 Med<span className="text-medblue-300 bg-gradient-to-r from-medblue-300 to-medblue-400 bg-clip-text text-transparent" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.8), -1px -1px 0px rgba(0,0,0,0.5), 1px -1px 0px rgba(0,0,0,0.5), -1px 1px 0px rgba(0,0,0,0.5), 1px 1px 0px rgba(0,0,0,0.5)', WebkitTextStroke: '1px rgba(0,0,0,0.3)' }}>Q</span>
                </h1>
-               <p className="text-base md:text-lg lg:text-xl text-medblue-100 animate-slide-up font-semibold tracking-wide">
+               <p className="text-base md:text-lg lg:text-xl text-medblue-100 animate-slide-up font-semibold tracking-wide" style={{ textShadow: '1px 1px 0px rgba(0,0,0,0.7), -1px -1px 0px rgba(0,0,0,0.4), 1px -1px 0px rgba(0,0,0,0.4), -1px 1px 0px rgba(0,0,0,0.4)' }}>
                  Révisez • Progressez • Réussissez
                </p>
-               <p className="text-sm md:text-base opacity-90 leading-relaxed animate-slide-up max-w-2xl" style={{ animationDelay: '0.2s' }}>
+               <p className="text-sm md:text-base opacity-90 leading-relaxed animate-slide-up max-w-2xl" style={{ animationDelay: '0.2s', textShadow: '1px 1px 0px rgba(0,0,0,0.6), -1px -1px 0px rgba(0,0,0,0.3), 1px -1px 0px rgba(0,0,0,0.3), -1px 1px 0px rgba(0,0,0,0.3)' }}>
                  Facilitez vos révisions avec des questions récentes, des annotations personnelles, des commentaires collaboratifs et des statistiques intelligentes. Un écosystème complet pour apprendre mieux et plus vite.
                </p>
                <div className="flex flex-col sm:flex-row gap-4">
@@ -794,25 +794,16 @@ export default function HomePage() {
            <p className="text-lg md:text-xl text-medblue-100 mb-8 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200">
              Rejoignez des milliers d'étudiants qui ont déjà choisi MedQ pour réussir leurs examens médicaux.
            </p>
-           <div className="flex flex-col sm:flex-row gap-4 justify-center" data-aos="fade-up" data-aos-delay="300">
+           <div className="flex justify-center" data-aos="fade-up" data-aos-delay="300">
              <Button 
                size="lg"
                onClick={() => router.push('/auth')}
-               className="bg-white text-medblue-600 hover:bg-medblue-50 font-semibold text-lg px-8 py-4 shadow-lg transform hover:scale-105 transition-all duration-200"
-               data-aos="slide-right" 
+               className="bg-white text-medblue-600 hover:bg-medblue-50 font-semibold text-lg px-10 py-4 shadow-lg transform hover:scale-105 transition-all duration-200"
+               data-aos="zoom-in" 
                data-aos-delay="400"
              >
-               Commencer maintenant
+               Commencer
                <ArrowRight className="ml-2 w-5 h-5" />
-             </Button>
-             <Button 
-               size="lg"
-               variant="outline"
-               className="border-white text-medblue-600 hover:bg-white hover:text-medblue-600 font-semibold text-lg px-8 py-4 shadow-lg transform hover:scale-105 transition-all duration-200"
-               data-aos="slide-left" 
-               data-aos-delay="500"
-             >
-               Essai gratuit 7 jours
              </Button>
            </div>
          </div>
