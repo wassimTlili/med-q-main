@@ -60,10 +60,18 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  * { @apply border-border; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #1f2937; /* Match footer dark gray */
   }
-  body {
-    @apply bg-background text-foreground;
-  }
-} 
+
+  body { @apply bg-background text-foreground; }
+
+  /* Hide scrollbar */
+  ::-webkit-scrollbar { display: none; }
+  html { scrollbar-width: none; }
+  body { -ms-overflow-style: none; }
+}

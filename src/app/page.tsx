@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 import { 
   CheckCircle, 
   BarChart3, 
@@ -172,6 +174,16 @@ export default function HomePage() {
     };
   }, [activeTab]);
 
+  // Initialize AOS
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      easing: 'ease-out-cubic',
+      once: true,
+      offset: 100,
+    });
+  }, []);
+
   // Don't render anything while loading or if user is authenticated
   if (isLoading || user) {
     return null;
@@ -260,24 +272,6 @@ export default function HomePage() {
     }
   ];
 
-  const additionalFeatures = [
-    {
-      title: "Mode Hors Ligne",
-      description: "Continuez à étudier même sans connexion internet. Vos progrès se synchronisent automatiquement dès que vous êtes reconnecté.",
-  icon: <Zap className="w-8 h-8 text-medblue-600" />
-    },
-    {
-      title: "Interface Adaptative",
-      description: "Notre interface s'adapte parfaitement à tous vos appareils : smartphone, tablette ou ordinateur pour une expérience optimale.",
-  icon: <Smartphone className="w-8 h-8 text-medblue-600" />
-    },
-    {
-      title: "Mode Sombre",
-      description: "Réduisez la fatigue oculaire lors de longues sessions d'étude avec notre mode sombre élégant et reposant.",
-  icon: <Moon className="w-8 h-8 text-medblue-600" />
-    }
-  ];
-
   const pricingPlans = [
     { name: 'Annuel', price: '----', popular: true },
     { name: 'Semestriel', price: '----', popular: false }
@@ -350,45 +344,7 @@ export default function HomePage() {
           animation: float 3s ease-in-out infinite;
         }
         
-        /* Force perfect white background for ALL content areas */
-        body {
-          background-color: #ffffff !important;
-        }
-        
-        main {
-          background-color: #ffffff !important;
-        }
-        
-        section[id="caracteristiques"],
-        section[id="fonctionnalites"],
-        section[id="tarifs"],
-        section[id="faq"],
-        .content-section {
-          background-color: #ffffff !important;
-        }
-        
-        /* Remove any inherited backgrounds */
-        .bg-gray-50,
-        .bg-slate-50,
-        .bg-neutral-50,
-        .bg-stone-50 {
-          background-color: #ffffff !important;
-        }
-        
-        /* Force all cards to be white */
-        .card,
-        [data-state="open"],
-        [data-state="closed"] {
-          background-color: #ffffff !important;
-          color: #000000 !important;
-        }
-        
-        /* Ensure card headers and content are white */
-        .card-header,
-        .card-content,
-        .card-footer {
-          background-color: #ffffff !important;
-        }
+        /* Remove previous global white-forcing overrides */
       `}</style>
 
       {/* Navigation */}
@@ -455,9 +411,7 @@ export default function HomePage() {
 
        {/* Hero Section */}
        <section id="accueil" className="relative min-h-screen flex items-center justify-center overflow-hidden">
-         <div className="absolute inset-0 bg-gradient-to-br from-medblue-700 via-medblue-800 to-medblue-900"></div>
-        
-        {/* ONE BIG DRAMATIC CURVE */}
+         <div className="absolute inset-0 bg-gradient-to-br from-medblue-700 via-medblue-800 to-medblue-900"></div>        {/* ONE BIG DRAMATIC CURVE */}
         <div className="absolute bottom-0 left-0 w-full overflow-hidden z-20 pointer-events-none">
           <svg
             className="relative block w-full h-40 md:h-48 lg:h-56"
@@ -520,7 +474,7 @@ export default function HomePage() {
                         <Brain className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <span className="font-bold text-gray-800 text-lg">Question MCQ</span>
+                        <span className="font-bold text-gray-800 text-lg">Question QCM</span>
                         <div className="text-xs text-medblue-600 font-medium">Cardiologie • Niveau 3</div>
                       </div>
                     </div>
@@ -651,15 +605,17 @@ export default function HomePage() {
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
              {characteristics.map((char, index) => (
-               <Card key={index} className="group hover:shadow-xl transition-all duration-300 border-0 bg-white shadow-md">
+               <Card key={index} className="group hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border-0 bg-white shadow-md hover:bg-gradient-to-br hover:from-medblue-50 hover:to-white cursor-pointer">
                  <CardHeader className="text-center pb-4">
-                   <div className="mx-auto w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                     {char.icon}
+                   <div className="mx-auto w-20 h-20 bg-gradient-to-br from-medblue-100 to-medblue-200 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-125 group-hover:rotate-6 group-hover:bg-gradient-to-br group-hover:from-white group-hover:to-gray-50 transition-all duration-500 group-hover:shadow-xl shadow-md border border-medblue-100 group-hover:border-medblue-400">
+                     <div className="text-medblue-600 group-hover:text-medblue-700 transition-colors duration-500 scale-125">
+                       {char.icon}
+                     </div>
                    </div>
-                   <CardTitle className="text-xl font-bold text-gray-900">{char.title}</CardTitle>
+                   <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-medblue-700 transition-colors duration-300">{char.title}</CardTitle>
                  </CardHeader>
                  <CardContent className="text-center">
-                   <CardDescription className="text-gray-600 leading-relaxed">
+                   <CardDescription className="text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors duration-300">
                      {char.description}
                    </CardDescription>
                  </CardContent>
@@ -676,71 +632,46 @@ export default function HomePage() {
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">Fonctionnalités</h2>
             <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">Des outils concrets pour améliorer l’efficacité de chaque session d’étude.</p>
           </div>
-          {/* Alternating feature visuals */}
+          {/* Alternating feature visuals with scroll-in animation */}
           <div className="space-y-20 mb-24">
             {[
-              {
-                img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6YGdgqw82V4ab1DIUikyhFqYJo2B3uSxzctRnZ',
-                title: 'Statistiques détaillées',
-                text: 'Capture dashboard & cours : progression consolidée et détail question par question.'
-              },
-              {
-                img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6Y8ZOLDgtkCERDpSWHOMVGaTLBK9A5g26UIzQP',
-                title: 'Commentaire',
-                text: 'Capture commentaire question + commentaire cours : échange collaboratif et clarification rapide.'
-              },
-              {
-                img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6Y1ylBzOpeyIDiB7lOqj2CsrvSR4PtNdTFZJ6c',
-                title: 'Préparez vous aux sessions plus facilement',
-                text: 'Planification fluide, visualisation de l’avancement et recentrage avant les examens.'
-              },
-              {
-                img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6YfiL4RRoFBmas853W2EIORVTcxitYQ6jz97eD',
-                title: 'Prise de note , Souligner et épingler',
-                text: 'Construis ta mémoire active : notes personnelles, surlignage ciblé, épingles stratégiques.'
-              },
-              {
-                img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6YhkL52pRR6lwGHQc89YTLjIzMsdSbJvePx0pV',
-                title: 'Réviser efficacement et à ton propre rythme',
-                text: 'Filtres cours + 3 study modes pour alterner apprentissage initial, consolidation et rappels.'
-              }
-            ].map((block, i) => (
-              <div key={block.title} className={`flex flex-col md:flex-row items-center gap-10 lg:gap-16 ${i % 2 === 1 ? 'md:flex-row-reverse' : ''}`}>
-                <div className="relative w-full md:w-1/2 aspect-[5/3] rounded-3xl overflow-hidden shadow-xl ring-1 ring-gray-200 bg-gradient-to-br from-gray-50 to-white">
-                  <Image
-                    src={block.img}
-                    alt={block.title}
-                    fill
-                    sizes="(max-width:768px) 100vw, 50vw"
-                    className="object-cover"
-                    priority={i<2}
-                  />
+              { img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6YGdgqw82V4ab1DIUikyhFqYJo2B3uSxzctRnZ', title: 'Statistiques détaillées', text: 'Capture dashboard & cours : progression consolidée et détail question par question.' },
+              { img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6Y8ZOLDgtkCERDpSWHOMVGaTLBK9A5g26UIzQP', title: 'Commentaire', text: 'Capture commentaire question + commentaire cours : échange collaboratif et clarification rapide.' },
+              { img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6Y1ylBzOpeyIDiB7lOqj2CsrvSR4PtNdTFZJ6c', title: 'Préparez vous aux sessions plus facilement', text: 'Planification fluide, visualisation de l’avancement et recentrage avant les examens.' },
+              { img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6YfiL4RRoFBmas853W2EIORVTcxitYQ6jz97eD', title: 'Prise de note , Souligner et épingler', text: 'Construis ta mémoire active : notes personnelles, surlignage ciblé, épingles stratégiques.' },
+              { img: 'https://k5kuw9ehqm.ufs.sh/f/J7UIDY00NO6YhkL52pRR6lwGHQc89YTLjIzMsdSbJvePx0pV', title: 'Réviser efficacement et à ton propre rythme', text: 'Filtres cours + 3 study modes pour alterner apprentissage initial, consolidation et rappels.' }
+            ].map((block, i) => {
+              const imageAnim = i % 2 === 0 ? 'fade-right' : 'fade-left';
+              const textAnim = i % 2 === 0 ? 'fade-left' : 'fade-right';
+              return (
+                <div key={block.title} className={`flex flex-col md:flex-row items-center gap-10 lg:gap-16 ${i % 2 === 1 ? 'md:flex-row-reverse' : ''}`}>
+                  <div
+                    data-aos={imageAnim}
+                    data-aos-delay={i * 100}
+                    className="relative w-full md:w-1/2 aspect-[5/3] rounded-3xl overflow-hidden shadow-xl ring-1 ring-gray-200 bg-gradient-to-br from-gray-50 to-white"
+                  >
+                    <Image
+                      src={block.img}
+                      alt={block.title}
+                      fill
+                      sizes="(max-width:768px) 100vw, 50vw"
+                      className="object-cover"
+                      priority={i<2}
+                    />
+                  </div>
+                  <div
+                    data-aos={textAnim}
+                    data-aos-delay={(i * 100) + 200}
+                    className="w-full md:w-1/2 space-y-4"
+                  >
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">{block.title}</h3>
+                    <p className="text-gray-600 text-lg leading-relaxed">{block.text}</p>
+                  </div>
                 </div>
-                <div className="w-full md:w-1/2 space-y-4">
-                  <h3 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">{block.title}</h3>
-                  <p className="text-gray-600 text-lg leading-relaxed">{block.text}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-           {/* Additional Features */}
-           <div className="bg-white rounded-3xl p-8 lg:p-12 border border-gray-100">
-             <h3 className="text-3xl font-bold text-gray-900 text-center mb-12">
-               Fonctionnalités Supplémentaires
-             </h3>
-             <div className="grid md:grid-cols-3 gap-8">
-               {additionalFeatures.map((feature, index) => (
-                 <div key={index} className="text-center group">
-                   <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg group-hover:shadow-xl transition-shadow duration-300">
-                     {feature.icon}
-                   </div>
-                   <h4 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h4>
-                   <p className="text-gray-600">{feature.description}</p>
-                 </div>
-               ))}
-             </div>
-           </div>
          </div>
        </section>
 
@@ -753,19 +684,23 @@ export default function HomePage() {
           </div>
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map(t => (
-              <Card key={t.name} className="border border-gray-200 shadow-lg bg-white hover:shadow-xl transition-all duration-300">
+              <Card key={t.name} className="border border-gray-200 shadow-lg bg-white hover:shadow-2xl hover:-translate-y-3 hover:border-medblue-300 transition-all duration-500 group cursor-pointer hover:bg-gradient-to-br hover:from-white hover:to-medblue-50">
                 <CardHeader>
                   <div className="flex items-center gap-4">
-                    <img src={t.photo} alt={t.name} className="w-14 h-14 rounded-full object-cover border border-medblue-200" />
+                    <img src={t.photo} alt={t.name} className="w-14 h-14 rounded-full object-cover border border-medblue-200 group-hover:border-medblue-400 group-hover:scale-110 group-hover:shadow-lg transition-all duration-500" />
                     <div>
-                      <CardTitle className="text-lg text-gray-900 font-semibold">{t.name}</CardTitle>
-                      <CardDescription className="text-medblue-600 font-medium">{t.level}</CardDescription>
+                      <CardTitle className="text-lg text-gray-900 font-semibold group-hover:text-medblue-700 transition-colors duration-300">{t.name}</CardTitle>
+                      <CardDescription className="text-medblue-600 font-medium group-hover:text-medblue-800 transition-colors duration-300">{t.level}</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Quote className="w-8 h-8 text-medblue-400 mb-3" />
-                  <p className="text-gray-600 leading-relaxed text-sm">{t.text}</p>
+                  <div className="mb-4 flex justify-start">
+                    <div className="w-12 h-12 bg-gradient-to-br from-medblue-100 to-medblue-200 rounded-full flex items-center justify-center group-hover:bg-gradient-to-br group-hover:from-medblue-500 group-hover:to-medblue-600 transition-all duration-500 group-hover:scale-110 shadow-sm group-hover:shadow-md">
+                      <Quote className="w-6 h-6 text-medblue-500 group-hover:text-white transition-colors duration-500" />
+                    </div>
+                  </div>
+                  <p className="text-gray-600 leading-relaxed text-sm group-hover:text-gray-700 transition-colors duration-300">{t.text}</p>
                 </CardContent>
               </Card>
             ))}
@@ -784,31 +719,31 @@ export default function HomePage() {
             {pricingPlans.map((plan, i) => (
               <div
                 key={plan.name}
-                className={`group relative rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm hover:shadow-md transition-all duration-300 ${plan.popular ? 'ring-1 ring-medblue-500/70' : ''} min-h-[210px] md:min-h-[230px] flex flex-col`}
+                className={`group relative rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm hover:shadow-2xl hover:-translate-y-2 hover:border-medblue-300 transition-all duration-500 cursor-pointer ${plan.popular ? 'ring-1 ring-medblue-500/70 hover:ring-2 hover:ring-medblue-400' : 'hover:ring-1 hover:ring-medblue-300/50'} min-h-[210px] md:min-h-[230px] flex flex-col hover:bg-gradient-to-br hover:from-white hover:to-medblue-50`}
               >
-                <div className={`h-12 flex items-center justify-center text-[11px] font-semibold tracking-wide text-white bg-medblue-600`}> 
+                <div className={`h-12 flex items-center justify-center text-[11px] font-semibold tracking-wide text-white bg-medblue-600 group-hover:bg-gradient-to-r group-hover:from-medblue-600 group-hover:to-medblue-700 transition-all duration-500`}> 
                   {plan.name.toUpperCase()}
                 </div>
                 <div className="flex-1 p-6 pt-7 flex flex-col items-center justify-center gap-7">
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-[11px] font-medium text-gray-500 tracking-wide">
+                  <div className="flex items-baseline gap-2 mt-1 group-hover:scale-105 transition-transform duration-300">
+                    <span className="text-[11px] font-medium text-gray-500 tracking-wide group-hover:text-medblue-600 transition-colors duration-300">
                       {pricingCurrency}
                     </span>
-                    <span className="text-4xl font-extrabold text-slate-700 leading-none">
+                    <span className="text-4xl font-extrabold text-slate-700 leading-none group-hover:text-medblue-700 transition-colors duration-300">
                       {plan.price}
                     </span>
                   </div>
                   <Button
                     variant="outline"
                     onClick={() => router.push('/auth')}
-                    className="rounded-full bg-white border border-gray-300 hover:bg-medblue-600 hover:text-white text-gray-700 px-6 py-1.5 text-sm font-medium transition-colors duration-200 shadow-sm"
+                    className="rounded-full bg-white border border-gray-300 hover:bg-medblue-600 hover:text-white text-gray-700 px-6 py-1.5 text-sm font-medium transition-all duration-300 shadow-sm group-hover:shadow-lg group-hover:scale-105 group-hover:border-medblue-400"
                   >
                     Pré‑inscription
                   </Button>
                 </div>
-                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent group-hover:via-medblue-300 transition-colors duration-300" />
                 {plan.popular && (
-                  <div className="absolute -top-2 -right-10 rotate-45 bg-gradient-to-r from-medblue-500 to-medblue-600 text-white text-[10px] font-semibold py-1 px-12 shadow-lg">
+                  <div className="absolute -top-2 -right-10 rotate-45 bg-gradient-to-r from-medblue-500 to-medblue-600 text-white text-[10px] font-semibold py-1 px-12 shadow-lg group-hover:from-medblue-600 group-hover:to-medblue-700 group-hover:shadow-xl transition-all duration-300">
                     POPULAIRE
                   </div>
                 )}
@@ -853,17 +788,19 @@ export default function HomePage() {
        {/* CTA Section */}
        <section className="py-16 md:py-20 bg-gradient-to-br from-medblue-600 to-medblue-800">
          <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
+           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6" data-aos="zoom-in" data-aos-delay="100">
              Prêt à Exceller en Médecine ?
            </h2>
-           <p className="text-lg md:text-xl text-medblue-100 mb-8 max-w-2xl mx-auto">
+           <p className="text-lg md:text-xl text-medblue-100 mb-8 max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200">
              Rejoignez des milliers d'étudiants qui ont déjà choisi MedQ pour réussir leurs examens médicaux.
            </p>
-           <div className="flex flex-col sm:flex-row gap-4 justify-center">
+           <div className="flex flex-col sm:flex-row gap-4 justify-center" data-aos="fade-up" data-aos-delay="300">
              <Button 
                size="lg"
                onClick={() => router.push('/auth')}
                className="bg-white text-medblue-600 hover:bg-medblue-50 font-semibold text-lg px-8 py-4 shadow-lg transform hover:scale-105 transition-all duration-200"
+               data-aos="slide-right" 
+               data-aos-delay="400"
              >
                Commencer maintenant
                <ArrowRight className="ml-2 w-5 h-5" />
@@ -872,6 +809,8 @@ export default function HomePage() {
                size="lg"
                variant="outline"
                className="border-white text-medblue-600 hover:bg-white hover:text-medblue-600 font-semibold text-lg px-8 py-4 shadow-lg transform hover:scale-105 transition-all duration-200"
+               data-aos="slide-left" 
+               data-aos-delay="500"
              >
                Essai gratuit 7 jours
              </Button>
@@ -880,54 +819,56 @@ export default function HomePage() {
        </section>
 
        {/* Footer */}
-       <footer className="bg-gradient-to-br from-gray-800 to-gray-900 text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+       <footer className="bg-gradient-to-br from-gray-800 to-gray-900 text-white py-16 relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900"></div>
+        <div className="absolute -bottom-20 left-0 right-0 h-20 bg-gray-900"></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
            <div className="grid md:grid-cols-4 gap-8 mb-12">
-             <div>
-               <h3 className="text-2xl font-bold mb-4 text-medblue-300">MedQ</h3>
-               <p className="text-gray-300 leading-relaxed">
+             <div data-aos="fade-up" data-aos-delay="100">
+               <h3 className="text-2xl font-bold mb-4 text-medblue-300" data-aos="fade-down" data-aos-delay="200">MedQ</h3>
+               <p className="text-gray-300 leading-relaxed" data-aos="fade-up" data-aos-delay="300">
                  La plateforme d'apprentissage médical de référence pour les étudiants ambitieux.
                </p>
              </div>
-             <div>
-               <h4 className="font-semibold mb-4 text-white">Plateforme</h4>
+             <div data-aos="fade-left" data-aos-delay="150">
+               <h4 className="font-semibold mb-4 text-white" data-aos="fade-down" data-aos-delay="250">Plateforme</h4>
                <ul className="space-y-2 text-gray-300">
-                 <li><a href="#" className="hover:text-medblue-300 transition-colors">Fonctionnalités</a></li>
-                 <li><a href="#" className="hover:text-medblue-300 transition-colors">Tarifs</a></li>
-                 <li><a href="#" className="hover:text-medblue-300 transition-colors">Support</a></li>
+                 <li data-aos="fade-up" data-aos-delay="350"><a href="#" className="hover:text-medblue-300 transition-colors">Fonctionnalités</a></li>
+                 <li data-aos="fade-up" data-aos-delay="400"><a href="#" className="hover:text-medblue-300 transition-colors">Tarifs</a></li>
+                 <li data-aos="fade-up" data-aos-delay="450"><a href="#" className="hover:text-medblue-300 transition-colors">Support</a></li>
                </ul>
              </div>
-             <div>
-               <h4 className="font-semibold mb-4 text-white">Ressources</h4>
+             <div data-aos="fade-right" data-aos-delay="200">
+               <h4 className="font-semibold mb-4 text-white" data-aos="fade-down" data-aos-delay="300">Ressources</h4>
                <ul className="space-y-2 text-gray-300">
-                 <li><a href="#" className="hover:text-medblue-300 transition-colors">Guide d'utilisation</a></li>
-                 <li><a href="#" className="hover:text-medblue-300 transition-colors">FAQ</a></li>
-                 <li><a href="#" className="hover:text-medblue-300 transition-colors">Contact</a></li>
+                 <li data-aos="fade-up" data-aos-delay="400"><a href="#" className="hover:text-medblue-300 transition-colors">Guide d'utilisation</a></li>
+                 <li data-aos="fade-up" data-aos-delay="450"><a href="#" className="hover:text-medblue-300 transition-colors">FAQ</a></li>
+                 <li data-aos="fade-up" data-aos-delay="500"><a href="#" className="hover:text-medblue-300 transition-colors">Contact</a></li>
                </ul>
              </div>
-             <div>
-               <h4 className="font-semibold mb-4 text-white">Suivez-nous</h4>
+             <div data-aos="fade-up" data-aos-delay="250">
+               <h4 className="font-semibold mb-4 text-white" data-aos="fade-down" data-aos-delay="350">Suivez-nous</h4>
                <div className="flex space-x-4">
-                 <a href="#" className="w-10 h-10 bg-medblue-600 rounded-full flex items-center justify-center hover:bg-medblue-700 transition-colors transform hover:scale-110 duration-200">
+                 <a href="#" className="w-10 h-10 bg-medblue-600 rounded-full flex items-center justify-center hover:bg-medblue-700 transition-colors transform hover:scale-110 duration-200" data-aos="zoom-in" data-aos-delay="450">
                    <Facebook className="w-5 h-5" />
                  </a>
-                 <a href="#" className="w-10 h-10 bg-medblue-600 rounded-full flex items-center justify-center hover:bg-medblue-700 transition-colors transform hover:scale-110 duration-200">
+                 <a href="#" className="w-10 h-10 bg-medblue-600 rounded-full flex items-center justify-center hover:bg-medblue-700 transition-colors transform hover:scale-110 duration-200" data-aos="zoom-in" data-aos-delay="500">
                    <Instagram className="w-5 h-5" />
                  </a>
-                 <a href="#" className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center hover:bg-green-700 transition-colors transform hover:scale-110 duration-200">
+                 <a href="#" className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center hover:bg-green-700 transition-colors transform hover:scale-110 duration-200" data-aos="zoom-in" data-aos-delay="550">
                    <MessageCircle className="w-5 h-5" />
                  </a>
-                 <a href="#" className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors transform hover:scale-110 duration-200">
+                 <a href="#" className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors transform hover:scale-110 duration-200" data-aos="zoom-in" data-aos-delay="600">
                    <Mail className="w-5 h-5" />
                  </a>
                </div>
              </div>
            </div>
-           <div className="border-t border-gray-700 pt-8 text-center">
-             <p className="text-gray-400">
+           <div className="border-t border-gray-700 pt-8 text-center" data-aos="fade-up" data-aos-delay="650">
+             <p className="text-gray-400" data-aos="fade-up" data-aos-delay="700">
                © 2024-2025 MedQ. Tous droits réservés. | 
-               <a href="#" className="hover:text-medblue-300 ml-2">Politique de confidentialité</a> | 
-               <a href="#" className="hover:text-medblue-300 ml-2">Conditions d'utilisation</a>
+               <a href="#" className="hover:text-medblue-300 ml-2" data-aos="fade-left" data-aos-delay="750">Politique de confidentialité</a> | 
+               <a href="#" className="hover:text-medblue-300 ml-2" data-aos="fade-right" data-aos-delay="800">Conditions d'utilisation</a>
              </p>
            </div>
          </div>
