@@ -22,10 +22,10 @@ async function getHandler(request: AuthenticatedRequest) {
       baseWhere.lecture = { specialty: { niveauId: user.niveauId } };
     }
 
-  // Window (days) param: default 30, allow 7-180
+  // Window (days) param: default 30, allow 1-180 (frontend now has 1d option)
   const url = new URL(request.url);
   const daysParam = parseInt(url.searchParams.get('days') || '30', 10);
-  const windowDays = isNaN(daysParam) ? 30 : Math.min(180, Math.max(7, daysParam));
+  const windowDays = isNaN(daysParam) ? 30 : Math.min(180, Math.max(1, daysParam));
   const since = new Date();
   since.setDate(since.getDate() - windowDays);
 

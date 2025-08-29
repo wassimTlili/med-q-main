@@ -353,6 +353,14 @@ export function OpenQuestion({
     } catch {}
   };
 
+  // Compute expected reference answer (memoized)
+  const expectedReference = useMemo(() => {
+    const correctArr: string[] = (question as any).correctAnswers || (question as any).correct_answers || [];
+    const expectedFromArray = Array.isArray(correctArr) && correctArr.length > 0 ? correctArr.filter(Boolean).join(' / ') : '';
+    const expected = expectedFromArray || (question as any).course_reminder || (question as any).courseReminder || question.explanation || (question as any).correctAnswer || '';
+    return expected || '';
+  }, [question]);
+
   // Admin function to toggle question visibility
   const handleToggleVisibility = async () => {
     if (!isAdmin || !onQuestionUpdate) return;
@@ -602,25 +610,30 @@ export function OpenQuestion({
 
   {/* Reference answer now shown inside self-assessment panel */}
 
-  {showSelfAssessment && (!hideImmediateResults || showDeferredSelfAssessment) && (() => {
-        const correctArr: string[] = (question as any).correctAnswers || (question as any).correct_answers || [];
-        const expectedFromArray = Array.isArray(correctArr) && correctArr.length > 0 ? correctArr.filter(Boolean).join(' / ') : '';
-        const expected = expectedFromArray || (question as any).course_reminder || (question as any).courseReminder || question.explanation || (question as any).correctAnswer || '';
-        return (
-          <>
-            {submitted && expected && (
-              <div className="mt-4 rounded-md border border-emerald-200/60 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-900/20 p-3" role="note">
-                <div className="text-[11px] uppercase tracking-wide font-semibold text-emerald-700 dark:text-emerald-300 mb-1">Réponse de référence</div>
-                <div className="whitespace-pre-wrap leading-relaxed text-sm">{expected}</div>
-              </div>
-            )}
-            <OpenQuestionSelfAssessment
-              onAssessment={handleSelfAssessment}
-              userAnswerText={submitted ? answer : undefined}
-            />
-          </>
-        );
-      })()}
+  {/* Persistent reference + user answer block (including during self-assessment) */}
+  {(() => {
+    const canShowReference = submitted && expectedReference && (!hideImmediateResults || showSelfAssessment || assessmentCompleted || showDeferredSelfAssessment);
+    if (!canShowReference) return null;
+    return (
+      <div className="mt-4 space-y-4">
+        <div className="rounded-md border border-emerald-700 dark:border-emerald-600 bg-emerald-800/25 dark:bg-emerald-900/60 p-5 shadow-sm ring-1 ring-inset ring-emerald-600/40">
+          <div className="text-xs md:text-sm uppercase tracking-wide font-extrabold text-emerald-100 mb-2">RÉPONSE DE RÉFÉRENCE</div>
+          <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-medium text-emerald-50">{expectedReference}</div>
+        </div>
+        <div className="rounded-md border border-blue-700/40 dark:border-blue-600/40 bg-blue-900/40 dark:bg-blue-950/40 p-4 shadow-sm">
+          <div className="text-[11px] uppercase tracking-wide font-semibold text-blue-300 mb-1">Votre réponse</div>
+          <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-medium text-blue-100">{answer || <span className="italic opacity-70">(vide)</span>}</div>
+        </div>
+      </div>
+    );
+  })()}
+
+  {showSelfAssessment && (!hideImmediateResults || showDeferredSelfAssessment) && (
+        <OpenQuestionSelfAssessment
+          onAssessment={handleSelfAssessment}
+          userAnswerText={submitted ? answer : undefined}
+        />
+      )}
 
       {!hideActions && (
         <OpenQuestionActions

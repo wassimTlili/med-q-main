@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useState } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
+import { QuickParseQroc as SharedQuickParseQroc } from '../QuickParseQroc';
 
 interface QuestionEditContentProps {
   question: Question;
@@ -63,6 +64,17 @@ export function QuestionEditContent({
 }: QuestionEditContentProps) {
   return (
     <form onSubmit={onSubmit} className="space-y-6 mt-2">
+      {/* Parsing rapide (ajouté pour QROC & CAS QROC) */}
+      {(question.type === 'qroc' || question.type === 'clinic_croq') && (
+        <SharedQuickParseQroc
+          questionText={questionText}
+          answer={correctAnswers[0] || ''}
+          setQuestionText={setQuestionText}
+          setAnswer={(a)=> setCorrectAnswers([a])}
+          autoPrefill
+          title="Parse rapide"
+        />
+      )}
       {/* Core content fields */}
       <QuestionContentTab
         questionText={questionText}
@@ -206,13 +218,19 @@ function formatBulk(questionText: string, options: BulkOpt[], correctAnswers: st
   options.forEach((opt, idx) => {
     const letter = letterFromIndex(idx);
     const checked = correctAnswers.includes(opt.id) ? 'x' : ' ';
-  const lineText = (opt.text && opt.text.trim().length > 0) ? opt.text : `Texte de l'option ${letter}`;
-  lines.push(`[${checked}] ${letter}) ${lineText}`);
+    const lineText = (opt.text && opt.text.trim().length > 0) ? opt.text : `Texte de l'option ${letter}`;
+    lines.push(`[${checked}] ${letter}) ${lineText}`);
+    if (opt.explanation && opt.explanation.trim().length > 0) {
+      const explLines = opt.explanation.split(/\r?\n/);
+      explLines.forEach((l, i) => {
+        if (i === 0) lines.push(`    Explication: ${l}`); else lines.push(`    ${l}`);
+      });
+    }
   });
   return lines.join('\n');
 }
 
-function parseBulk(text: string): { q: string; optionLines: { text: string; correct: boolean }[] } {
+function parseBulk(text: string): { q: string; optionLines: { text: string; correct: boolean; explanation?: string }[] } {
   const rawLines = text.split(/\r?\n/);
   const cleaned = rawLines.map(l => l.replace(/\s+$/,'')).filter(l => l.trim().length > 0);
   // Accept: [x] A) txt | [ ] B. txt | A: txt | A - txt | 1) txt | 1. txt | - txt
@@ -222,7 +240,9 @@ function parseBulk(text: string): { q: string; optionLines: { text: string; corr
   const questionPattern = /^\s*Q(?:uestion)?:\s*(.*)$/i;
 
   const questionLines: string[] = [];
-  const optionLines: { text: string; correct: boolean }[] = [];
+  const optionLines: { text: string; correct: boolean; explanation?: string }[] = [];
+  const explanationMarker = /^(Explication|Explanation|Justification|Pourquoi|Raison)\s*[:\-]\s*/i;
+  const indentedExplanation = /^\s{2,}(.*)$/; // lines starting with indentation
   let inOptions = false;
 
   for (let i = 0; i < cleaned.length; i++) {
@@ -247,7 +267,7 @@ function parseBulk(text: string): { q: string; optionLines: { text: string; corr
 
     if (optMatch) {
       const correct = !!optMatch[2];
-      const textPart = (optMatch[5] || '').trim(); // allow empty option text
+      const textPart = (optMatch[5] || '').trim();
       optionLines.push({ text: textPart, correct });
       continue;
     }
@@ -256,11 +276,18 @@ function parseBulk(text: string): { q: string; optionLines: { text: string; corr
       optionLines.push({ text: textPart, correct: false });
       continue;
     }
-    // If we are already in options and line doesn't match, append to last option as continuation
     if (optionLines.length > 0) {
+      // treat as explanation (indented or marker) for last option
       const last = optionLines[optionLines.length - 1];
-      const appended = line;
-      last.text = (last.text ? last.text + ' ' : '') + appended;
+      let expl = line;
+      const marker = expl.match(explanationMarker);
+      if (marker) {
+        expl = expl.replace(explanationMarker, '').trim();
+      } else {
+        const indent = expl.match(indentedExplanation);
+        if (indent) expl = indent[1];
+      }
+      last.explanation = last.explanation ? `${last.explanation}\n${expl}` : expl;
     }
   }
 
@@ -274,7 +301,8 @@ function BulkEditArea({
   correctAnswers,
   setQuestionText,
   updateOptionText,
-  toggleCorrectAnswer
+  toggleCorrectAnswer,
+  updateOptionExplanation
 }: {
   questionText: string;
   options: BulkOpt[];
@@ -282,6 +310,7 @@ function BulkEditArea({
   setQuestionText: (t: string) => void;
   updateOptionText: (id: string, text: string) => void;
   toggleCorrectAnswer: (id: string) => void;
+  updateOptionExplanation?: (id: string, explanation: string) => void;
 }) {
   const [bulk, setBulk] = useState<string>(formatBulk(questionText, options, correctAnswers));
 
@@ -334,13 +363,14 @@ function BulkEditArea({
     for (let i = 0; i < count; i++) {
       const opt = options[i];
       const d = desired[i];
-  // Ne pas écraser avec un vide
       if (d.text !== undefined && d.text.trim() !== '' && d.text !== opt.text) {
         updateOptionText(opt.id, d.text);
       } else if ((!opt.text || opt.text.trim() === '') && (d.text === undefined || d.text.trim() === '')) {
-        // Remplir avec un libellé par défaut si tout est vide
         const letter = letterFromIndex(i);
         updateOptionText(opt.id, `Option ${letter}`);
+      }
+      if (d.explanation && d.explanation.trim() && updateOptionExplanation && d.explanation !== opt.explanation) {
+        updateOptionExplanation(opt.id, d.explanation.trim());
       }
     }
 
@@ -369,7 +399,7 @@ function BulkEditArea({
         value={bulk}
         onChange={(e) => setBulk(e.target.value)}
         className="min-h-40 font-mono"
-  placeholder={`Q: Saisir l'énoncé de la question\n[ ] A) Texte de l'option A\n[x] B) Texte de l'option B\nC) Texte de l'option C`}
+  placeholder={`Q: Saisir l'énoncé de la question\n[ ] A) Texte de l'option A\n    Explication: détail pour A (indentée)\n[x] B) Texte de l'option B\n    Justification: pourquoi B\nC) Texte de l'option C`}
       />
       <div className="flex gap-2 justify-end">
         <Button type="button" variant="outline" onClick={handleCopy}>Copier</Button>
@@ -378,3 +408,5 @@ function BulkEditArea({
     </div>
   );
 }
+
+// (Legacy inline QuickParseQroc removed; using shared component)

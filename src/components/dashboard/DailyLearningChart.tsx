@@ -15,7 +15,7 @@ export function DailyLearningChart({ data, isLoading: extLoading=false, streak }
   const [localData, setLocalData] = useState<ActivityPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [debug, setDebug] = useState(false);
+  // debug mode removed (was toggled via 'bug' button)
   const [meta, setMeta] = useState<any>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -31,18 +31,18 @@ export function DailyLearningChart({ data, isLoading: extLoading=false, streak }
     (async()=>{
       try {
         setLoading(true); setError(null);
-        const url = `/api/dashboard/daily-activity?days=${days}${debug? '&debug=1':''}`;
+  const url = `/api/dashboard/daily-activity?days=${days}`;
         const r = await fetch(url,{signal:controller.signal});
         if(!r.ok) throw new Error('HTTP '+r.status);
         const j = await r.json();
         if(Array.isArray(j)) setLocalData(j as any);
-        else if(j.dailyData) { setLocalData(j.dailyData.map((d:any)=> ({ date:d.date, total:d.total })) ); setMeta(j); if(debug) console.log('DailyActivity debug', j); }
+  else if(j.dailyData) { setLocalData(j.dailyData.map((d:any)=> ({ date:d.date, total:d.total })) ); setMeta(j); }
         else setLocalData([]);
       } catch(e:any){ if(e.name!=='AbortError'){ setError(e.message||'Erreur chargement'); setLocalData([]);} }
       finally { setLoading(false); }
     })();
     return ()=>controller.abort();
-  },[days,debug,data]);
+  },[days,data]);
 
   const todayKey = new Date(Date.now()- new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
   const rawData = (data && data.length? data: localData).map(d=> ({ ...d, total: d.total||0 }));
@@ -87,7 +87,24 @@ export function DailyLearningChart({ data, isLoading: extLoading=false, streak }
   const streakIsCurrent = showStreak === currentStreak;
   const maxVal = Math.max(0, ...chartData.map(d=> d.total));
 
-  const formatDate = (ds:string)=> new Date(ds).toLocaleDateString('fr-FR',{weekday:'short', day:'numeric'});
+  // Adaptive date formatting (shorter for larger windows)
+  const formatDate = (ds:string)=> {
+    const d = new Date(ds);
+    if(days>=30) return d.toLocaleDateString('fr-FR',{ day:'numeric' }); // just day number
+    if(days>=14) return d.toLocaleDateString('fr-FR',{ weekday:'short', day:'numeric' }).replace(/\.$/,'');
+    return d.toLocaleDateString('fr-FR',{ weekday:'short', day:'numeric' });
+  };
+
+  // Custom tick to hide some labels to prevent overlap (especially 30j window)
+  const CustomTick = (props:any) => {
+    const { x, y, payload, index } = props;
+    if(days===30 && index % 2 === 1) return null; // show every other day
+    return (
+      <text x={x} y={y+10} textAnchor="middle" fontSize={11} fill="currentColor" className="select-none">
+        {formatDate(payload.value)}
+      </text>
+    );
+  };
 
   const CustomTooltip = ({active,payload,label}: any)=>{
     if(active && payload && payload.length){
@@ -119,11 +136,10 @@ export function DailyLearningChart({ data, isLoading: extLoading=false, streak }
           )}
           <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">Moy: {avg.toFixed(1)}/j</span>
         </CardTitle>
-        <div className="flex items-center gap-1 mt-2">
+  <div className="flex items-center gap-1 mt-2">
           {DAY_WINDOWS.map(d => (
             <button key={d} onClick={()=>setDays(d)} className={`px-2 py-0.5 rounded text-[11px] font-medium border transition ${days===d? 'bg-blue-600 text-white border-blue-600 shadow-sm':'bg-transparent dark:text-slate-300 border-border/40 hover:bg-blue-500/10'}`}>{d}j</button>
           ))}
-          <button onClick={()=>setDebug(v=>!v)} className={`ml-1 px-2 py-0.5 rounded text-[11px] font-medium border border-border/40 ${debug? 'bg-amber-500/20 text-amber-400 border-amber-500/40':'text-slate-400 hover:bg-amber-500/10'}`} title="Mode debug">{debug? 'dbg':'bug'}</button>
         </div>
       </CardHeader>
       <CardContent>
@@ -137,11 +153,11 @@ export function DailyLearningChart({ data, isLoading: extLoading=false, streak }
           {!error && chartData.length>0 && mounted && (
             <ResponsiveContainer width="100%" height="100%" minWidth={300} minHeight={360}>
               <BarChart data={chartData} key={days} margin={{ top: 20, right: 2, left: 2, bottom: 20 }} barCategoryGap="5%" barGap={0} width={800} height={360}>
-                <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 12, fill: 'currentColor' }} axisLine={false} tickLine={false} interval={0} />
+                <XAxis dataKey="date" tick={<CustomTick />} axisLine={false} tickLine={false} interval={0} />
                 <YAxis tick={{ fontSize: 12, fill: 'currentColor' }} axisLine={false} tickLine={false} allowDecimals={false} domain={[0, maxVal===0? 4: Math.max(maxVal+1, Math.ceil(maxVal*1.05))]} />
                 <Tooltip content={<CustomTooltip />} cursor={{fill:'rgba(148,163,184,0.12)'}} wrapperStyle={{pointerEvents:'none'}} />
                 {avg>0 && <ReferenceLine y={avg} stroke="#64748b" strokeDasharray="4 4" label={{ value: 'Moy.', position: 'right', fill: 'currentColor', fontSize: 10 }} />}
-                <Bar dataKey="displayTotal" fill="#3b82f6" radius={[6,6,0,0]} minPointSize={10}>
+                <Bar dataKey="displayTotal" fill="#3b82f6" radius={[6,6,0,0]} minPointSize={10} barSize={days===7?70: days===14?20:12}>
                   {chartData.map((e,i)=>(
                     <Cell key={i} fill={e.total===0? 'rgba(59,130,246,0.25)':'#3b82f6'} stroke={e.date===todayKey? '#1d4ed8': undefined} strokeWidth={e.date===todayKey?2:0} />
                   ))}

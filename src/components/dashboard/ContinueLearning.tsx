@@ -1,20 +1,18 @@
-'use client';
+"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
-import { Play, BookOpen, Clock } from 'lucide-react';
+import { Play, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
 interface ContinueLearningProps {
   lastLecture?: {
     id: string;
     title: string;
-    specialty: {
-      name: string;
-    };
-    progress: number;
+    specialty: { name: string };
+    progress: number; // 0-100 number (already %)
     totalQuestions: number;
     completedQuestions: number;
     lastAccessed: string;
@@ -25,106 +23,110 @@ interface ContinueLearningProps {
 export function ContinueLearning({ lastLecture, isLoading = false }: ContinueLearningProps) {
   const { t } = useTranslation();
 
+  // Loading skeleton
   if (isLoading) {
     return (
-      <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg">
-        <CardHeader>
-          <div className="h-6 w-48 bg-muted/60 rounded-lg animate-pulse" />
+      <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+        <CardHeader className="pb-4">
+          <div className="h-6 w-48 bg-muted/50 dark:bg-muted/40 rounded animate-pulse" />
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="h-4 w-32 bg-muted/60 rounded-lg animate-pulse" />
-          <div className="h-2 w-full bg-muted/60 rounded-lg animate-pulse" />
-          <div className="h-10 w-32 bg-muted/60 rounded-lg animate-pulse" />
+        <CardContent className="pt-1 pb-5 flex flex-col gap-3">
+          <div className="h-4 w-40 bg-muted/50 rounded animate-pulse" />
+          <div className="h-3 w-full bg-muted/50 rounded animate-pulse" />
+          <div className="h-8 w-28 bg-muted/50 rounded animate-pulse" />
         </CardContent>
       </Card>
     );
   }
 
+  // Empty state
   if (!lastLecture) {
     return (
       <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 group">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+        <CardHeader className="pb-5">
+          <CardTitle className="flex items-center gap-2 text-2xl font-semibold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
             <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             {t('dashboard.continueLearning.title')}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-              <BookOpen className="h-10 w-10 text-blue-600 dark:text-blue-400" />
-            </div>
-            <p className="text-muted-foreground mb-4">
+        <CardContent className="pt-1 pb-6 flex flex-col items-center gap-5 text-center min-h-[220px]">
+          <div className="w-16 h-16 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-105 transition">
+            <BookOpen className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+          </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[220px]">
               {t('dashboard.continueLearning.noProgress')}
             </p>
-            <Link href="/specialty">
-              <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200">
-                <Play className="h-4 w-4 mr-2" />
-                {t('dashboard.continueLearning.startLearning')}
-              </Button>
-            </Link>
-          </div>
+          <Link href="/specialty" className="w-full">
+            <Button className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium flex items-center justify-center gap-1">
+              <Play className="h-4 w-4" />
+              {t('dashboard.continueLearning.startLearning')}
+            </Button>
+          </Link>
         </CardContent>
       </Card>
     );
   }
 
+  // Helpers
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) {
-      return t('dashboard.continueLearning.yesterday');
-    } else if (diffDays < 7) {
-      return t('dashboard.continueLearning.daysAgo', { days: diffDays });
-    } else {
-      return date.toLocaleDateString();
-    }
+    const diff = now.getTime() - date.getTime();
+    const diffDays = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) return t('dashboard.continueLearning.yesterday');
+    if (diffDays < 7) return t('dashboard.continueLearning.daysAgo', { days: diffDays });
+    return date.toLocaleDateString();
   };
 
+  const percent = Math.min(100, Math.max(0, Math.round(lastLecture.progress)));
+
+  // Main card
   return (
     <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 group">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+      <CardHeader className="pb-5">
+        <CardTitle className="flex items-center gap-2 text-2xl font-semibold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
           <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           {t('dashboard.continueLearning.title')}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h3 className="font-semibold text-lg group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">{lastLecture.title}</h3>
-          <Badge variant="secondary" className="mt-1 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
+  <CardContent className="pt-1 pb-5 flex flex-col gap-4 min-h-[210px]">
+        {/* Title line with specialty badge */}
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="flex-1 font-semibold text-2xl text-slate-800 dark:text-slate-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight">
+            {lastLecture.title}
+          </h3>
+          <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border-0 px-3 py-0.5 rounded-md text-xs font-medium shrink-0 max-w-[42%] truncate">
             {lastLecture.specialty.name}
           </Badge>
         </div>
-        
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>{t('dashboard.continueLearning.progress')}</span>
-            <span className="font-medium">{lastLecture.completedQuestions}/{lastLecture.totalQuestions}</span>
-          </div>
-          <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-200">
-            <div 
-              className="h-full bg-blue-600 transition-all duration-300 ease-in-out rounded-full"
-              style={{ width: `${lastLecture.progress}%` }}
-            />
+        {/* Date under title+badge */}
+        <div className="text-xs text-slate-500 dark:text-slate-400">
+          {formatDate(lastLecture.lastAccessed)}
+        </div>
+        <div className="flex flex-col gap-1 mt-auto">
+          <span className="text-2xl font-bold leading-none tracking-tight bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent">
+            {percent}%
+          </span>
+          <div className="flex items-center gap-4">
+            <div className="flex-1 h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shadow-inner">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-400 dark:to-blue-500 transition-all duration-500 ease-out"
+                style={{ width: `${lastLecture.progress}%` }}
+              />
+            </div>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 tabular-nums min-w-fit">
+              {lastLecture.completedQuestions}/{lastLecture.totalQuestions}
+            </span>
           </div>
         </div>
-
-        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-gradient-to-r from-muted/30 to-muted/10 rounded-lg p-3">
-          <Clock className="h-4 w-4 text-blue-500" />
-          <span>{t('dashboard.continueLearning.lastAccessed')}: {formatDate(lastLecture.lastAccessed)}</span>
-        </div>
-
-        <Link href={`/lecture/${lastLecture.id}`}>
-          <Button className="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-200 group-hover:scale-105">
-            <Play className="h-4 w-4 mr-2" />
+        {/* Continue button full width bottom */}
+        <Link href={`/lecture/${lastLecture.id}`} className="mt-3">
+          <Button className="w-full h-8 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium flex items-center justify-center gap-2 shadow-sm">
+            <Play className="h-4 w-4" />
             {t('dashboard.continueLearning.continue')}
           </Button>
         </Link>
       </CardContent>
     </Card>
   );
-} 
+}

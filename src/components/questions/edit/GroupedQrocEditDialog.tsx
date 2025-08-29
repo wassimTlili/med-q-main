@@ -84,6 +84,10 @@ export function GroupedQrocEditDialog({ caseNumber, questions, isOpen, onOpenCha
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader><DialogTitle>Éditer Bloc QROC #{caseNumber}</DialogTitle></DialogHeader>
         <div className="flex-1 overflow-y-auto space-y-4 pr-2 pb-4">
+          <QuickParseGroupedQrocEdit
+            subs={subs}
+            updateSub={updateSub}
+          />
           {subs.map((s, idx)=>(
             <div key={s.id} className="border rounded-md p-4 space-y-3 bg-muted/30">
               <div className="text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded w-fit">QROC {idx+1}</div>
@@ -93,7 +97,7 @@ export function GroupedQrocEditDialog({ caseNumber, questions, isOpen, onOpenCha
               </div>
               <div className="space-y-2">
                 <Label>Réponse de référence *</Label>
-                <Input value={s.answer} onChange={e=> updateSub(s.id,{ answer: e.target.value })} />
+                <Textarea rows={2} value={s.answer} onChange={e=> updateSub(s.id,{ answer: e.target.value })} placeholder="Réponse courte (multi-lignes possible)" className="resize-y" />
               </div>
               {/* Explanation removed; shared reminder used instead */}
             </div>
@@ -145,5 +149,68 @@ export function GroupedQrocEditDialog({ caseNumber, questions, isOpen, onOpenCha
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ================= Global Quick Parse (Bloc QROC) =================
+function QuickParseGroupedQrocEdit({ subs, updateSub }: { subs: EditableSub[]; updateSub: (id:string, patch: Partial<EditableSub>)=> void }) {
+  const [raw, setRaw] = useState('');
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(()=> {
+    if (initialized) return;
+    const lines: string[] = [];
+    subs.forEach((s, idx)=> {
+      lines.push(`Q${idx+1}:`);
+      (s.text || '').split(/\r?\n/).forEach(l=> lines.push(l));
+      lines.push(`Réponse: ${s.answer || ''}`);
+      lines.push('');
+    });
+    setRaw(lines.join('\n').trimEnd());
+    setInitialized(true);
+  }, [initialized, subs]);
+
+  const handleCopy = async () => { try { await navigator.clipboard.writeText(raw); toast({ title:'Copié', description:'Bloc QROC copié.'}); } catch { toast({ title:'Erreur', description:'Copie impossible', variant:'destructive'});} };
+
+  const parse = () => {
+    if (!raw.trim()) { toast({ title:'Vide', description:'Rien à analyser.'}); return; }
+    const lines = raw.replace(/\r/g,'').split('\n');
+    const header = /^Q(\d+)\s*:/i;
+    const parsed: { text:string; answer:string }[] = [];
+    let i=0;
+    while(i<lines.length) {
+      while(i<lines.length && !header.test(lines[i])) i++;
+      if (i>=lines.length) break;
+      i++; // past Qn:
+      const textLines: string[] = [];
+      while(i<lines.length && !/^Réponse:/i.test(lines[i]) && !header.test(lines[i])) { textLines.push(lines[i]); i++; }
+      let answer='';
+      if (i<lines.length && /^Réponse:/i.test(lines[i])) { answer = lines[i].replace(/^Réponse:\s*/i,'').trim(); i++; }
+      while(i<lines.length && lines[i].trim()==='') i++; // skip blanks
+      parsed.push({ text: textLines.join('\n').trim(), answer });
+    }
+    if (!parsed.length) { toast({ title:'Format invalide', description:'Aucune sous-question détectée.', variant:'destructive' }); return; }
+    // Only update up to existing count
+    parsed.forEach((p, idx)=> { if (idx < subs.length) updateSub(subs[idx].id, { text: p.text, answer: p.answer }); });
+    toast({ title:'Analyse effectuée', description:'Sous-questions mises à jour.' });
+  };
+
+  return (
+    <div className="space-y-2 border rounded-md p-3 bg-muted/40">
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-semibold">Parse rapide (Bloc complet)</h3>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={handleCopy}>Copier</Button>
+          <Button type="button" size="sm" onClick={parse}>Analyser</Button>
+        </div>
+      </div>
+      <Textarea
+        value={raw}
+        onChange={e=> setRaw(e.target.value)}
+        className="min-h-56 font-mono text-xs"
+        placeholder={`Q1:\nÉnoncé...\nRéponse: ...\n\nQ2:\nÉnoncé...\nRéponse: ...`}
+      />
+      <p className="text-[10px] text-muted-foreground leading-snug">Format: Qn: puis lignes d'énoncé jusqu'à "Réponse:". Ne change pas le nombre de sous-questions.</p>
+    </div>
   );
 }

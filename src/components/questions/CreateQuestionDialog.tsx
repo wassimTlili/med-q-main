@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, Save, Image as ImageIcon, X } from 'lucide-react';
 import { QuestionType, Option, Lecture } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { QuickParseQroc } from './QuickParseQroc';
 
 interface CreateQuestionDialogProps {
   lecture: Lecture;
@@ -20,6 +21,7 @@ interface CreateQuestionDialogProps {
 }
 
 export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestionCreated }: CreateQuestionDialogProps) {
+  const LAST_QROC_ANSWER_KEY = 'last_qroc_answer';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     text: '',
@@ -46,6 +48,8 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
   interface QrocSubQuestion { id: string; text: string; answer: string; }
   const [multiQrocMode, setMultiQrocMode] = useState(false);
   const [qrocSubs, setQrocSubs] = useState<QrocSubQuestion[]>([]);
+  // refs to track auto-focus behavior
+  const prevQrocSubsLen = useRef(0);
   // Bulk paste helper state
   const [bulkInput, setBulkInput] = useState('');
 
@@ -78,6 +82,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
   const [caseNumber, setCaseNumber] = useState<number | undefined>(undefined);
   const [caseText, setCaseText] = useState('');
   const [subQuestions, setSubQuestions] = useState<SubQuestion[]>([emptySubQuestion()]);
+  const prevClinicalSubsLen = useRef(1);
 
   const addSubQuestion = () => setSubQuestions(prev => [...prev, emptySubQuestion()]);
   const addSubQuestionOfType = (t: 'clinic_mcq' | 'clinic_croq') => setSubQuestions(prev => [...prev, emptySubQuestion(t)]);
@@ -139,7 +144,9 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
       { id: makeId(), text: '', explanation: '' },
     ]);
     setCorrectAnswers([]);
-    setQrocAnswer('');
+  // Persist last single QROC answer for convenience
+  const stored = (typeof window !== 'undefined') ? localStorage.getItem(LAST_QROC_ANSWER_KEY) : '';
+  setQrocAnswer(stored || '');
   setMultiQrocMode(false);
   setQrocSubs([]);
   };
@@ -391,6 +398,11 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
         description: 'La question a été ajoutée au cours.',
       });
 
+      // Persist last QROC answer (single mode) so it "stays" for next creation
+      if (formData.type === 'qroc' && !multiQrocMode && qrocAnswer.trim()) {
+        try { localStorage.setItem(LAST_QROC_ANSWER_KEY, qrocAnswer.trim()); } catch {}
+      }
+
       resetForm();
   onQuestionCreated(); // parent should refetch; ensure parent triggers hook refetch
       onOpenChange(false);
@@ -421,13 +433,15 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
       toast({ title: 'Format invalide', description: 'Impossible d\'extraire du texte.' , variant: 'destructive'});
       return;
     }
-    const optionRegex = /^(?:[A-Z]|\d+)[\.)\]:\-]?\s+(.*)$/; // captures text after label
-    const detectedOptions: { raw:string; text:string; correct:boolean }[] = [];
+    const optionLineRegex = /^([A-Z]|\d+)[\.)\]:\-]?\s+(.*)$/; // captures label + text
+    const explanationMarker = /^(Explication|Justification|Explanation|Pourquoi|Raison)\s*[:\-]\s*/i;
+    interface TempOpt { raw:string; text:string; correct:boolean; explanation?:string }
+    const detectedOptions: TempOpt[] = [];
     let questionLines: string[] = [];
     for (const line of lines) {
-      const m = line.match(optionRegex);
+      const m = line.match(optionLineRegex);
       if (m) {
-        let optText = m[1].trim();
+        let optText = m[2].trim();
         let correct = false;
         // Detect correctness markers
         if (/\*+$/.test(optText) || /\bVRAI\b$/i.test(optText) || /(\(x\)|\[x\]|✓)$/i.test(optText)) {
@@ -438,10 +452,12 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
       } else if (detectedOptions.length === 0) {
         questionLines.push(line);
       } else {
-        // After options started but line not matching option => append to last option (multi-line option)
-        if (detectedOptions.length) {
-          detectedOptions[detectedOptions.length-1].text += ' ' + line;
-        }
+        // treat as explanation for last option
+        const last = detectedOptions[detectedOptions.length-1];
+        let processed = line;
+        const markerMatch = processed.match(explanationMarker);
+        if (markerMatch) processed = processed.replace(explanationMarker,'').trim();
+        if (!last.explanation) last.explanation = processed; else last.explanation += '\n' + processed;
       }
     }
     if (detectedOptions.length < 2) {
@@ -453,17 +469,13 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
       toast({ title: 'Question manquante', description: 'La première ligne (avant les options) doit contenir le texte de la question.', variant: 'destructive' });
       return;
     }
-    // Build options
-    const builtOptions: Option[] = detectedOptions.map(o => ({ id: makeId(), text: o.text, explanation: '' }));
-    const builtCorrect = detectedOptions.filter(o=>o.correct).map((o,i,arr)=> builtOptions[detectedOptions.indexOf(o)].id);
+    const builtOptions: Option[] = detectedOptions.map(o => ({ id: makeId(), text: o.text, explanation: o.explanation || '' }));
+    const builtCorrect = detectedOptions.filter(o=>o.correct).map(o=> builtOptions[detectedOptions.indexOf(o)].id);
     setFormData(prev => ({ ...prev, text: newQuestionText }));
     setOptions(builtOptions);
     setCorrectAnswers(builtCorrect);
-    if (builtCorrect.length === 0) {
-      toast({ title: 'Analyse effectuée', description: `${builtOptions.length} options importées. Sélectionnez les bonnes réponses.` });
-    } else {
-      toast({ title: 'Analyse effectuée', description: `${builtOptions.length} options importées. ${builtCorrect.length} correcte(s) détectée(s).` });
-    }
+    const explCount = builtOptions.filter(o=> o.explanation && o.explanation.trim()).length;
+    toast({ title: 'Analyse effectuée', description: `${builtOptions.length} options importées. ${builtCorrect.length} correcte(s) détectée(s). Explications: ${explCount}/${builtOptions.length}.` });
   };
 
   // ===== Builder Submit =====
@@ -553,6 +565,122 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
   // derive builderMode from formData.type
   const builderModeDerived = formData.type === 'clinical_case' || builderMode;
 
+  // ===== Keyboard shortcuts (1..9) to jump to sub-question textareas (clinical case or multi QROC) =====
+  useEffect(()=> {
+    if (!( (formData.type === 'clinical_case') || (formData.type === 'qroc' && multiQrocMode) )) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.altKey || e.metaKey || e.ctrlKey) return;
+      if (!/^[1-9]$/.test(e.key)) return;
+      const idx = parseInt(e.key,10) - 1;
+      const target = document.querySelector(`[data-sub-text="${idx}"]`) as HTMLTextAreaElement | HTMLInputElement | null;
+      if (target) {
+        e.preventDefault();
+        target.focus();
+        // Select content shortly after focus to ensure selection applies
+        setTimeout(()=> {
+          if (typeof (target as any).select === 'function') (target as any).select();
+        }, 0);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [formData.type, multiQrocMode, subQuestions.length, qrocSubs.length]);
+
+  // Auto-focus newly added grouped QROC sub-question textarea
+  useEffect(()=>{
+    if (formData.type === 'qroc' && multiQrocMode && qrocSubs.length > prevQrocSubsLen.current) {
+      const idx = qrocSubs.length - 1;
+      const el = document.querySelector(`[data-sub-text="${idx}"]`) as HTMLTextAreaElement | null;
+      if (el) {
+        setTimeout(()=> { el.focus(); el.select?.(); }, 0);
+      }
+    }
+    prevQrocSubsLen.current = qrocSubs.length;
+  }, [qrocSubs.length, formData.type, multiQrocMode, qrocSubs]);
+
+  // Auto-focus newly added clinical sub-question textarea
+  useEffect(()=>{
+    if (formData.type === 'clinical_case' && subQuestions.length > prevClinicalSubsLen.current) {
+      const idx = subQuestions.length - 1;
+      const el = document.querySelector(`[data-sub-text="${idx}"]`) as HTMLTextAreaElement | null;
+      if (el) {
+        setTimeout(()=> { el.focus(); el.select?.(); }, 0);
+      }
+    }
+    prevClinicalSubsLen.current = subQuestions.length;
+  }, [subQuestions.length, formData.type, subQuestions]);
+
+  // Load persisted single QROC answer when switching to single QROC mode
+  useEffect(()=> {
+    if (formData.type === 'qroc' && !multiQrocMode) {
+      if (!qrocAnswer.trim()) {
+        try {
+          const stored = localStorage.getItem(LAST_QROC_ANSWER_KEY);
+          if (stored) setQrocAnswer(stored);
+        } catch {}
+      }
+    }
+  }, [formData.type, multiQrocMode]);
+
+  // ===== Keyboard flow within grouped QROC (Enter cycles text -> answer -> next) =====
+  const handleGroupedQrocTextKey = (e: React.KeyboardEvent<HTMLTextAreaElement>, idx: number) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      // Move to answer input of same sub
+      const ans = document.querySelector<HTMLInputElement>(`[data-sub-answer="${idx}"]`);
+      if (ans) {
+        ans.focus(); ans.select?.();
+      }
+    }
+  };
+  const handleGroupedQrocAnswerKey = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, idx: number) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      const nextIdx = idx + 1;
+      const next = document.querySelector<HTMLTextAreaElement>(`[data-sub-text="${nextIdx}"]`);
+      if (next) {
+        next.focus(); next.select?.();
+      } else {
+        // If last -> create one more empty sub and focus it
+        if (formData.type === 'qroc' && multiQrocMode) {
+          setQrocSubs(prev => [...prev, { id: makeId(), text: '', answer: '' }]);
+          setTimeout(()=>{
+            const created = document.querySelector<HTMLTextAreaElement>(`[data-sub-text="${nextIdx}"]`);
+            created?.focus(); created?.select?.();
+          }, 30);
+        }
+      }
+    }
+  };
+
+  // ===== Keyboard flow within clinical case QROC subs =====
+  const handleClinicQrocTextKey = (e: React.KeyboardEvent<HTMLTextAreaElement>, idx: number) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      const ans = document.querySelector<HTMLInputElement>(`[data-clinic-sub-answer="${idx}"]`);
+      ans?.focus(); ans?.select?.();
+    }
+  };
+  const handleClinicQrocAnswerKey = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      const nextIdx = idx + 1;
+      const next = document.querySelector<HTMLTextAreaElement>(`[data-sub-text="${nextIdx}"]`);
+      if (next) {
+        next.focus(); next.select?.();
+      } else {
+        // If last, add another QROC sub automatically
+        if (formData.type === 'clinical_case') {
+          setSubQuestions(prev => [...prev, emptySubQuestion('clinic_croq')]);
+          setTimeout(()=> {
+            const created = document.querySelector<HTMLTextAreaElement>(`[data-sub-text="${nextIdx}"]`);
+            created?.focus(); created?.select?.();
+          }, 30);
+        }
+      }
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-blue-200/60 dark:border-blue-900/40">
@@ -564,7 +692,8 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
           {/* Metadata always visible */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-                    {/* Per-sub explanation removed; rely on global rappel du cours below */}
+              <Label htmlFor="number">N°</Label>
+              {/* Per-sub explanation removed; rely on global rappel du cours below */}
               <Input id="number" type="number" placeholder="N°" value={formData.number === undefined ? '' : formData.number} onChange={(e)=> setFormData(prev => ({ ...prev, number: e.target.value === '' ? undefined : parseInt(e.target.value,10) }))} />
             </div>
             <div className="space-y-2">
@@ -583,6 +712,37 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
               </Select>
             </div>
           </div>
+
+          {/* Global clinical case quick parse (creation) */}
+          {formData.type === 'clinical_case' && (
+            <QuickParseClinicalCaseCreate
+              rawCaseText={caseText}
+              subs={subQuestions}
+              setCaseText={setCaseText}
+              setSubs={setSubQuestions}
+              makeId={makeId}
+            />
+          )}
+
+          {/* Multi QROC toggle shown before quick parse */}
+          {formData.type === 'qroc' && !multiQrocMode && (
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" size="sm" onClick={() => {
+                setMultiQrocMode(true);
+                setQrocSubs([{ id: makeId(), text: formData.text, answer: qrocAnswer }]);
+              }}>Activer multi QROC</Button>
+            </div>
+          )}
+          {formData.type === 'qroc' && !multiQrocMode && (
+            <QuickParseQroc
+              questionText={formData.text}
+              answer={qrocAnswer}
+              setQuestionText={(t)=> setFormData(prev=> ({ ...prev, text: t }))}
+              setAnswer={setQrocAnswer}
+              title="Parse rapide QROC"
+              autoPrefill
+            />
+          )}
 
           {/* Clinical case builder shown when type is clinical_case */}
           {formData.type === 'clinical_case' && (
@@ -620,7 +780,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="md:col-span-3 space-y-2"><Label>Énoncé *</Label><Textarea value={sq.text} onChange={e=> updateSubQuestion(sq.id, prev => ({ ...prev, text: e.target.value }))} rows={3} placeholder="Énoncé de la sous-question" /></div>
+                        <div className="md:col-span-3 space-y-2"><Label>Énoncé *</Label><Textarea data-sub-text={idx} value={sq.text} onChange={e=> updateSubQuestion(sq.id, prev => ({ ...prev, text: e.target.value }))} rows={3} placeholder="Énoncé de la sous-question" onKeyDown={(e)=> sq.type==='clinic_croq' && handleClinicQrocTextKey(e, idx)} /></div>
                       </div>
                       {sq.type === 'clinic_mcq' && (
                         <div className="space-y-3">
@@ -642,7 +802,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
                       )}
                       {sq.type === 'clinic_croq' && (
                         <div className="space-y-3">
-                          <div className="space-y-2"><Label>Réponse attendue *</Label><Input value={sq.qrocAnswer} onChange={e=> updateSubQuestion(sq.id, prev => ({ ...prev, qrocAnswer: e.target.value }))} placeholder="Réponse attendue" /></div>
+                          <div className="space-y-2"><Label>Réponse attendue *</Label><Input data-clinic-sub-answer={idx} value={sq.qrocAnswer} onChange={e=> updateSubQuestion(sq.id, prev => ({ ...prev, qrocAnswer: e.target.value }))} placeholder="Réponse attendue" onKeyDown={(e)=> handleClinicQrocAnswerKey(e, idx)} className="font-medium bg-blue-50/40 dark:bg-blue-950/20 border-blue-300/50 dark:border-blue-800" /></div>
                           <div><Button type="button" variant="outline" size="sm" onClick={()=> addSubQuestionOfType('clinic_croq')} className="w-full"><Plus className="h-3 w-3 mr-1" /> Ajouter une autre QROC</Button></div>
                         </div>
                       )}
@@ -670,7 +830,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
                 <CardContent className="space-y-2">
                   <Textarea
                     rows={4}
-                    placeholder={`Collez ici.\nExemple:\nQuestion sur ...?\nA. Première option\nB) Deuxième option *\nC - Troisième option (x)\nD: Quatrième option`}
+                    placeholder={`Collez ici.\nExemple:\nQuestion sur ...?\nA. Première option\nExplication: Raison de l'option A (ligne juste après)\nB) Deuxième option *\nJustification: Pourquoi B est correcte\nC - Troisième option (x)\nPourquoi: Détail supplémentaire (autres lignes fusionnées)\nD: Quatrième option`}
                     value={bulkInput}
                     onChange={e=> setBulkInput(e.target.value)}
                   />
@@ -678,19 +838,14 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
                     <Button type="button" variant="outline" size="sm" onClick={()=> setBulkInput('')} disabled={!bulkInput}>Vider</Button>
                     <Button type="button" size="sm" onClick={parseBulkInput} disabled={!bulkInput}>Analyser & Remplir</Button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-snug">Formats: A., A), A-, 1), etc. Ajoutez * / (x) / [x] / ✓ / VRAI à la fin pour marquer une bonne réponse.</p>
+                  <p className="text-[10px] text-muted-foreground leading-snug space-y-1">
+                    <span className="block">Formats options: A., A), A-, 1), etc. Ajoutez * / (x) / [x] / ✓ / VRAI à la fin pour marquer une bonne réponse.</span>
+                    <span className="block">Explications: ajoutez une ou plusieurs lignes directement après une option. Vous pouvez commencer par "Explication:", "Justification:", "Pourquoi:", "Raison:" (le marqueur sera retiré). Les lignes jusqu'à la prochaine option sont fusionnées comme explication.</span>
+                  </p>
                 </CardContent>
               </Card>
             )}
-          {formData.type === 'qroc' && !multiQrocMode && (
-            <div className="flex justify-end">
-              <Button type="button" variant="outline" size="sm" onClick={() => {
-                setMultiQrocMode(true);
-                // seed first sub with current single form values if any
-                setQrocSubs([{ id: makeId(), text: formData.text, answer: qrocAnswer }]);
-              }}>Activer multi QROC</Button>
-            </div>
-          )}
+          {/* (Toggle moved above parse block) */}
             </>
           )}
 
@@ -828,12 +983,14 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
                 <CardTitle className="text-sm">Réponse de référence (QROC)</CardTitle>
               </CardHeader>
               <CardContent>
-                <Input
-                  placeholder="Saisir la réponse de référence..."
+                <Textarea
+                  placeholder="Réponse courte attendue..."
                   value={qrocAnswer}
                   onChange={(e) => setQrocAnswer(e.target.value)}
-                  className="w-full"
+                  rows={2}
+                  className="w-full resize-none text-base font-medium bg-blue-50/60 dark:bg-blue-950/30 border-blue-300/60 dark:border-blue-800 focus-visible:ring-blue-500"
                 />
+                <p className="text-[10px] mt-1 text-muted-foreground">Cette valeur est mémorisée et ré-affichée pour accélérer la saisie.</p>
               </CardContent>
             </Card>
           )}
@@ -843,6 +1000,12 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
                 <CardTitle className="text-sm">Sous-questions QROC ({qrocSubs.length})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <QuickParseGroupedQroc
+                  subs={qrocSubs}
+                  setSubs={setQrocSubs}
+                  makeId={makeId}
+                />
+                <p className="text-[11px] text-muted-foreground -mt-2">Utilisez le bloc "Parse rapide bloc QROC" ci-dessus pour coller toutes les sous-questions (Qn:, lignes d'énoncé, puis "Réponse:"). Ce parseur remplace la liste actuelle.</p>
                 {qrocSubs.map((sq, idx) => (
                   <div key={sq.id} className="border rounded-md p-3 space-y-2">
                     <div className="flex justify-between items-center">
@@ -851,8 +1014,8 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
                         <Button variant="ghost" size="sm" onClick={() => setQrocSubs(prev => prev.filter(s=>s.id!==sq.id))} className="text-destructive">Supprimer</Button>
                       )}
                     </div>
-                    <Textarea rows={2} placeholder="Énoncé de la sous-question" value={sq.text} onChange={e=> setQrocSubs(prev => prev.map(s=> s.id===sq.id? {...s, text: e.target.value}: s))} />
-                    <Input placeholder="Réponse de référence" value={sq.answer} onChange={e=> setQrocSubs(prev => prev.map(s=> s.id===sq.id? {...s, answer: e.target.value}: s))} />
+                    <Textarea data-sub-text={idx} rows={2} placeholder="Énoncé de la sous-question" value={sq.text} onChange={e=> setQrocSubs(prev => prev.map(s=> s.id===sq.id? {...s, text: e.target.value}: s))} onKeyDown={(e)=> handleGroupedQrocTextKey(e, idx)} />
+                    <Textarea data-sub-answer={idx} rows={2} placeholder="Réponse de référence (multi-lignes possible)" value={sq.answer} onChange={e=> setQrocSubs(prev => prev.map(s=> s.id===sq.id? {...s, answer: e.target.value}: s))} onKeyDown={(e)=> handleGroupedQrocAnswerKey(e, idx)} className="font-medium bg-blue-50/40 dark:bg-blue-950/20 border-blue-300/50 dark:border-blue-800 resize-y" />
                   </div>
                 ))}
                 <Button type="button" variant="outline" size="sm" onClick={() => setQrocSubs(prev => [...prev, { id: makeId(), text: '', answer: '' }])} className="w-full">
@@ -952,5 +1115,216 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// =============== Quick Parse Grouped QROC (Creation) ===============
+function QuickParseGroupedQroc({ subs, setSubs, makeId }: { subs: { id:string; text:string; answer:string }[]; setSubs: (s:any[])=>void; makeId:()=>string }) {
+  const [raw, setRaw] = useState('');
+  const [initialized, setInitialized] = useState(false);
+  useEffect(()=>{
+    if (initialized) return;
+    if (!subs.length) return;
+    const lines: string[] = [];
+    subs.forEach((s, idx)=> {
+      lines.push(`Q${idx+1}:`);
+      lines.push(s.text || '');
+      lines.push(`Réponse: ${s.answer || ''}`);
+      lines.push('');
+    });
+    setRaw(lines.join('\n').trimEnd());
+    setInitialized(true);
+  }, [initialized, subs]);
+  const handleCopy = async () => { try { await navigator.clipboard.writeText(raw); toast({ title:'Copié', description:'Bloc QROC copié.'}); } catch { toast({ title:'Erreur', description:'Copie impossible', variant:'destructive'});} };
+  const parse = () => {
+    if (!raw.trim()) { toast({ title:'Vide', description:'Rien à analyser.'}); return; }
+    const lines = raw.replace(/\r/g,'').split('\n');
+    const subHeader = /^Q(\d+)\s*:/i;
+    const parsed: { id:string; text:string; answer:string }[] = [];
+    let i=0;
+    while(i<lines.length){
+      while(i<lines.length && !subHeader.test(lines[i])) i++;
+      if(i>=lines.length) break;
+      // Capture header line with potential inline content
+      const headerLine = lines[i];
+      i++;
+      let headerRemainder = headerLine.replace(/^Q\d+\s*:/i,'').trim();
+      let inlineAnswer = '';
+      if (headerRemainder) {
+        // Allow inline format: "texte ... Réponse: answer" or "... reponse: answer"
+        const rIdx = headerRemainder.search(/Réponse\s*:/i);
+        if (rIdx >= 0) {
+          const before = headerRemainder.slice(0, rIdx).trim();
+          const after = headerRemainder.slice(rIdx).replace(/Réponse\s*:/i,'').trim();
+          headerRemainder = before;
+          inlineAnswer = after;
+        }
+      }
+      const textLines:string[] = headerRemainder ? [headerRemainder] : [];
+      while(i<lines.length && !/^Réponse:/i.test(lines[i]) && !subHeader.test(lines[i])) { textLines.push(lines[i]); i++; }
+      let answer = inlineAnswer;
+      if (!answer && i<lines.length && /^Réponse:/i.test(lines[i])) { answer = lines[i].replace(/^Réponse:\s*/i,'').trim(); i++; }
+      // skip blank lines
+      while(i<lines.length && lines[i].trim()==='') i++;
+      parsed.push({ id: makeId(), text: textLines.join('\n').trim(), answer });
+    }
+    if(!parsed.length){ toast({ title:'Aucune sous-question', description:'Format non reconnu.', variant:'destructive'}); return; }
+    setSubs(parsed);
+    toast({ title:'Analyse effectuée', description:`${parsed.length} sous-question(s) importée(s).` });
+  };
+  return (
+    <div className="space-y-2 border rounded-md p-3 bg-muted/30">
+      <div className="flex justify-between items-center"><h4 className="text-xs font-semibold">Parse rapide bloc QROC</h4><div className="flex gap-2"><Button type="button" variant="outline" size="sm" onClick={handleCopy}>Copier</Button><Button type="button" size="sm" onClick={parse}>Analyser</Button></div></div>
+      <Textarea value={raw} onChange={e=> setRaw(e.target.value)} className="min-h-40 font-mono text-xs" placeholder={`Q1: Énoncé 1 sur une ligne Réponse: réponse 1\nQ2:\nÉnoncé multi-ligne...\nsuite...\nRéponse: réponse 2`} />
+      <p className="text-[10px] text-muted-foreground">Formats: (1) Qn: Texte ... Réponse: xxx (sur une ligne) ou (2) Qn: puis lignes d'énoncé et une ligne "Réponse:" séparée. Blocs sans numéro consécutif acceptés, l'ordre d'apparition est utilisé.</p>
+    </div>
+  );
+}
+
+// ================= Quick Parse Clinical Case (Creation) =================
+function QuickParseClinicalCaseCreate({
+  rawCaseText,
+  subs,
+  setCaseText,
+  setSubs,
+  makeId,
+}: {
+  rawCaseText: string;
+  subs: any[]; // using any (SubQuestion shape) local only
+  setCaseText: (t:string)=>void;
+  setSubs: (s:any[])=>void;
+  makeId: ()=>string;
+}) {
+  const [raw, setRaw] = useState('');
+  const [initialized, setInitialized] = useState(false);
+
+  // Prefill once with current case + subs (if user toggles type)
+  useEffect(()=>{
+    if (initialized) return;
+    const lines: string[] = [];
+    if (rawCaseText || subs.length) {
+      lines.push('Case:');
+      lines.push(rawCaseText || '');
+      lines.push('');
+      subs.forEach((s, idx)=> {
+        lines.push(`Q${idx+1}: (${s.type === 'clinic_mcq' ? 'QCM' : 'QROC'})`);
+        lines.push(`Énoncé: ${s.text || ''}`);
+        if (s.type === 'clinic_mcq') {
+          s.options.forEach((o: any, oIdx:number)=> {
+            const correct = s.correctAnswers.includes(o.id) ? 'x' : ' ';
+            lines.push(`[${correct}] ${String.fromCharCode(65+oIdx)}) ${o.text || ''}`);
+            if (o.explanation && o.explanation.trim()) {
+              o.explanation.split(/\r?\n/).forEach((el:string,i:number)=>{
+                lines.push(i===0 ? `    Explication: ${el}` : `    ${el}`);
+              });
+            }
+          });
+        } else {
+          lines.push(`Réponse: ${s.qrocAnswer || ''}`);
+        }
+        lines.push('');
+      });
+      setRaw(lines.join('\n').trimEnd());
+      setInitialized(true);
+    }
+  }, [initialized, rawCaseText, subs]);
+
+  const optionPattern = /^\[(x|X| )\]\s*([A-Z])\)\s*(.*)$/;
+  const subHeaderPattern = /^Q(\d+)\s*:\s*(?:\((QCM|QROC)\))?/i;
+  const explMarker = /^(Explication|Explanation|Justification|Pourquoi|Raison)\s*[:\-]\s*/i;
+  const indented = /^\s{2,}(.*)$/;
+
+  const handleCopy = async () => {
+    try { await navigator.clipboard.writeText(raw); toast({ title:'Copié', description:'Modèle cas copié.'}); } catch { toast({ title:'Erreur', description:'Copie impossible', variant:'destructive'});} }
+
+  const parse = () => {
+    if (!raw.trim()) { toast({ title:'Vide', description:'Rien à analyser.'}); return; }
+    const lines = raw.replace(/\r/g,'').split('\n');
+    let i=0;
+    let newCaseText = rawCaseText;
+    if (/^(Case|Cas)\s*:/i.test(lines[0])) {
+      i=1; const caseLines:string[]=[];
+      while(i<lines.length && lines[i].trim() !== '') { caseLines.push(lines[i]); i++; }
+      newCaseText = caseLines.join('\n').trim();
+      while(i<lines.length && lines[i].trim()==='') i++;
+    }
+    const parsedSubs: any[] = [];
+    while(i<lines.length) {
+      const header = lines[i];
+      const mh = header.match(subHeaderPattern);
+      if (!mh) { i++; continue; }
+      i++;
+      const typeHint = (mh[2]||'').toUpperCase();
+      const blockStart = i;
+      let blockEnd = lines.length;
+      for (let j=i; j<lines.length; j++) {
+        if (subHeaderPattern.test(lines[j])) { blockEnd = j; break; }
+      }
+      const block = lines.slice(blockStart, blockEnd);
+      let bi=0; let text='';
+      if (/^Énoncé:/i.test(block[bi]||'')) { text = block[bi].replace(/^Énoncé:\s*/i,'').trim(); bi++; }
+      else { // fallback accumulate until option or Réponse
+        const tmpLines:string[]=[];
+        while(bi<block.length && !optionPattern.test(block[bi]) && !/^Réponse:/i.test(block[bi])) { tmpLines.push(block[bi]); bi++; }
+        text = tmpLines.join(' ').trim();
+      }
+      // Decide type: if typeHint provided use it; else infer by presence of option pattern lines
+      let qType: 'clinic_mcq' | 'clinic_croq' = 'clinic_croq';
+      if (typeHint === 'QCM') qType='clinic_mcq'; else if (typeHint === 'QROC') qType='clinic_croq'; else {
+        for (let k=bi; k<block.length; k++){ if (optionPattern.test(block[k])) { qType='clinic_mcq'; break; } }
+      }
+      if (qType==='clinic_mcq') {
+        const opts: { text:string; correct:boolean; explanation?:string }[] = [];
+        for (; bi<block.length; bi++) {
+          const line = block[bi]; if (!line.trim()) continue;
+          const m = line.match(optionPattern);
+            if (m) {
+              opts.push({ text: m[3].trim(), correct: m[1].toLowerCase()==='x' });
+              continue;
+            }
+          if (opts.length) {
+            let explLine = line;
+            const marker = explLine.match(explMarker);
+            if (marker) explLine = explLine.replace(explMarker,'').trim();
+            else { const ind = explLine.match(indented); if (ind) explLine = ind[1]; }
+            const last = opts[opts.length-1];
+            last.explanation = last.explanation ? `${last.explanation}\n${explLine}` : explLine;
+          }
+        }
+        // Build SubQuestion shape
+        const builtOptions = opts.map(o=> ({ id: makeId(), text: o.text, explanation: o.explanation || '' }));
+        const correctIds = builtOptions.filter((_,idx)=> opts[idx].correct).map(o=> o.id);
+        parsedSubs.push({ id: `sq_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, type:'clinic_mcq', text, options: builtOptions.length? builtOptions : [ { id: makeId(), text:'', explanation:'' }, { id: makeId(), text:'', explanation:'' } ], correctAnswers: correctIds, qrocAnswer:'', explanation:'' });
+      } else {
+        // QROC
+        let answer='';
+        for (; bi<block.length; bi++) { const line=block[bi]; if (/^Réponse:/i.test(line)) { answer = line.replace(/^Réponse:\s*/i,'').trim(); break; } }
+        parsedSubs.push({ id: `sq_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, type:'clinic_croq', text, options: [], correctAnswers: [], qrocAnswer: answer, explanation:'' });
+      }
+      i = blockEnd;
+    }
+    if (parsedSubs.length === 0) { toast({ title:'Aucune sous-question', description:'Format non reconnu.', variant:'destructive'}); return; }
+    setCaseText(newCaseText);
+    setSubs(parsedSubs);
+    toast({ title:'Analyse effectuée', description:`${parsedSubs.length} sous-question(s) importée(s).` });
+  };
+
+  return (
+    <div className="space-y-2 border rounded-md p-3 bg-muted/30">
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-semibold">Parse rapide Cas clinique</h3>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={handleCopy}>Copier</Button>
+          <Button type="button" size="sm" onClick={parse}>Analyser</Button>
+        </div>
+      </div>
+      <Textarea
+        value={raw}
+        onChange={e=> setRaw(e.target.value)}
+        placeholder={`Case:\nTexte du cas...\n\nQ1: (QCM)\nÉnoncé: ...\n[ ] A) Option A\n[x] B) Option B\n    Explication: justification B\n[ ] C) Option C\n\nQ2: (QROC)\nÉnoncé: ...\nRéponse: réponse courte`}
+        className="min-h-60 font-mono text-xs"
+      />
+      <p className="text-[10px] text-muted-foreground leading-snug">Format: "Case:" puis blocs Qn:. Type entre parenthèses (QCM|QROC) optionnel (inféré). Options QCM: [x] A) texte (x = bonne). Lignes indentées ou avec marqueur deviennent explication. Réponse QROC via "Réponse:". Ce parseur remplace la liste actuelle de sous-questions.</p>
+    </div>
   );
 }

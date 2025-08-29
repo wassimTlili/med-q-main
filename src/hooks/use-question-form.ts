@@ -30,6 +30,18 @@ export function useQuestionForm({ lectureId, editQuestionId, onComplete }: UseQu
     }
   }, [editQuestionId]);
 
+  // Ensure at least two options exist when switching to MCQ types
+  useEffect(()=>{
+    if(questionType==='mcq' || questionType==='clinic_mcq'){
+      if(options.length < 2){
+        setOptions([
+          { id:'1', text:''},
+          { id:'2', text:''}
+        ]);
+      }
+    }
+  },[questionType]);
+
   const fetchQuestionData = async () => {
     try {
       const response = await fetch(`/api/questions/${editQuestionId}`);
@@ -63,22 +75,22 @@ export function useQuestionForm({ lectureId, editQuestionId, onComplete }: UseQu
     }
   };
 
-  const handleParsedContent = (
-    parsedQuestionText: string, 
-    parsedOptions: Option[]
-  ) => {
-    setQuestionText(parsedQuestionText);
-    if (parsedOptions.length >= 2) {
-      if (options.length === parsedOptions.length) {
+  const handleParsedContent = (res: { questionText: string; options: Option[]; referenceAnswer?: string }) => {
+    setQuestionText(res.questionText);
+    if (res.options && res.options.length >= 2) {
+      if (options.length === res.options.length) {
         const updatedOptions = options.map((option, index) => ({
           ...option,
-          text: parsedOptions[index].text,
-          explanation: parsedOptions[index].explanation || option.explanation
+          text: res.options[index].text,
+          explanation: res.options[index].explanation || option.explanation
         }));
         setOptions(updatedOptions);
       } else {
-        setOptions(parsedOptions);
+        setOptions(res.options);
       }
+    }
+    if(res.referenceAnswer){
+      setCourseReminder(res.referenceAnswer);
     }
   };
 

@@ -126,13 +126,7 @@ export function MCQOptionItem({
           )}
         </div>
         
-        {isSelected && (
-          <div className={`flex-shrink-0 h-5 w-5 rounded border border-primary bg-primary flex items-center justify-center shadow-inner shadow-primary/40`}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 text-white dark:text-black">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          </div>
-        )}
+  {/* Removed inner white check icon to reduce visual noise per user request */}
       </div>
       {percentage !== null && (
         <div className="absolute bottom-2 right-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 backdrop-blur border border-border flex items-center gap-1 pointer-events-none">

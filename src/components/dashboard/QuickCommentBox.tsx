@@ -8,7 +8,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MessageSquarePlus, RefreshCcw, Send, Loader2 } from 'lucide-react';
 
 interface QuickComment {
-  id: string; content: string; createdAt: string; user?: { name?: string; email?: string };
+  id: string;
+  content: string;
+  createdAt: string;
+  user?: { name?: string; email?: string };
+  lecture?: { id: string; title: string };
+  lectureTitle?: string; // fallback if API returns flat title
 }
 interface LectureLite { id: string; title: string; specialty: { id: string; name: string } }
 interface SpecialtyLite { id: string; name: string; pinned?: boolean }
@@ -18,7 +23,7 @@ export const QuickCommentBox: React.FC = () => {
   const [specialties, setSpecialties] = useState<SpecialtyLite[]>([]);
   const [lectures, setLectures] = useState<LectureLite[]>([]);
   const [selectedSpecialty, setSelectedSpecialty] = useState('');
-  const [selectedLecture, setSelectedLecture] = useState('');
+  const [selectedLecture, setSelectedLecture] = useState(''); // still used only for posting
   const [comments, setComments] = useState<QuickComment[]>([]);
   const [loadingLectures, setLoadingLectures] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -42,13 +47,35 @@ export const QuickCommentBox: React.FC = () => {
     return () => { abort = true };
   }, [refreshKey]);
 
-  // Load comments when lecture changes
+  // Load comments when specialty changes (aggregate all lectures of that specialty)
   useEffect(() => {
-    if(!selectedLecture) { setComments([]); return; }
-    let abort = false; (async () => {
-      try { setLoadingComments(true); const r = await fetch(`/api/comments?lectureId=${selectedLecture}`); const j = r.ok ? await r.json() : []; if(!abort) setComments(j); } finally { if(!abort) setLoadingComments(false); } })();
-    return () => { abort = true };
-  }, [selectedLecture]);
+    if(!selectedSpecialty){ setComments([]); return; }
+    let abort = false;
+    (async () => {
+      setLoadingComments(true);
+      try {
+        const specLectures = lectures.filter(l => l.specialty.id === selectedSpecialty);
+        const results: QuickComment[] = [];
+        for (const lec of specLectures) {
+          try {
+            const r = await fetch(`/api/comments?lectureId=${lec.id}`);
+            if (!r.ok) continue;
+            const j = await r.json();
+            if (Array.isArray(j)) {
+              j.forEach((c: any) => results.push({ ...c, lecture: { id: lec.id, title: lec.title }, lectureTitle: lec.title }));
+            }
+          } catch { /* ignore individual lecture errors */ }
+          if(abort) return; // early abort
+        }
+        if(!abort){
+          // sort newest first
+            results.sort((a,b)=> new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setComments(results);
+        }
+      } finally { if(!abort) setLoadingComments(false); }
+    })();
+    return ()=> { abort = true };
+  }, [selectedSpecialty, lectures]);
 
   const currentSpec = specialties.find(s => s.id === selectedSpecialty);
   const filteredLectures = lectures.filter(l => !currentSpec || l.specialty.id === currentSpec.id);
@@ -58,7 +85,11 @@ export const QuickCommentBox: React.FC = () => {
     try {
       const body = { lectureId: selectedLecture, userId: user.id, content: comment.trim(), isAnonymous: anon };
       const r = await fetch('/api/comments', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-      if(r.ok){ const newC = await r.json(); setComments(prev => [newC, ...prev]); setComment(''); setAnon(false); setTimeout(()=> textareaRef.current?.focus(), 50); }
+      if(r.ok){ const newC = await r.json();
+        // attach lecture info for immediate display
+        const lec = lectures.find(l=> l.id===selectedLecture);
+        setComments(prev => [{ ...newC, lecture: lec? { id: lec.id, title: lec.title }: undefined, lectureTitle: lec?.title }, ...prev]);
+        setComment(''); setAnon(false); setTimeout(()=> textareaRef.current?.focus(), 50); }
     } finally { setSending(false); }
   };
 
@@ -90,29 +121,16 @@ export const QuickCommentBox: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Selectors */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1 relative group">
-                <select
-                  className="w-full text-xs pl-3 pr-7 py-1.5 rounded-md border bg-white/80 dark:bg-muted/40 text-foreground dark:text-foreground border-border/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none shadow-sm hover:bg-white/95 dark:hover:bg-muted/60"
-                  value={selectedSpecialty}
-                  onChange={e=>{ setSelectedSpecialty(e.target.value); setSelectedLecture(''); }}
-                >
-                  <option value="">Spécialité</option>
-                  {specialties.map(s => <option key={s.id} value={s.id}>{s.name}{s.pinned? ' ★':''}</option>)}
-                </select>
-              </div>
-              <div className="flex-1 relative group">
-                <select
-                  className="w-full text-xs pl-3 pr-7 py-1.5 rounded-md border bg-white/80 dark:bg-muted/40 text-foreground dark:text-foreground border-border/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none shadow-sm hover:bg-white/95 dark:hover:bg-muted/60 disabled:opacity-50"
-                  value={selectedLecture}
-                  disabled={!filteredLectures.length}
-                  onChange={e=> setSelectedLecture(e.target.value)}
-                >
-                  <option value="">Cours</option>
-                  {filteredLectures.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
-                </select>
-              </div>
+            {/* Specialty selector (course selector moved below textarea) */}
+            <div className="flex flex-col gap-2">
+              <select
+                className="w-full text-xs pl-3 pr-7 py-1.5 rounded-md border bg-white/80 dark:bg-muted/40 text-foreground dark:text-foreground border-border/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/40 appearance-none shadow-sm hover:bg-white/95 dark:hover:bg-muted/60"
+                value={selectedSpecialty}
+                onChange={e=>{ setSelectedSpecialty(e.target.value); setSelectedLecture(''); }}
+              >
+                <option value="">Spécialité</option>
+                {specialties.map(s => <option key={s.id} value={s.id}>{s.name}{s.pinned? ' ★':''}</option>)}
+              </select>
             </div>
 
             {/* Editor */}
@@ -121,11 +139,21 @@ export const QuickCommentBox: React.FC = () => {
                 ref={textareaRef}
                 value={comment}
                 onChange={e=> setComment(e.target.value)}
-                placeholder="Votre commentaire..."
+                placeholder={selectedLecture? 'Votre commentaire...' : 'Choisissez un cours pour publier un commentaire'}
                 disabled={!selectedLecture}
                 className="min-h-[90px] resize-none text-sm bg-background/60 disabled:opacity-50"
                 onKeyDown={e=>{ if(e.key==='Enter' && !e.shiftKey && comment.trim()){ e.preventDefault(); submit(); }}}
               />
+              {selectedSpecialty && (
+                <select
+                  className="w-full text-xs pl-3 pr-7 py-1.5 rounded-md border bg-white/70 dark:bg-muted/40 text-foreground dark:text-foreground border-border/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/30 appearance-none shadow-sm disabled:opacity-50"
+                  value={selectedLecture}
+                  onChange={e=> setSelectedLecture(e.target.value)}
+                >
+                  <option value="">Choisir un cours (pour publier)</option>
+                  {filteredLectures.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
+                </select>
+              )}
               <div className="flex items-center justify-between gap-3">
                 <label className="flex items-center gap-2 text-[11px] cursor-pointer select-none">
                   <Checkbox className="h-3.5 w-3.5" checked={anon} disabled={!selectedLecture} onCheckedChange={v=> setAnon(!!v)} />
@@ -145,22 +173,30 @@ export const QuickCommentBox: React.FC = () => {
                   {[1,2,3].map(i=> <div key={i} className="h-10 rounded-md bg-muted/30 animate-pulse" />)}
                 </div>
               )}
-              {!loadingComments && comments.map(c => (
-                <div key={c.id} className="group relative p-3 rounded-md border border-border/40 bg-white/60 dark:bg-muted/40 hover:bg-white/80 dark:hover:bg-muted/60 transition-colors">
-                  <p className="text-xs leading-snug whitespace-pre-wrap text-foreground/90">{c.content}</p>
-                  <div className="mt-1 flex justify-between items-center text-[10px] text-muted-foreground">
-                    <span>{new Date(c.createdAt).toLocaleDateString()}</span>
-                    {c.user?.name && <span className="truncate max-w-[120px]">{c.user.name}</span>}
+              {!loadingComments && comments.map(c => {
+                const courseName = c.lecture?.title || c.lectureTitle || '';
+                return (
+                  <div key={c.id} className="group relative p-3 rounded-md border border-border/40 bg-white/60 dark:bg-muted/40 hover:bg-white/80 dark:hover:bg-muted/60 transition-colors">
+                    {courseName && (
+                      <div className="mb-1 -mt-1 flex items-center gap-1 flex-wrap">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium max-w-full truncate">@{courseName}</span>
+                      </div>
+                    )}
+                    <p className="text-xs leading-snug whitespace-pre-wrap text-foreground/90">{c.content}</p>
+                    <div className="mt-1 flex justify-between items-center text-[10px] text-muted-foreground">
+                      <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                      {c.user?.name && <span className="truncate max-w-[120px]">{c.user.name}</span>}
+                    </div>
                   </div>
-                </div>
-              ))}
-              {!loadingComments && selectedLecture && comments.length===0 && (
+                );
+              })}
+              {!loadingComments && selectedSpecialty && comments.length===0 && (
                 <div className="text-[11px] text-muted-foreground italic py-6 text-center border border-dashed border-border/50 rounded-md">
                   Aucun commentaire.
                 </div>
               )}
-              {!selectedLecture && (
-                <div className="text-[11px] text-muted-foreground italic py-4 text-center">Choisissez un cours.</div>
+              {!selectedSpecialty && (
+                <div className="text-[11px] text-muted-foreground italic py-4 text-center">Choisissez une spécialité.</div>
               )}
             </div>
           </>

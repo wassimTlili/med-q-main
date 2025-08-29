@@ -129,8 +129,12 @@ export function QuestionForm({ lectureId, editQuestionId, onComplete }: Question
             setQuestionType={setQuestionType} 
           />
           
-          {(questionType === 'mcq' || questionType === 'clinic_mcq') && !editQuestionId && (
-            <AutoParseInput onParsedContent={handleParsedContent} />
+          {/* Auto parse available on create for MCQ, clinical MCQ, QROC, and clinical CROQ */}
+          {(questionType === 'mcq' || questionType === 'clinic_mcq' || questionType === 'qroc' || questionType === 'clinic_croq') && (
+            <div className="my-4">
+              <div className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Parsing automatique</div>
+              <AutoParseInput questionType={questionType} onParsedContent={handleParsedContent} />
+            </div>
           )}
           
           <QuestionFields 

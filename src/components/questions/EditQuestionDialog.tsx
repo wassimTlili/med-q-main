@@ -29,6 +29,7 @@ export function EditQuestionDialog({ question, isOpen, onOpenChange, onQuestionU
   });
   const [options, setOptions] = useState<Option[]>([]);
   const [correctAnswers, setCorrectAnswers] = useState<string[]>([]);
+  const [bulkInput, setBulkInput] = useState('');
 
   // Initialize form with question data
   useEffect(() => {
@@ -93,7 +94,7 @@ export function EditQuestionDialog({ question, isOpen, onOpenChange, onQuestionU
   const addOption = () => {
     const newOption: Option = {
       id: `option_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      text: ''
+  text: ''
     };
     setOptions([...options, newOption]);
   };
@@ -121,6 +122,54 @@ export function EditQuestionDialog({ question, isOpen, onOpenChange, onQuestionU
     } else {
       setCorrectAnswers(prev => [...prev, optionId]);
     }
+  };
+
+  // Bulk parser (MCQ) with explanations
+  const parseBulkInput = () => {
+    if (!bulkInput.trim()) {
+      toast({ title: 'Empty', description: 'Paste question + options first.' });
+      return;
+    }
+    if (formData.type !== 'mcq') {
+      toast({ title: 'Wrong type', description: 'Bulk analyse is only for MCQ.', variant: 'destructive' });
+      return;
+    }
+    const lines = bulkInput.replace(/\r/g,'').split('\n').map(l=> l.trim()).filter(Boolean);
+    if (!lines.length) { toast({ title:'Format invalide', description:'Texte introuvable', variant:'destructive'}); return; }
+    const optionLineRegex = /^([A-Z]|\d+)[\.)\]:\-]?\s+(.*)$/;
+    const explanationMarker = /^(Explication|Justification|Explanation|Pourquoi|Raison)\s*[:\-]\s*/i;
+    interface TempOpt { text:string; correct:boolean; explanation?:string }
+    const detected: TempOpt[] = [];
+    const questionLines: string[] = [];
+    for(const line of lines){
+      const m = line.match(optionLineRegex);
+      if(m){
+        let body = m[2].trim();
+        let correct = false;
+        if (/\*+$/.test(body) || /\bVRAI\b$/i.test(body) || /(\(x\)|\[x\]|✓)$/i.test(body)) {
+          correct = true; body = body.replace(/(\*+|\(x\)|\[x\]|✓|\bVRAI\b)$/i,'').trim();
+        }
+        detected.push({ text: body, correct });
+      } else if (!detected.length) {
+        questionLines.push(line);
+      } else {
+        // explanation line
+        const last = detected[detected.length-1];
+        let processed = line;
+        const marker = processed.match(explanationMarker);
+        if (marker) processed = processed.replace(explanationMarker,'').trim();
+        last.explanation = last.explanation ? last.explanation + '\n' + processed : processed;
+      }
+    }
+    if (detected.length < 2) { toast({ title:'Pas assez d\'options', description:'Au moins 2.', variant:'destructive'}); return; }
+    const qText = questionLines.join('\n').trim();
+    if (qText) setFormData(prev => ({ ...prev, text: qText }));
+    const built = detected.map(d => ({ id:`option_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, text:d.text, explanation:d.explanation || '' }));
+    setOptions(built);
+    const correctIds: string[] = [];
+    detected.forEach((d,i)=> { if(d.correct) correctIds.push(built[i].id); });
+    setCorrectAnswers(correctIds);
+    toast({ title:'Analyse effectuée', description:`${built.length} options. Correctes: ${correctIds.length}. Explications: ${built.filter(o=>o.explanation).length}/${built.length}` });
   };
 
   const handleSubmit = async () => {
@@ -258,50 +307,78 @@ export function EditQuestionDialog({ question, isOpen, onOpenChange, onQuestionU
             </Select>
           </div>
 
+          {/* Bulk paste parser (MCQ) */}
+          {formData.type === 'mcq' && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Coller question + options</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Textarea
+                  rows={4}
+                  placeholder={`Collez ici.\nÉnoncé...\nA. Option 1\nExplication: détail pour A\nB) Option 2 *\nJustification: pourquoi B\nC - Option 3 (x)\nAutre ligne explication C\nD: Option 4`}
+                  value={bulkInput}
+                  onChange={e=> setBulkInput(e.target.value)}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={()=> setBulkInput('')} disabled={!bulkInput}>Vider</Button>
+                  <Button type="button" size="sm" onClick={parseBulkInput} disabled={!bulkInput}>Analyser & Remplir</Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-snug space-y-1">
+                  <span className="block">Formats: A., A), A-, 1)... Ajoutez * / (x) / [x] / ✓ / VRAI pour marquer une bonne réponse.</span>
+                  <span className="block">Explications: lignes après une option (avec ou sans préfixe Explication:/Justification:/Pourquoi:/Raison:) jusqu'à la prochaine option.</span>
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Options (only for MCQ) */}
           {formData.type === 'mcq' && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm">Answer Options</CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  You can modify existing options or add new ones. Check the correct answers. Changes will update the question immediately.
-                </p>
+                <p className="text-xs text-muted-foreground">Add explanations in the field under each option (optional).</p>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
                 {options.map((option, index) => (
-                  <div key={`${option.id}-${index}`} className="flex items-center space-x-2">
-                    <span className="text-xs text-muted-foreground w-6 text-center">
-                      {String.fromCharCode(65 + index)}
-                    </span>
-                    <div className="flex-1">
-                      <Input
-                        placeholder={`Option ${index + 1}`}
-                        value={option.text}
-                        onChange={(e) => handleOptionChange(index, e.target.value)}
-                        className="w-full"
-                      />
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <label className="flex items-center space-x-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={correctAnswers.includes(option.id)}
-                          onChange={() => toggleCorrectAnswer(option.id)}
-                          className="rounded"
+                  <div key={`${option.id}-${index}`} className="border rounded-md p-3 space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs text-muted-foreground w-6 text-center">{String.fromCharCode(65 + index)}</span>
+                      <div className="flex-1">
+                        <Input
+                          placeholder={`Option ${index + 1}`}
+                          value={option.text}
+                          onChange={(e) => handleOptionChange(index, e.target.value)}
+                          className="w-full"
                         />
-                        <span className="text-xs whitespace-nowrap">Correct</span>
-                      </label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeOption(index)}
-                        disabled={options.length <= 2}
-                        className="text-destructive hover:text-destructive flex-shrink-0"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <label className="flex items-center space-x-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={correctAnswers.includes(option.id)}
+                            onChange={() => toggleCorrectAnswer(option.id)}
+                            className="rounded"
+                          />
+                          <span className="text-xs whitespace-nowrap">Correct</span>
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeOption(index)}
+                          disabled={options.length <= 2}
+                          className="text-destructive hover:text-destructive flex-shrink-0"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
+                    <Input
+                      placeholder="Explanation (optional)"
+                      value={option.explanation || ''}
+                      onChange={(e)=> setOptions(prev => prev.map((o,i)=> i===index ? { ...o, explanation: e.target.value } : o))}
+                    />
                   </div>
                 ))}
                 <Button

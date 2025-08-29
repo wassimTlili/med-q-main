@@ -67,12 +67,9 @@ export const SpecialtyAverageSlider: React.FC = () => {
     <Card className="relative border border-border/50 bg-white/55 dark:bg-muted/30 backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow flex flex-col overflow-hidden rounded-lg">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-primary/40 via-primary/10 to-primary/40" />
       <CardHeader className="pb-1 flex flex-row items-start justify-between gap-4">
-        <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-semibold leading-snug bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+        <CardTitle className="flex items-center gap-2 text-2xl font-semibold leading-snug bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
           <BarChart3 className="h-6 w-6 shrink-0 text-blue-600 dark:text-blue-400" />
-          <span className="flex flex-col xs:flex-row xs:items-baseline">
-            <span>Moyennes</span>
-            <span className="xs:ml-1">par matière</span>
-          </span>
+          <span>Moyennes</span>
         </CardTitle>
         <div className="flex items-center gap-1">
           <Button
@@ -110,9 +107,9 @@ export const SpecialtyAverageSlider: React.FC = () => {
         {!isLoading && current && (
           <div className="relative flex flex-col items-center">
             <div className="text-xs text-muted-foreground mb-2 tracking-wide">{index + 1}/{visible.length}</div>
-            <div className="relative w-44 h-44 mb-3">
+      <div className="relative w-48 h-48 mb-4">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="6" className="text-muted/30 fill-none" />
+        <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="6" className="text-muted/30 fill-none" />
                 <circle
                   cx="50" cy="50" r="44" stroke="url(#gradSpecAvg)" strokeWidth="6" strokeLinecap="round" className="fill-none"
                   strokeDasharray={`${2 * Math.PI * 44}`}
@@ -125,12 +122,12 @@ export const SpecialtyAverageSlider: React.FC = () => {
                   </linearGradient>
                 </defs>
               </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">{out20}</span>
-                <span className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">/20</span>
-                <span className="mt-1 text-[10px] text-muted-foreground">{current.name}</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
+                <span className="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">{out20}</span>
+                <span className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">/20</span>
               </div>
             </div>
+            <h3 className="-mt-1 mb-2 text-center text-lg font-semibold text-slate-800 dark:text-slate-100 leading-snug px-2 max-w-[240px] truncate" title={current.name}>{current.name}</h3>
             <p className="text-[11px] text-muted-foreground text-center max-w-[220px] leading-snug">
               {unfinishedHint}
             </p>

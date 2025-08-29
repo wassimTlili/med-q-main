@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, Plus, UploadCloud, ChevronDown, ChevronRight } from 'lucide-react';
+import { Upload, Plus, UploadCloud, ChevronDown, ChevronRight, Loader2, CheckCircle2, RotateCcw } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -22,6 +22,22 @@ type SessionRow = {
   niveau?: string;
   semestre?: string | number;
   specialty?: string;
+};
+
+// Reuse logic similar to viewer (simplified to avoid circular import)
+const normalizeDriveLink = (raw?: string): string | undefined => {
+  if (!raw) return undefined;
+  const link = raw.trim();
+  if (!link) return undefined;
+  if (/\.pdf($|[?#])/i.test(link)) return link; // already direct pdf
+  // direct download already
+  if (/drive\.google\.com\/uc\?export=download&id=/i.test(link)) return link;
+  const driveRegex = /https?:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/i;
+  const match = link.match(driveRegex);
+  if (match) {
+    return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+  }
+  return link; // fallback unchanged
 };
 
 export default function SessionsAdminPage() {
@@ -37,6 +53,7 @@ export default function SessionsAdminPage() {
   const [specialties, setSpecialties] = useState<{ id: string; name: string }[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [importSummary, setImportSummary] = useState<{ ok: number; fail: number; total: number; errors: string[] } | null>(null);
 
   useEffect(() => {
     // Load niveaux list for resolution and manual select
@@ -49,61 +66,80 @@ export default function SessionsAdminPage() {
         }
         const specs = await fetch('/api/specialties/list');
         if (specs.ok) setSpecialties(await specs.json());
-      } catch (e) {
+      } catch {
         // silent
       }
     };
     load();
   }, []);
 
-  useEffect(() => {
-    const loadSemesters = async () => {
-      const params = manualNiveauId ? `?niveauId=${encodeURIComponent(manualNiveauId)}` : '';
-      const res = await fetch(`/api/semesters${params}`);
-      if (res.ok) setSemesters(await res.json());
-    };
-    loadSemesters();
-  }, [manualNiveauId]);
-
+  // CSV: name,pdfUrl,correctionUrl,niveau,semestre,specialty
   const parseCSVLike = async (file: File) => {
-    // Expect CSV: name,pdfUrl,correctionUrl,niveau,semestre,specialty
     const text = await file.text();
     const lines = text.split(/\r?\n/).filter(Boolean);
+    if (lines.length <= 1) { setRows([]); return; }
     const out: SessionRow[] = [];
-    const startIdx = 1; // assume first row is header
-    for (const line of lines.slice(startIdx)) {
-      const cols = line.split(','); // naive CSV split (no quote handling)
+    for (const line of lines.slice(1)) {
+      const cols = line.split(',');
       const [name, pdfUrl, correctionUrl, niveau, semestre, specialty] = cols.map(c => c?.trim());
-      if (name) out.push({ name, pdfUrl, correctionUrl, niveau, semestre, specialty });
+      if (!name) continue;
+      out.push({
+        name,
+        pdfUrl: normalizeDriveLink(pdfUrl),
+        correctionUrl: normalizeDriveLink(correctionUrl),
+        niveau,
+        semestre,
+        specialty
+      });
     }
     setRows(out);
   };
 
+  // XLSX parser that preserves hyperlink targets for pdf/correction
   const parseXLSX = async (file: File) => {
     const buf = await file.arrayBuffer();
     const workbook = XLSX.read(buf, { type: 'array' });
     const firstSheet = workbook.SheetNames[0];
     const ws = workbook.Sheets[firstSheet];
-    const json = XLSX.utils.sheet_to_json(ws, { defval: '' }) as Record<string, any>[];
-    const norm = (s: string) => String(s || '').trim().toLowerCase();
-    const aliasMap: Record<string, 'name' | 'pdfUrl' | 'correctionUrl' | 'niveau' | 'semestre' | 'specialty'> = {
+    const ref = ws['!ref'];
+    if (!ref) { setRows([]); return; }
+    const range = XLSX.utils.decode_range(ref as string);
+    const norm = (s: string) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
+    const alias: Record<string, keyof SessionRow> = {
       name: 'name', nom: 'name', titre: 'name',
-      pdf: 'pdfUrl', pdfurl: 'pdfUrl', 'pdf url': 'pdfUrl', lienpdf: 'pdfUrl',
-      correction: 'correctionUrl', 'correction url': 'correctionUrl', correctionurl: 'correctionUrl', liencorrection: 'correctionUrl',
-      niveau: 'niveau', level: 'niveau',
-      semestre: 'semestre', semester: 'semestre', s: 'semestre',
-      speciality: 'specialty', specialty: 'specialty', matiere: 'specialty', specialite: 'specialty', 'specialité': 'specialty'
+      pdf: 'pdfUrl', pdfurl: 'pdfUrl', pdfurl2: 'pdfUrl', pdfurl3: 'pdfUrl', pdfurlhttp: 'pdfUrl', lienpdf: 'pdfUrl', urlexamen: 'pdfUrl', urlexam: 'pdfUrl', urlexamencorrection: 'pdfUrl', urlexamens: 'pdfUrl', urlexamenpdf: 'pdfUrl', urlexamenurl: 'pdfUrl', urlexamenhttp: 'pdfUrl', urlexamenhttps: 'pdfUrl', urlexamenfile: 'pdfUrl', urlpdf: 'pdfUrl', urlpdfexamen: 'pdfUrl',
+      correction: 'correctionUrl', correctionurl: 'correctionUrl', liencorrection: 'correctionUrl', urlcorrection: 'correctionUrl', urlcorr: 'correctionUrl', urlcorrections: 'correctionUrl', urlcorrectionpdf: 'correctionUrl', urlcorrectionurl: 'correctionUrl', urlcorrectionhttp: 'correctionUrl', urlcorrectionhttps: 'correctionUrl',
+      niveau: 'niveau', level: 'niveau', semestre: 'semestre', semester: 'semestre', s: 'semestre',
+      speciality: 'specialty', specialty: 'specialty', matiere: 'specialty', specialite: 'specialty', specialiteaccent: 'specialty', specialite2: 'specialty', specialite3: 'specialty'
     };
+    const headerRow = range.s.r;
+    const colMap: Record<number, keyof SessionRow | undefined> = {};
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ c, r: headerRow })];
+      if (!cell) continue;
+      colMap[c] = alias[norm(String(cell.v || ''))];
+    }
     const out: SessionRow[] = [];
-    for (const row of json) {
+    for (let r = headerRow + 1; r <= range.e.r; r++) {
       const acc: SessionRow = { name: '' };
-      for (const [k, v] of Object.entries(row)) {
-        const mapped = aliasMap[norm(k)];
-        if (mapped) {
-          (acc as any)[mapped] = String(v || '').trim();
-        }
+      let empty = true;
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const key = colMap[c];
+        if (!key) continue;
+        const cell: any = ws[XLSX.utils.encode_cell({ c, r })];
+        if (!cell) continue;
+        const raw = (cell.v != null ? String(cell.v) : '').trim();
+        if (raw) empty = false;
+        let value = raw;
+        if ((key === 'pdfUrl' || key === 'correctionUrl') && cell.l && cell.l.Target) value = cell.l.Target;
+        if (key === 'pdfUrl') acc.pdfUrl = normalizeDriveLink(value);
+        else if (key === 'correctionUrl') acc.correctionUrl = normalizeDriveLink(value);
+        else if (key === 'niveau') acc.niveau = value;
+        else if (key === 'semestre') acc.semestre = value;
+        else if (key === 'specialty') acc.specialty = value;
+        else if (key === 'name') acc.name = value;
       }
-      if (acc.name) out.push(acc);
+      if (!empty && acc.name) out.push(acc);
     }
     setRows(out);
   };
@@ -111,26 +147,52 @@ export default function SessionsAdminPage() {
   const handleImport = async () => {
     if (!rows.length) return;
     setIsUploading(true);
+  setImportSummary(null);
     try {
       let ok = 0;
       let fail = 0;
       const errors: string[] = [];
+      const normNiveau = (s: string) => s.toLowerCase().replace(/\s|-/g, ''); // PCEM 1 -> pcem1
       for (const r of rows) {
         // Resolve niveauId by name (case-insensitive) if provided
         let niveauId: string | undefined;
         if (r.niveau) {
-          const match = niveaux.find(n => n.name.toLowerCase() === r.niveau!.toLowerCase());
-          if (match) niveauId = match.id;
+          // Try exact (case-insensitive)
+          let match = niveaux.find(n => n.name.toLowerCase() === r.niveau!.toLowerCase());
+          // Try normalized (remove spaces / hyphens)
+            if (!match) {
+              const target = normNiveau(r.niveau);
+              match = niveaux.find(n => normNiveau(n.name) === target);
+            }
+            // Try pattern PCEM 1 -> PCEM1
+            if (!match) {
+              const m = r.niveau.match(/^(PCEM|DCEM)\s?(\d)$/i);
+              if (m) {
+                const compact = (m[1] + m[2]).toUpperCase();
+                match = niveaux.find(n => n.name.toUpperCase() === compact);
+              }
+            }
+            if (match) niveauId = match.id;
         }
         const res = await fetch('/api/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: r.name,
-            pdfUrl: r.pdfUrl,
-            correctionUrl: r.correctionUrl,
+            pdfUrl: normalizeDriveLink(r.pdfUrl),
+            correctionUrl: normalizeDriveLink(r.correctionUrl),
             niveauId,
-            semester: r.semestre,
+            // Normalize semester input: could be '1','S1','s1','PCEM1 - S1'. Extract first digit 1 or 2.
+            semester: (() => {
+              if (!r.semestre) return undefined;
+              const raw = String(r.semestre).trim();
+              // Find a number 1 or 2 (common for S1/S2) OR parseInt fallback
+              const m = raw.match(/S?\s*(\d)/i);
+              if (m) return m[1];
+              const d = parseInt(raw, 10);
+              if (!isNaN(d)) return d;
+              return raw; // let API attempt resolution by name contains
+            })(),
             specialtyName: r.specialty
           })
         });
@@ -149,6 +211,7 @@ export default function SessionsAdminPage() {
           errors.push(`${r.name}: ${msg || res.statusText}`);
         }
       }
+      setImportSummary({ ok, fail, total: rows.length, errors });
       if (fail === 0) {
         toast({ title: 'Import completed', description: `${ok}/${rows.length} session(s) imported.` });
       } else {
@@ -167,8 +230,8 @@ export default function SessionsAdminPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: manual.name,
-        pdfUrl: manual.pdfUrl,
-        correctionUrl: manual.correctionUrl,
+  pdfUrl: normalizeDriveLink(manual.pdfUrl),
+  correctionUrl: normalizeDriveLink(manual.correctionUrl),
         niveauId: manualNiveauId || undefined,
         semester: manualSemester || undefined,
         specialtyName: manualSpecialty || undefined
@@ -256,44 +319,76 @@ export default function SessionsAdminPage() {
                     />
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Button onClick={handleImport} disabled={!rows.length || isUploading}>
-                    <Upload className="h-4 w-4 mr-2" /> Import
-                  </Button>
-                  <div className="text-sm text-muted-foreground">{rows.length} rows ready</div>
-                </div>
-                {hasRows && (
-                  <div className="border rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>PDF URL</TableHead>
-                          <TableHead>Correction URL</TableHead>
-                          <TableHead>Niveau</TableHead>
-                          <TableHead>Semestre</TableHead>
-                          <TableHead>Specialty</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {rows.slice(0, 20).map((r, i) => (
-                          <TableRow key={i}>
-                            <TableCell className="font-medium">{r.name}</TableCell>
-                            <TableCell className="truncate max-w-[280px]">{r.pdfUrl}</TableCell>
-                            <TableCell className="truncate max-w-[280px]">{r.correctionUrl}</TableCell>
-                            <TableCell>{r.niveau || '-'}</TableCell>
-                            <TableCell>{r.semestre || '-'}</TableCell>
-                            <TableCell>{r.specialty || '-'}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                    {rows.length > 20 && (
-                      <div className="text-xs text-muted-foreground px-3 py-2">Showing first 20 of {rows.length} rows</div>
+                {importSummary ? (
+                  <div className="flex flex-col items-center gap-4 py-8">
+                    <CheckCircle2 className={`h-10 w-10 ${importSummary.fail ? 'text-yellow-500' : 'text-green-500'}`} />
+                    <div className="text-lg font-medium">Import finished</div>
+                    <div className="text-sm text-muted-foreground">
+                      {importSummary.ok}/{importSummary.total} success{importSummary.fail ? `, ${importSummary.fail} failed` : ''}
+                    </div>
+                    {importSummary.errors.length > 0 && (
+                      <div className="w-full max-w-xl text-xs bg-destructive/10 border border-destructive/30 rounded p-3 space-y-1 overflow-auto max-h-48">
+                        {importSummary.errors.map((e, i) => <div key={i}>• {e}</div>)}
+                      </div>
                     )}
+                    <div className="flex gap-3">
+                      <Button variant="outline" onClick={() => { setRows([]); setImportSummary(null); setFileName(''); }}>New Import</Button>
+                      <Button variant="secondary" onClick={() => setImportSummary(null)}>View Rows</Button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <Button onClick={handleImport} disabled={!rows.length || isUploading}>
+                        <Upload className="h-4 w-4 mr-2" /> Import
+                      </Button>
+                      <div className="text-sm text-muted-foreground">{rows.length} rows ready</div>
+                      {rows.length > 0 && (
+                        <Button variant="ghost" size="sm" onClick={() => { setRows([]); setFileName(''); }}>
+                          <RotateCcw className="h-4 w-4 mr-1" /> Reset
+                        </Button>
+                      )}
+                    </div>
+                    {hasRows && (
+                      <div className="border rounded-md relative">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Name</TableHead>
+                              <TableHead>PDF URL</TableHead>
+                              <TableHead>Correction URL</TableHead>
+                              <TableHead>Niveau</TableHead>
+                              <TableHead>Semestre</TableHead>
+                              <TableHead>Specialty</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {rows.slice(0, 50).map((r, i) => (
+                              <TableRow key={i}>
+                                <TableCell className="font-medium">{r.name}</TableCell>
+                                <TableCell className="truncate max-w-[280px]">{r.pdfUrl}</TableCell>
+                                <TableCell className="truncate max-w-[280px]">{r.correctionUrl}</TableCell>
+                                <TableCell>{r.niveau || '-'}</TableCell>
+                                <TableCell>{r.semestre || '-'}</TableCell>
+                                <TableCell>{r.specialty || '-'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        {rows.length > 50 && (
+                          <div className="text-xs text-muted-foreground px-3 py-2">Showing first 50 of {rows.length} rows</div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
+              {isUploading && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 rounded-md">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <div className="text-sm text-muted-foreground">Importing sessions… Please wait</div>
+                </div>
+              )}
             </Card>
 
             <Card>

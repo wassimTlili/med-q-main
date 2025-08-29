@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Question, Option } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { Plus, Trash2 } from 'lucide-react';
+// QuickParseQroc removed from individual sub-questions; we now use only global parser
 
 interface ClinicalCaseEditDialogProps {
   caseNumber: number;
@@ -85,6 +86,14 @@ export function ClinicalCaseEditDialog({ caseNumber, questions, isOpen, onOpenCh
       <DialogContent className="max-w-4xl max-h-[92vh] overflow-hidden flex flex-col">
         <DialogHeader><DialogTitle>Éditer Cas Clinique #{caseNumber}</DialogTitle></DialogHeader>
         <div className="flex-1 overflow-y-auto pr-2 space-y-6 pb-4">
+          <QuickParseClinicalCase
+            caseText={caseText}
+            subs={subs}
+            setCaseText={setCaseText}
+            updateSub={updateSub}
+            updateOption={updateOption}
+            toggleCorrect={toggleCorrect}
+          />
           <div className="space-y-2"><Label>Texte du cas *</Label><Textarea rows={4} value={caseText} onChange={e=> setCaseText(e.target.value)} /></div>
           {subs.map((s, idx)=>(
             <div key={s.id} className="border rounded-md p-4 space-y-4 bg-muted/30">
@@ -137,5 +146,166 @@ export function ClinicalCaseEditDialog({ caseNumber, questions, isOpen, onOpenCh
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ================= Quick Parse Clinical Case (global) =================
+function QuickParseClinicalCase({
+  caseText,
+  subs,
+  setCaseText,
+  updateSub,
+  updateOption,
+  toggleCorrect
+}: {
+  caseText: string;
+  subs: EditableSub[];
+  setCaseText: (t:string)=>void;
+  updateSub: (id:string, patch: Partial<EditableSub>)=>void;
+  updateOption: (sid:string, oid:string, patch: Partial<Option>)=>void;
+  toggleCorrect: (sid:string, oid:string)=>void;
+}) {
+  const [raw, setRaw] = useState('');
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(()=>{
+    if (initialized) return; // only initial fill
+    const lines: string[] = [];
+    lines.push('Case:');
+    lines.push(caseText || '');
+    lines.push('');
+    subs.forEach((s, idx)=> {
+      lines.push(`Q${idx+1}: (${s.type === 'clinic_mcq' ? 'QCM' : 'QROC'})`);
+      lines.push(`Énoncé: ${s.text || ''}`);
+      if (s.type === 'clinic_mcq') {
+        s.options.forEach((o,oIdx)=> {
+          const correct = s.correctAnswers.includes(o.id) ? 'x' : ' ';
+          lines.push(`[${correct}] ${String.fromCharCode(65+oIdx)}) ${o.text || ''}`);
+          if (o.explanation && o.explanation.trim()) {
+            o.explanation.split(/\r?\n/).forEach((el,i)=> {
+              lines.push(i===0 ? `    Explication: ${el}` : `    ${el}`);
+            });
+          }
+        });
+      } else {
+        lines.push(`Réponse: ${s.answer || ''}`);
+      }
+      lines.push('');
+    });
+    setRaw(lines.join('\n').trimEnd());
+    setInitialized(true);
+  }, [initialized, caseText, subs]);
+
+  const handleCopy = async () => {
+    try { await navigator.clipboard.writeText(raw); toast({ title:'Copié', description:'Cas clinique copié.'}); } catch { toast({ title:'Erreur', description:'Copie impossible', variant:'destructive'});} }
+
+  const parse = () => {
+    if (!raw.trim()) { toast({ title:'Vide', description:'Rien à analyser.'}); return; }
+    const lines = raw.replace(/\r/g,'').split('\n');
+    // Extract case text between 'Case:' and first blank line before Q1
+    let i=0; let newCaseText = caseText;
+    if (/^Case:/i.test(lines[0])) {
+      i=1; const caseLines: string[] = [];
+      while(i<lines.length && lines[i].trim() !== '') { caseLines.push(lines[i]); i++; }
+      newCaseText = caseLines.join('\n').trim();
+      // skip blank lines
+      while(i<lines.length && lines[i].trim()==='') i++;
+    }
+    const optPattern = /^\[(x|X| )\]\s*([A-Z])\)\s*(.*)$/;
+    const explMarker = /^(Explication|Explanation|Justification|Pourquoi|Raison)\s*[:\-]\s*/i;
+    const indented = /^\s{2,}(.*)$/;
+    // For each existing sub, parse sequentially blocks starting with Qn:
+    subs.forEach((s, idx)=> {
+      const qHeader = new RegExp(`^Q${idx+1}:(?:\\s*\\((QCM|QROC)\\))?`, 'i');
+      // find start index from current i
+      while(i<lines.length && !qHeader.test(lines[i])) i++;
+      if (i>=lines.length) return; // no more
+      // Optionally capture type override (ignored: we don't allow changing types here)
+      i++; // move past header
+      // parse until next Q header or EOF
+      const blockStart = i;
+      let blockEnd = lines.length;
+      for (let j=i; j<lines.length; j++){
+        if (new RegExp(`^Q${idx+2}:`, 'i').test(lines[j])) { blockEnd = j; break; }
+      }
+      const block = lines.slice(blockStart, blockEnd);
+      // Parse Énoncé line
+      let bi=0; let statement = s.text;
+      if (/^Énoncé:/i.test(block[bi]||'')) {
+        statement = block[bi].replace(/^Énoncé:\s*/i,''); bi++;
+      }
+      if (s.type === 'clinic_mcq') {
+        const desiredOpts: { text:string; correct:boolean; explanation?:string }[] = [];
+        for (; bi<block.length; bi++) {
+          const line = block[bi];
+            if (!line.trim()) continue;
+          if (/^Réponse:/i.test(line)) continue; // ignore stray
+          const m = line.match(optPattern);
+          if (m) {
+            desiredOpts.push({ text: m[3].trim(), correct: m[1].toLowerCase()==='x' });
+          } else if (desiredOpts.length) {
+            // explanation continuation
+            let explLine = line;
+            const marker = explLine.match(explMarker);
+            if (marker) explLine = explLine.replace(explMarker,'').trim();
+            else {
+              const ind = line.match(indented); if (ind) explLine = ind[1];
+            }
+            const last = desiredOpts[desiredOpts.length-1];
+            last.explanation = last.explanation ? `${last.explanation}\n${explLine}` : explLine;
+          }
+        }
+        // apply updates
+        updateSub(s.id, { text: statement });
+        // Map onto existing options count only
+        s.options.forEach((o, oIdx)=> {
+          if (oIdx < desiredOpts.length) {
+            const d = desiredOpts[oIdx];
+            if (d.text !== undefined) updateOption(s.id, o.id, { text: d.text });
+            if (d.explanation !== undefined) updateOption(s.id, o.id, { explanation: d.explanation });
+          }
+        });
+        // Correct answers sync
+        const desiredCorrectIds = new Set<string>();
+        s.options.forEach((o, oIdx)=> { if (oIdx < desiredOpts.length && desiredOpts[oIdx].correct) desiredCorrectIds.add(o.id); });
+        s.options.forEach(o=> {
+          const should = desiredCorrectIds.has(o.id);
+          const is = s.correctAnswers.includes(o.id);
+          if (should !== is) toggleCorrect(s.id, o.id);
+        });
+      } else { // clinic_croq
+        // find line starting Réponse:
+        let answer = s.answer;
+        for (; bi<block.length; bi++) {
+          const line = block[bi];
+          if (/^Réponse:/i.test(line)) { answer = line.replace(/^Réponse:\s*/i,'').trim(); break; }
+        }
+        updateSub(s.id, { text: statement, answer });
+      }
+      i = blockEnd; // continue after block
+    });
+    setCaseText(newCaseText);
+    toast({ title:'Analyse effectuée', description:'Cas & sous-questions mis à jour.' });
+  };
+
+  return (
+    <div className="space-y-2 border rounded-md p-3 bg-muted/40">
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-semibold">Parse rapide (Cas complet)</h3>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={handleCopy}>Copier</Button>
+          <Button type="button" size="sm" onClick={parse}>Analyser</Button>
+        </div>
+      </div>
+      <Textarea
+        value={raw}
+        onChange={e=> setRaw(e.target.value)}
+        className="min-h-60 font-mono text-xs"
+        placeholder={`Case:\nTexte du cas...\n\nQ1: (QCM)\nÉnoncé: ...\n[ ] A) Option A\n[x] B) Option B\n    Explication: justification B\n[ ] C) Option C\n\nQ2: (QROC)\nÉnoncé: ...\nRéponse: texte attendu`}
+      />
+      <p className="text-[10px] text-muted-foreground leading-snug">
+        Format: commencer par "Case:" puis chaque sous-question "Qn: (QCM|QROC)". Options QCM: [x] A) texte (x = bonne). Lignes indentées ou précédées d'un marqueur deviennent l'explication. QROC: ajoutez "Réponse:". Le nombre de sous-questions et d'options ne peut pas être modifié ici.
+      </p>
+    </div>
   );
 }

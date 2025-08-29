@@ -2,6 +2,25 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMaintainerOrAdmin, requireAuth, AuthenticatedRequest } from '@/lib/auth-middleware';
 
+// Normalize Google Drive share links (file/d/<id>/..., open?id=<id>, uc?export=download) to direct download form.
+// Leave non-drive or already-direct .pdf links unchanged.
+function normalizeDriveLink(raw?: string | null): string | undefined {
+  if (!raw) return undefined;
+  const url = raw.trim();
+  if (!url) return undefined;
+  // Already a plain PDF (could be remote) -> keep
+  if (/\.pdf($|[?#])/i.test(url)) return url;
+  // Already normalized direct download
+  if (/drive\.google\.com\/uc\?export=download&id=/i.test(url)) return url;
+  // Match typical file patterns
+  const fileMatch = url.match(/https?:\/\/drive\.google\.com\/file\/d\/([^/]+)\//i);
+  const openMatch = url.match(/https?:\/\/drive\.google\.com\/open\?id=([^&]+)/i);
+  const ucMatch = url.match(/https?:\/\/drive\.google\.com\/uc\?id=([^&]+)/i); // some variants use uc?id=
+  const id = fileMatch?.[1] || openMatch?.[1] || ucMatch?.[1];
+  if (id) return `https://drive.google.com/uc?export=download&id=${id}`;
+  return url; // fallback unchanged
+}
+
 async function getHandler(request: AuthenticatedRequest) {
   const url = new URL(request.url);
   const semesterParam = url.searchParams.get('semester'); // 'none' | <semesterId>
@@ -107,7 +126,17 @@ async function postHandler(request: AuthenticatedRequest) {
     specialtyId = spec.id;
   }
 
-  const created = await (prisma as any).session.create({ data: { name, pdfUrl, correctionUrl, niveauId, semesterId, specialtyId } });
+  // Server-side normalization ensures stored links are always direct
+  const created = await (prisma as any).session.create({
+    data: {
+      name,
+      pdfUrl: normalizeDriveLink(pdfUrl),
+      correctionUrl: normalizeDriveLink(correctionUrl),
+      niveauId,
+      semesterId,
+      specialtyId
+    }
+  });
   return NextResponse.json(created, { status: 201 });
 }
 

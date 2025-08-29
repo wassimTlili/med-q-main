@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Lecture, Question } from '@/types';
-import { GripVertical, Save, Undo2, Package, MoveLeft } from 'lucide-react';
+import { GripVertical, Save, Undo2, Package, MoveLeft, Pencil } from 'lucide-react';
+import { GroupedQrocEditDialog } from './edit/GroupedQrocEditDialog';
 
 // Base types we organize into 3 high-level columns:
 // 1. mcq (single QCM)
@@ -52,6 +53,8 @@ export function QuestionOrganizerDialog({ lecture, isOpen, onOpenChange, onSaved
 
   // columns state
   const [columns, setColumns] = useState<Record<ColumnKey, OrganizerEntry[]>>({ mcq: [], qroc: [], clinical: [] });
+  // Grouped QROC edit dialog state
+  const [editingGrouped, setEditingGrouped] = useState<null | { caseNumber: number; questions: Question[] }>(null);
 
   const dragItem = useRef<DragToken | null>(null);
   const overEntryId = useRef<string | null>(null); // target entry token id
@@ -772,7 +775,19 @@ export function QuestionOrganizerDialog({ lecture, isOpen, onOpenChange, onSaved
                     </span>
                     <Package className="h-3.5 w-3.5 text-blue-500" />
                     <span className="text-xs font-medium">{entry.groupKind === 'grouped_qroc' ? `Bloc QROC #${entry.caseNumber}` : `Cas Clinique #${entry.caseNumber}`}</span>
-                    <span className="ml-auto text-[10px] text-muted-foreground">{entry.questions.length} éléments</span>
+                    <span className="ml-auto flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground">{entry.questions.length} éléments</span>
+                      {entry.groupKind === 'grouped_qroc' && (
+                        <button
+                          type="button"
+                          onClick={(e)=> { e.stopPropagation(); setEditingGrouped({ caseNumber: entry.caseNumber, questions: entry.questions.map(q=> ({ ...q })) }); }}
+                          className="p-1 rounded hover:bg-muted transition text-muted-foreground hover:text-foreground"
+                          title="Éditer le bloc (parse rapide)"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </span>
                   </div>
                   <div className="p-2 space-y-1">
                     {entry.questions.map((q,qi) => (
@@ -814,6 +829,7 @@ export function QuestionOrganizerDialog({ lecture, isOpen, onOpenChange, onSaved
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={open => { if (!pendingTypeChange) onOpenChange(open); }}>
       <DialogContent className={`max-w-6xl max-h-[95vh] overflow-hidden flex flex-col p-0 ${pendingTypeChange ? 'pointer-events-none opacity-90' : ''}`} aria-hidden={pendingTypeChange ? 'true' : undefined}>
         <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b">
@@ -899,5 +915,15 @@ export function QuestionOrganizerDialog({ lecture, isOpen, onOpenChange, onSaved
         </div>
       )}
     </Dialog>
+    {editingGrouped ? (
+      <GroupedQrocEditDialog
+        caseNumber={editingGrouped.caseNumber}
+        questions={editingGrouped.questions}
+        isOpen={true}
+        onOpenChange={(o)=> { if(!o) setEditingGrouped(null); }}
+        onSaved={()=> { setEditingGrouped(null); fetchQuestions(); onSaved?.(); }}
+      />
+    ) : null}
+    </>
   );
 }

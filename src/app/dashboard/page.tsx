@@ -75,15 +75,6 @@ export default function DashboardPage() {
               </Alert>
             )}
 
-            {/* User Statistics */}
-            <UserStats
-              averageScore={stats?.averageScore || 0}
-              totalQuestions={stats?.totalQuestions || 0}
-              learningStreak={stats?.learningStreak || 0}
-              totalLectures={stats?.totalLectures || 0}
-              isLoading={isLoading}
-            />
-
             {/* Main Dashboard Grid */}
             <div className="hidden xl:grid gap-6" style={{gridTemplateColumns: '330px 1fr'}}>
               {/* Left column stacked */}

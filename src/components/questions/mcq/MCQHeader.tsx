@@ -50,9 +50,7 @@ export function MCQHeader({ questionText, isSubmitted, questionNumber, session, 
       ) : (
         <h3 className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words whitespace-pre-wrap">{questionText}</h3>
       )}
-      <p className="text-sm text-muted-foreground dark:text-gray-300">
-        {isSubmitted ? t('questions.reviewAnswers') : t('questions.selectAllCorrect')}
-      </p>
+  {/* Removed review guidance text per request */}
     </div>
   );
 }
