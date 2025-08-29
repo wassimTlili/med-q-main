@@ -616,13 +616,13 @@ export function OpenQuestion({
     if (!canShowReference) return null;
     return (
       <div className="mt-4 space-y-4">
-        <div className="rounded-md border border-emerald-700 dark:border-emerald-600 bg-emerald-800/25 dark:bg-emerald-900/60 p-5 shadow-sm ring-1 ring-inset ring-emerald-600/40">
-          <div className="text-xs md:text-sm uppercase tracking-wide font-extrabold text-emerald-100 mb-2">RÉPONSE DE RÉFÉRENCE</div>
-          <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-medium text-emerald-50">{expectedReference}</div>
+        <div className="rounded-md border border-emerald-200 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/60 p-5 shadow-sm">
+          <div className="text-xs md:text-sm uppercase tracking-wide font-extrabold text-emerald-700 dark:text-emerald-100 mb-2">RÉPONSE DE RÉFÉRENCE</div>
+          <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-medium text-emerald-800 dark:text-emerald-50">{expectedReference}</div>
         </div>
-        <div className="rounded-md border border-blue-700/40 dark:border-blue-600/40 bg-blue-900/40 dark:bg-blue-950/40 p-4 shadow-sm">
-          <div className="text-[11px] uppercase tracking-wide font-semibold text-blue-300 mb-1">Votre réponse</div>
-          <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-medium text-blue-100">{answer || <span className="italic opacity-70">(vide)</span>}</div>
+        <div className="rounded-md border border-blue-200 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/40 p-4 shadow-sm">
+          <div className="text-[11px] uppercase tracking-wide font-semibold text-blue-700 dark:text-blue-300 mb-1">Votre réponse</div>
+          <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-medium text-blue-800 dark:text-blue-100">{answer || <span className="italic opacity-70">(vide)</span>}</div>
         </div>
       </div>
     );
