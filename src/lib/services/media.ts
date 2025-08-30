@@ -81,8 +81,10 @@ export async function rehostImageIfConfigured(url: string | null): Promise<Rehos
       Object.defineProperty(blob, 'name', { value: filename, writable: false });
     }
 
-    const uploaded = await utapi.uploadFiles(blob);
-    const resultUrl = uploaded?.data?.url || null;
+  const uploaded = await utapi.uploadFiles(blob);
+  const data: any = uploaded?.data;
+  // Prefer new UploadThing fields (ufsUrl) with backwards compatibility
+  const resultUrl = data?.ufsUrl || data?.ufsUUrl || data?.url || data?.appUrl || null;
     if (resultUrl) {
       return { url: resultUrl, type: contentType };
     }

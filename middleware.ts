@@ -5,6 +5,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Allow pdf.js worker (and other root-level static files) to pass through untouched
+  if (pathname === '/pdf.worker.min.mjs' || pathname === '/pdf.worker.mjs') {
+    return NextResponse.next();
+  }
   
   // Get token from cookie
   const token = request.cookies.get('auth-token')?.value;
@@ -71,6 +76,7 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+  // Exclude pdf.worker files explicitly so they are not wrapped by auth middleware
+  '/((?!api|_next/static|_next/image|favicon.ico|pdf.worker|min.worker|pdf.worker.min.mjs|public).*)',
   ],
 }; 
