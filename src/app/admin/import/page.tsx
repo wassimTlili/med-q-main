@@ -110,6 +110,8 @@ interface ImportPreview {
   explanation?: string;
   niveau?: string;
   semestre?: string;
+  rappel?: string;
+  optionExplanations?: string[];
         matchedLecture?: Lecture;
         mediaUrl?: string | null;
         mediaType?: string | null;
@@ -373,6 +375,8 @@ export default function ImportPage() {
               explanation?: string;
               niveau?: string;
               semestre?: string;
+              rappel?: string;
+              optionExplanations?: string[];
               matchedLecture?: Lecture;
               mediaUrl?: string | null;
               mediaType?: string | null;
@@ -393,6 +397,7 @@ export default function ImportPage() {
               mediaUrl,
               mediaType
             };
+            if (rowData['rappel']) previewItem.rappel = rowData['rappel'];
             if (sheetName === 'cas_qcm' || sheetName === 'cas_qroc') {
               previewItem.caseNumber = safeParseInt(rowData['cas n']) ?? undefined;
               previewItem.caseText = rowData['texte du cas'] || undefined;
@@ -400,12 +405,16 @@ export default function ImportPage() {
             }
             if (sheetName === 'qcm' || sheetName === 'cas_qcm') {
               const options: string[] = [];
+              const optionExplanations: string[] = [];
               for (let j = 0; j < 5; j++) {
                 const optionKey = `option ${String.fromCharCode(97 + j)}`;
                 if (rowData[optionKey]) options.push(rowData[optionKey]);
+                const expKey = `explication ${String.fromCharCode(97 + j)}`;
+                if (rowData[expKey]) optionExplanations.push(rowData[expKey]);
               }
               previewItem.options = options;
               previewItem.correctAnswers = rowData['reponse'] ? [rowData['reponse']] : [];
+              if (optionExplanations.length) previewItem.optionExplanations = optionExplanations;
             }
             previewData.push(previewItem);
           }
@@ -716,6 +725,8 @@ export default function ImportPage() {
                               explanation?: string;
                               niveau?: string;
                               semestre?: string;
+                              rappel?: string;
+                              optionExplanations?: string[];
                               matchedLecture?: Lecture;
                               mediaUrl?: string | null;
                               mediaType?: string | null;
@@ -779,6 +790,9 @@ export default function ImportPage() {
                                         {item.options.map((option, optIndex) => (
                                           <p key={optIndex} className="text-[11px] sm:text-xs text-muted-foreground ml-2">
                                             {String.fromCharCode(65 + optIndex)}. {String(option)}
+                                            {item.optionExplanations && item.optionExplanations[optIndex] && (
+                                              <span className="italic text-[10px] ml-1">— {item.optionExplanations[optIndex].substring(0,60)}{item.optionExplanations[optIndex].length>60?'…':''}</span>
+                                            )}
                                           </p>
                                         ))}
                                       </div>
@@ -792,6 +806,11 @@ export default function ImportPage() {
                                     {item.explanation && (
                                       <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                                         <span className="font-semibold">{t('admin.explanation') || 'Explanation'}:</span> {item.explanation.substring(0, 120)}{item.explanation.length > 120 ? '…' : ''}
+                                      </p>
+                                    )}
+                                    {item.rappel && (
+                                      <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
+                                        <span className="font-semibold">Rappel:</span> {item.rappel.substring(0,100)}{item.rappel.length>100?'…':''}
                                       </p>
                                     )}
                                     {(item.niveau || item.semestre) && (

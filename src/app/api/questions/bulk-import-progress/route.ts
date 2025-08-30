@@ -25,9 +25,28 @@ type ImportSession = {
   message: string;
   logs: string[];
   stats?: ImportStats;
+  lastUpdated: number;
+  createdAt: number;
+  cancelled?: boolean;
 };
 
 const activeImports = new Map<string, ImportSession>();
+
+// Periodic cleanup (keep sessions for 30 minutes after completion)
+const SESSION_TTL_MS = 30 * 60 * 1000;
+const CLEAN_INTERVAL_MS = 5 * 60 * 1000;
+if (!(global as any).__bulkImportCleanerStarted) {
+  (global as any).__bulkImportCleanerStarted = true;
+  setInterval(() => {
+    const now = Date.now();
+    for (const [id, sess] of activeImports.entries()) {
+      const isComplete = sess.phase === 'complete' || sess.cancelled;
+      if (isComplete && now - sess.lastUpdated > SESSION_TTL_MS) {
+        activeImports.delete(id);
+      }
+    }
+  }, CLEAN_INTERVAL_MS).unref?.();
+}
 
 // --- Header normalization helpers ---
 const normalizeHeader = (h: string): string =>
@@ -69,10 +88,37 @@ const headerAliases: Record<string, string> = {
   'explication reponse': 'explication',
   'explanation': 'explication',
   'correction': 'explication',
+  // per-option explanations (map directly, we'll inspect later)
+  'explication a': 'explication a',
+  'explication b': 'explication b',
+  'explication c': 'explication c',
+  'explication d': 'explication d',
+  'explication e': 'explication e',
+  // sometimes with option letter capitalized
+  'explication A': 'explication a',
+  'explication B': 'explication b',
+  'explication C': 'explication c',
+  'explication D': 'explication d',
+  'explication E': 'explication e',
   'niveau': 'niveau',
   'level': 'niveau',
   'semestre': 'semestre',
-  'semester': 'semestre'
+  'semester': 'semestre',
+  // course reminder (rappel) columns
+  'rappel': 'rappel',
+  'rappel du cours': 'rappel',
+  'rappel cours': 'rappel',
+  'course reminder': 'rappel',
+  'rappel_cours': 'rappel',
+  // explicit media/image columns
+  'image': 'image',
+  'image url': 'image',
+  'image_url': 'image',
+  'media': 'image',
+  'media url': 'image',
+  'media_url': 'image',
+  'illustration': 'image',
+  'illustration url': 'image'
 };
 
 const canonicalizeHeader = (h: string): string => {
@@ -165,15 +211,37 @@ function parseMCQOptions(rowData: Record<string, unknown>): { options: string[],
   return { options, correctAnswers };
 }
 
+// Build combined explanation merging global and per-option explanation columns
+function buildCombinedExplanation(rowData: Record<string, string>): string | undefined {
+  const base = rowData['explication'] ? String(rowData['explication']).trim() : '';
+  const perOption: string[] = [];
+  const letters = ['a','b','c','d','e'];
+  letters.forEach((l, idx) => {
+    const key = `explication ${l}`; // already canonicalised
+    const val = rowData[key];
+    if (val) {
+      const clean = String(val).trim();
+      if (clean) perOption.push(`(${l.toUpperCase()}) ${clean}`);
+    }
+  });
+  if (!base && perOption.length === 0) return undefined;
+  if (perOption.length === 0) return base || undefined;
+  let combined = base ? base + '\n\n' : '';
+  combined += 'Explications:\n' + perOption.join('\n');
+  return combined;
+}
+
 // Function to update progress for an import session
 function updateProgress(importId: string, progress: number, message: string, log?: string, phase?: Phase) {
-  const current = activeImports.get(importId) || { progress: 0, phase: 'validating', message: '', logs: [] } as ImportSession;
+  const current = activeImports.get(importId);
+  if (!current) return; // session might have been cleaned/cancelled
   activeImports.set(importId, {
     ...current,
     progress,
     message,
     phase: phase ?? current.phase,
-    logs: log ? [...current.logs, log] : current.logs
+    logs: log ? [...current.logs, log] : current.logs,
+    lastUpdated: Date.now()
   });
 }
 
@@ -273,6 +341,8 @@ async function processFile(file: File, importId: string) {
     }
     
     for (const sheetName of sheets) {
+      const session = activeImports.get(importId);
+      if (!session || session.cancelled) break; // cancellation check
       const actualName = canonicalToActual.get(sheetName);
       if (!actualName || !workbook.Sheets[actualName]) {
         updateProgress(importId, 10, `Sheet '${sheetName}' not found, skipping...`);
@@ -301,6 +371,8 @@ async function processFile(file: File, importId: string) {
 
       // Process each row
       for (let i = 0; i < dataRows.length; i++) {
+        const sessionLoop = activeImports.get(importId);
+        if (!sessionLoop || sessionLoop.cancelled) break; // cancellation check
         const row = dataRows[i];
   const progress = 25 + (i / dataRows.length) * 60;
         updateProgress(importId, progress, `Processing row ${i + 1} in ${sheetName}...`);
@@ -483,6 +555,28 @@ async function processFile(file: File, importId: string) {
             mediaType: hostedType
           };
 
+          // Inject course reminder (rappel) if provided
+          if (rowData['rappel']) {
+            const rappelVal = String(rowData['rappel']).trim();
+            if (rappelVal) {
+              questionData.courseReminder = rappelVal;
+            }
+          }
+
+          // If no media extracted from text and an explicit image column exists, use it
+          if (!questionData.mediaUrl && rowData['image']) {
+            const rawImg = String(rowData['image']).trim();
+            if (rawImg) {
+              questionData.mediaUrl = rawImg;
+              const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|tiff|ico)(\?.*)?$/i.test(rawImg) || rawImg.startsWith('http') || rawImg.startsWith('data:image/');
+              questionData.mediaType = isImage ? 'image' : (questionData.mediaType || null);
+              hostedUrl = questionData.mediaUrl; // keep for stats increment below
+              hostedType = questionData.mediaType || null;
+              importStats.questionsWithImages++;
+              updateProgress(importId, progress, 'Attached image column to question', `🖼️ Image column used: ${rawImg.substring(0,80)}`);
+            }
+          }
+
           // Set question type and specific fields
           switch (sheetName) {
             case 'qcm': {
@@ -542,7 +636,7 @@ async function processFile(file: File, importId: string) {
             type: questionData.type,
             options: questionData.options ?? undefined,
             correctAnswers: questionData.correctAnswers,
-            explanation: rowData['explication'] ? String(rowData['explication']) : undefined,
+            explanation: buildCombinedExplanation(rowData),
             courseReminder: questionData.courseReminder,
             number: questionData.number,
             session: questionData.session ?? undefined,
@@ -568,18 +662,27 @@ async function processFile(file: File, importId: string) {
           importStats.errors.push(errorMsg);
           console.error(`Error processing row ${i + 1} in ${sheetName}:`, error);
         }
+
+        // Yield every 25 rows to avoid blocking event loop (helpful on serverless and prevents watchdog timeouts)
+        if (i > 0 && i % 25 === 0) {
+          await new Promise(r => setTimeout(r, 0));
+        }
       }
     }
 
     // Update final stats (preserve latest progress/message/logs)
-    const currentSession = activeImports.get(importId) || { progress: 0, phase: 'importing', message: '', logs: [] } as ImportSession;
-    activeImports.set(importId, {
-      progress: currentSession.progress,
-      phase: 'complete',
-      message: currentSession.message,
-      logs: currentSession.logs,
-  stats: importStats
-    });
+  const currentSession = activeImports.get(importId) || { progress: 0, phase: 'importing', message: '', logs: [], lastUpdated: Date.now(), createdAt: Date.now() } as ImportSession;
+    const finalSession = activeImports.get(importId);
+    if (finalSession && !finalSession.cancelled) {
+      activeImports.set(importId, {
+        ...finalSession,
+        progress: 100,
+        phase: 'complete',
+        stats: importStats,
+        message: 'Import completed',
+        lastUpdated: Date.now()
+      });
+    }
 
     updateProgress(importId, 100, 'Import completed!', `🎉 Import completed! Total: ${importStats.total}, Imported: ${importStats.imported}, Failed: ${importStats.failed}, Created: ${importStats.createdSpecialties} specialties, ${importStats.createdLectures} lectures, ${importStats.createdCases} cases, ${importStats.questionsWithImages} questions with images`, 'complete');
 
@@ -606,6 +709,7 @@ async function postHandler(request: AuthenticatedRequest) {
     console.log('Creating import session with ID:', importId);
     
     // Initialize import session
+    const now = Date.now();
     const initialSession: ImportSession = {
       progress: 0,
       phase: 'validating',
@@ -618,9 +722,11 @@ async function postHandler(request: AuthenticatedRequest) {
         createdSpecialties: 0,
         createdLectures: 0,
         questionsWithImages: 0,
-  createdCases: 0,
-  errors: []
-      }
+        createdCases: 0,
+        errors: []
+      },
+      lastUpdated: now,
+      createdAt: now
     };
     
     activeImports.set(importId, initialSession);
@@ -630,7 +736,10 @@ async function postHandler(request: AuthenticatedRequest) {
 
     // Process file in background
     console.log('Starting file processing in background');
-    processFile(file, importId);
+  // Kick off async processing (do not await to return quickly).
+  // NOTE: On serverless platforms long-running background tasks may be killed;
+  // keep rows moderate or refactor to chunked polling if needed.
+  processFile(file, importId).catch(e => console.error('Background import error', e));
 
     console.log('Returning importId:', importId);
     return NextResponse.json({ importId });
@@ -727,6 +836,19 @@ async function getHandler(request: AuthenticatedRequest) {
 
 export const GET = requireAuth(getHandler);
 export const POST = requireAuth(postHandler);
+
+// Allow cancelling an active import
+async function deleteHandler(request: AuthenticatedRequest) {
+  const { searchParams } = new URL(request.url);
+  const importId = searchParams.get('importId');
+  if (!importId) return NextResponse.json({ error: 'Import ID required' }, { status: 400 });
+  const session = activeImports.get(importId);
+  if (!session) return NextResponse.json({ error: 'Import not found' }, { status: 404 });
+  activeImports.set(importId, { ...session, cancelled: true, message: 'Cancelled by user', phase: 'complete', lastUpdated: Date.now() });
+  return NextResponse.json({ ok: true });
+}
+
+export const DELETE = requireAuth(deleteHandler);
 
 // Test endpoint to verify route is working
 export async function OPTIONS() {
