@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
@@ -7,12 +7,12 @@ import { MCQQuestion } from './MCQQuestion';
 import { OpenQuestion } from './OpenQuestion';
 import { QuestionNotes } from './QuestionNotes';
 import { QuestionComments } from './QuestionComments';
-// import { ClinicalCaseDisplay } from './ClinicalCaseDisplay'; // replaced inline positioning
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CheckCircle, Circle, AlertCircle, Eye, FileText, Pin, PinOff, EyeOff, Trash2, Pencil, StickyNote, RotateCcw, ChevronRight } from 'lucide-react';
+import { CheckCircle, Circle, AlertCircle, Eye, FileText, Pin, PinOff, EyeOff, Trash2, Pencil, StickyNote, RotateCcw, ChevronRight, Flag } from 'lucide-react';
+import { ReportQuestionDialog } from './ReportQuestionDialog';
 import { HighlightableCaseText } from './HighlightableCaseText';
 import { ClinicalCaseEditDialog } from './edit/ClinicalCaseEditDialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,8 +28,8 @@ interface ClinicalCaseQuestionProps {
   isAnswered: boolean;
   answerResult?: boolean | 'partial';
   userAnswers?: Record<string, any>;
-  answerResults?: Record<string, boolean | 'partial'>; // Pass existing results for individual questions
-  onAnswerUpdate?: (questionId: string, answer: any, result?: boolean | 'partial') => void; // For persisting individual updates
+  answerResults?: Record<string, boolean | 'partial'>;
+  onAnswerUpdate?: (questionId: string, answer: any, result?: boolean | 'partial') => void;
 }
 
 export function ClinicalCaseQuestion({
@@ -45,8 +45,8 @@ export function ClinicalCaseQuestion({
   answerResults = {},
   onAnswerUpdate
 }: ClinicalCaseQuestionProps) {
-  const { t } = useTranslation();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [answers, setAnswers] = useState<Record<string, any>>(userAnswers);
   const [questionResults, setQuestionResults] = useState<Record<string, boolean | 'partial'>>(answerResults);
   const [isCaseComplete, setIsCaseComplete] = useState(isAnswered);
@@ -58,14 +58,13 @@ export function ClinicalCaseQuestion({
   const [isTogglingHidden, setIsTogglingHidden] = useState(false);
   const [showNotesArea, setShowNotesArea] = useState(false);
   const [openCaseEdit, setOpenCaseEdit] = useState(false);
-  
-  // Refs to track question elements for auto-scrolling
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportTargetQuestion, setReportTargetQuestion] = useState<Question | null>(null);
   const questionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const answeredQuestions = Object.keys(answers).length;
   const progress = (answeredQuestions / clinicalCase.totalQuestions) * 100;
 
-  // Reset state when clinical case changes
   useEffect(() => {
     if (!isAnswered) {
       setAnswers({});
@@ -75,10 +74,19 @@ export function ClinicalCaseQuestion({
     }
   }, [clinicalCase.caseNumber, isAnswered]);
 
-  // Derive group pinned / hidden status
+  // Always reset scroll to top when a clinical case loads (avoid starting mid-page)
   useEffect(() => {
-    // Consider group pinned if ALL questions pinned (strict) or any? We'll use ANY for usability
-    // We don't have pinned list here, so we fetch quickly (best-effort)
+    if (typeof window !== 'undefined') {
+      // Use rAF to run after layout for consistency
+      requestAnimationFrame(() => {
+        if (window.scrollY > 0) {
+          window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+      });
+    }
+  }, [clinicalCase.caseNumber]);
+
+  useEffect(() => {
     const fetchPinned = async () => {
       try {
         if (!user?.id) return;
@@ -91,7 +99,6 @@ export function ClinicalCaseQuestion({
       } catch {}
     };
     fetchPinned();
-    // Hidden if all are hidden
     const allHidden = clinicalCase.questions.every(q => (q as any).hidden);
     setGroupHidden(allHidden);
   }, [clinicalCase.questions, user?.id]);
@@ -130,7 +137,6 @@ export function ClinicalCaseQuestion({
       for (const q of clinicalCase.questions) {
         await fetch(`/api/questions/${q.id}`, { method: 'DELETE', credentials: 'include' });
       }
-      // Simple full reload to refresh list
       window.location.reload();
     } catch {
       setIsDeleting(false);
@@ -138,21 +144,13 @@ export function ClinicalCaseQuestion({
   };
 
   const scrollToNextQuestion = (currentQuestionId: string, updatedAnswers: Record<string, any>) => {
-    // Find the current question index
     const currentIndex = clinicalCase.questions.findIndex(q => q.id === currentQuestionId);
-    
-    // Find the next unanswered question
     for (let i = currentIndex + 1; i < clinicalCase.questions.length; i++) {
       const nextQuestion = clinicalCase.questions[i];
       if (updatedAnswers[nextQuestion.id] === undefined) {
-        // Found next unanswered question, scroll to it
         const element = questionRefs.current[nextQuestion.id];
         if (element) {
-          element.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start',
-            inline: 'nearest'
-          });
+          element.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
         }
         break;
       }
@@ -161,52 +159,30 @@ export function ClinicalCaseQuestion({
 
   const handleQuestionAnswer = (questionId: string, answer: any, result?: boolean | 'partial') => {
     const wasAnswered = answers[questionId] !== undefined;
-    
     setAnswers(prev => {
-      const newAnswers = {
-        ...prev,
-        [questionId]: answer
-      };
-      
-      // Auto-scroll to next question if this is a new answer (not updating existing)
+      const newAnswers = { ...prev, [questionId]: answer };
       if (!wasAnswered && !showResults) {
-        setTimeout(() => scrollToNextQuestion(questionId, newAnswers), 300); // Small delay for smooth UX
+        setTimeout(() => scrollToNextQuestion(questionId, newAnswers), 300);
       }
-      
       return newAnswers;
     });
-
     if (result !== undefined) {
-      setQuestionResults(prev => ({
-        ...prev,
-        [questionId]: result
-      }));
+      setQuestionResults(prev => ({ ...prev, [questionId]: result }));
     }
   };
 
   const handleCompleteCase = () => {
-    // All questions answered, complete the case
     setIsCaseComplete(true);
     onSubmit(clinicalCase.caseNumber, answers, questionResults);
   };
-
-  const handleShowResults = () => {
-    setShowResults(true);
-  };
-
+  const handleShowResults = () => setShowResults(true);
   const handleSelfAssessmentUpdate = (questionId: string, result: boolean | 'partial') => {
-    setQuestionResults(prev => ({
-      ...prev,
-      [questionId]: result
-    }));
-    
-    // Also persist the self-assessment result to parent storage
+    setQuestionResults(prev => ({ ...prev, [questionId]: result }));
     if (onAnswerUpdate) {
       const userAnswer = answers[questionId];
       onAnswerUpdate(questionId, userAnswer, result);
     }
   };
-
   const getQuestionStatus = (question: Question) => {
     if (answers[question.id] !== undefined) {
       if (showResults) {
@@ -219,57 +195,62 @@ export function ClinicalCaseQuestion({
     }
     return 'unanswered';
   };
-
   const renderQuestion = (question: Question, index: number) => {
-    const isAnswered = answers[question.id] !== undefined;
-    const answerResult = showResults ? questionResults[question.id] : undefined;
-    const userAnswer = answers[question.id];
-
+    const isAnsweredQ = answers[question.id] !== undefined;
+    const answerResultQ = showResults ? questionResults[question.id] : undefined;
+    const userAnswerQ = answers[question.id];
     return (
-      <div 
-        key={question.id} 
-        ref={(el) => { questionRefs.current[question.id] = el; }}
-        className="border rounded-lg p-6 bg-card"
-      >
-        <div className="flex items-center gap-2 mb-4">
-          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+      <div key={question.id} ref={el => { questionRefs.current[question.id] = el; }} className="border rounded-xl p-6 bg-card shadow-sm">
+        <div className="flex items-center mb-4">
+          <span
+            className={
+              'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-wide ' +
+              (isAnsweredQ
+                ? showResults
+                  ? answerResultQ === true
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                    : answerResultQ === 'partial'
+                      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                      : answerResultQ === false
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                : 'bg-muted text-muted-foreground')
+            }
+          >
             Question {index + 1}
-          </div>
-          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted">
-            {question.type === 'clinic_mcq' ? 'QCM' : 'QROC'}
-          </div>
-          {isAnswered && (
-            <div className="ml-auto">
+          </span>
+          {isAnsweredQ && (
+            <span className="ml-auto inline-flex items-center">
               {showResults ? (
                 <>
-                  {answerResult === true && <CheckCircle className="h-4 w-4 text-green-600" />}
-                  {answerResult === 'partial' && <AlertCircle className="h-4 w-4 text-yellow-600" />}
-                  {answerResult === false && <AlertCircle className="h-4 w-4 text-red-600" />}
+                  {answerResultQ === true && <CheckCircle className="h-4 w-4 text-green-600" />}
+                  {answerResultQ === 'partial' && <AlertCircle className="h-4 w-4 text-yellow-600" />}
+                  {answerResultQ === false && <AlertCircle className="h-4 w-4 text-red-600" />}
                 </>
               ) : (
                 <Circle className="h-4 w-4 text-blue-600" />
               )}
-            </div>
+            </span>
           )}
         </div>
-
         {question.type === 'clinic_mcq' ? (
           <MCQQuestion
             question={question}
             onSubmit={(answer, isCorrect) => handleQuestionAnswer(question.id, answer, isCorrect)}
-            onNext={() => {}} // show all at once
+            onNext={() => {}}
             lectureId={lectureId}
             lectureTitle={lectureTitle}
             specialtyName={specialtyName}
-            isAnswered={showResults ? isAnswered : false}
-            answerResult={showResults ? answerResult : undefined}
-            userAnswer={userAnswer as any}
+            isAnswered={showResults ? isAnsweredQ : false}
+            answerResult={showResults ? answerResultQ : undefined}
+            userAnswer={userAnswerQ as any}
             hideImmediateResults={!showResults}
-            // Always hide per-subquestion actions/notes/comments for clinical case aggregation
             hideActions
             hideNotes
             hideComments
             highlightConfirm
+            hideMeta
           />
         ) : (
           <OpenQuestion
@@ -279,16 +260,17 @@ export function ClinicalCaseQuestion({
             lectureId={lectureId}
             lectureTitle={lectureTitle}
             specialtyName={specialtyName}
-            isAnswered={showResults ? isAnswered : false}
-            answerResult={showResults ? answerResult : undefined}
-            userAnswer={userAnswer as any}
+            isAnswered={showResults ? isAnsweredQ : false}
+            answerResult={showResults ? answerResultQ : undefined}
+            userAnswer={userAnswerQ as any}
             hideImmediateResults={!showResults}
-            showDeferredSelfAssessment={showResults && isAnswered && question.type === 'clinic_croq'}
+            showDeferredSelfAssessment={showResults && isAnsweredQ && question.type === 'clinic_croq'}
             onSelfAssessmentUpdate={handleSelfAssessmentUpdate}
             hideNotes
             hideComments
             hideActions
             highlightConfirm
+            hideMeta
           />
         )}
       </div>
@@ -296,55 +278,77 @@ export function ClinicalCaseQuestion({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-6 w-full max-w-full"
-    >
-      {/* Clinical Case Header */}
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.4 }} className="space-y-6 w-full max-w-full" data-clinical-case>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3 mb-2">
-            <span className="flex items-center gap-2">Cas Clinique #{clinicalCase.caseNumber}
-              {groupPinned && <Pin className="h-4 w-4 text-pink-500" />}
-              {groupHidden && <EyeOff className="h-4 w-4 text-red-500" />}
-            </span>
-            {isCaseComplete && showResults && (
-              <div className="flex items-center gap-1 text-sm">
-                {answerResult === true && <CheckCircle className="h-4 w-4 text-green-600" />}
-                {answerResult === 'partial' && <AlertCircle className="h-4 w-4 text-yellow-600" />}
-                {answerResult === false && <AlertCircle className="h-4 w-4 text-red-600" />}
-              </div>
+        <CardHeader className="pb-3">
+          <div className="space-y-2 w-full">
+            {(() => {
+              const firstQuestion = clinicalCase.questions[0];
+              const session = firstQuestion?.session;
+              const parts: string[] = ['Cas Clinique', `#${clinicalCase.caseNumber}`];
+              if (session) {
+                const hasWord = /session/i.test(session);
+                parts.push(hasWord ? session : `Session ${session}`);
+              }
+              return (
+                <div className="flex items-center gap-2 text-sm sm:text-base font-semibold text-foreground dark:text-gray-100">
+                  <span className="truncate">{parts.join(' / ')}</span>
+                  {groupPinned && <Pin className="h-4 w-4 text-pink-500" />}
+                  {groupHidden && <EyeOff className="h-4 w-4 text-red-500" />}
+                  {isCaseComplete && showResults && (
+                    <span className="flex items-center gap-1">
+                      {answerResult === true && <CheckCircle className="h-4 w-4 text-green-600" />}
+                      {answerResult === 'partial' && <AlertCircle className="h-4 w-4 text-yellow-600" />}
+                      {answerResult === false && <AlertCircle className="h-4 w-4 text-red-600" />}
+                    </span>
+                  )}
+                  <span className="ml-auto inline-flex gap-1">
+                    <Button variant="outline" size="sm" onClick={toggleGroupPin} className="flex items-center gap-1">
+                      {groupPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                      <span className="hidden sm:inline">{groupPinned ? 'Unpin' : 'Pin'}</span>
+                    </Button>
+                    {(user?.role === 'admin' || user?.role === 'maintainer') && (
+                      <Button variant="outline" size="sm" onClick={toggleGroupHidden} disabled={isTogglingHidden} title={groupHidden ? 'Unhide' : 'Hide'}>
+                        {groupHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </Button>
+                    )}
+                    {(user?.role === 'admin' || user?.role === 'maintainer') && (
+                      <Button variant="outline" size="sm" title="Éditer le cas clinique" onClick={() => setOpenCaseEdit(true)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {/* Report whole clinical case (reports first question id for context) */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title="Signaler"
+                      onClick={() => {
+                        const first = clinicalCase.questions[0];
+                        if (first) {
+                          setReportTargetQuestion(first);
+                          setIsReportDialogOpen(true);
+                        }
+                      }}
+                      className="flex items-center gap-1"
+                    >
+                      <Flag className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Signaler</span>
+                    </Button>
+                    {user?.role === 'admin' && (
+                      <Button variant="outline" size="sm" className="text-destructive" disabled={isDeleting} onClick={handleDeleteGroup} title="Delete all">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </span>
+                </div>
+              );
+            })()}
+            {(specialtyName || lectureTitle) && (
+              <div className="text-xs sm:text-sm text-muted-foreground">{[specialtyName, lectureTitle].filter(Boolean).join(' • ')}</div>
             )}
-            {/* Group-level aggregated actions */}
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={toggleGroupPin} className="flex items-center gap-1">
-                {groupPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">{groupPinned ? 'Unpin' : 'Pin'}</span>
-              </Button>
-              {(user?.role === 'admin' || user?.role === 'maintainer') && (
-                <Button variant="outline" size="sm" onClick={toggleGroupHidden} disabled={isTogglingHidden} title={groupHidden ? 'Unhide' : 'Hide'}>
-                  {groupHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                </Button>
-              )}
-              {(user?.role === 'admin' || user?.role === 'maintainer') && (
-                <Button variant="outline" size="sm" title="Éditer le cas clinique" onClick={()=> setOpenCaseEdit(true)}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-              )}
-              {user?.role === 'admin' && (
-                <Button variant="outline" size="sm" className="text-destructive" disabled={isDeleting} onClick={handleDeleteGroup} title="Delete all">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          </CardTitle>
-          {/* (Case text moved below card for larger display) */}
+          </div>
         </CardHeader>
-        <CardContent>
-          {/* Progress Bar */}
+        <CardContent className="pt-2">
           <div className="mb-4">
             <div className="flex justify-between text-sm text-muted-foreground mb-2">
               <span>{answeredQuestions} sur {clinicalCase.totalQuestions} questions répondues</span>
@@ -352,24 +356,17 @@ export function ClinicalCaseQuestion({
             </div>
             <Progress value={progress} className="h-2" />
           </div>
-
-          {/* Questions Summary */}
           <div className="flex flex-wrap gap-2 mb-4">
             {clinicalCase.questions.map((question, index) => {
               const status = getQuestionStatus(question);
               return (
-                <div
-                  key={question.id}
-                  className="flex items-center gap-1 px-2 py-1 rounded text-xs"
-                >
+                <div key={question.id} className="flex items-center gap-1 px-2 py-1 rounded text-xs">
                   {status === 'correct' && <CheckCircle className="h-3 w-3 text-green-600" />}
                   {status === 'partial' && <AlertCircle className="h-3 w-3 text-yellow-600" />}
                   {status === 'incorrect' && <AlertCircle className="h-3 w-3 text-red-600" />}
                   {status === 'answered' && <Circle className="h-3 w-3 text-blue-600" />}
                   {status === 'unanswered' && <Circle className="h-3 w-3 text-muted-foreground" />}
-                  <span className={status === 'unanswered' ? 'text-muted-foreground' : ''}>
-                    {index + 1}
-                  </span>
+                  <span className={status === 'unanswered' ? 'text-muted-foreground' : ''}>{index + 1}</span>
                 </div>
               );
             })}
@@ -377,142 +374,109 @@ export function ClinicalCaseQuestion({
         </CardContent>
       </Card>
 
-      {/* Clinical case text moved here, larger and still highlightable */}
       {clinicalCase.caseText && (
         <div className="rounded-xl border bg-blue-50/60 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-6 text-blue-800 dark:text-blue-200 text-base sm:text-lg leading-relaxed whitespace-pre-wrap">
-          <HighlightableCaseText
-            lectureId={lectureId}
-            text={clinicalCase.caseText}
-            className="break-words"
-          />
+          <HighlightableCaseText lectureId={lectureId} text={clinicalCase.caseText} className="break-words" />
         </div>
       )}
 
-      {/* All Questions */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Questions du cas clinique</CardTitle>
-        </CardHeader>
         <CardContent>
-          {/* Group-level action bar placeholder (pin/report could be added here) */}
-          <div className="space-y-6">
-            {clinicalCase.questions.map((question, index) => 
-              renderQuestion(question, index)
-            )}
+          <div className="space-y-6 mt-6">
+            {clinicalCase.questions.map((question, index) => renderQuestion(question, index))}
+          </div>
+          <div className="mt-8 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowNotesArea(p => !p);
+                    if (!showNotesArea) setTimeout(() => { document.getElementById(`clinical-case-notes-${clinicalCase.caseNumber}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 30);
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  <StickyNote className="h-4 w-4" />
+                  <span className="hidden sm:inline">{showNotesArea ? 'Fermer les notes' : 'Prendre une note'}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setAnswers({});
+                    setQuestionResults({});
+                    setIsCaseComplete(false);
+                    setShowResults(false);
+                    setShowNotesArea(false);
+                    setTimeout(() => {
+                      const ta = document.querySelector('[data-clinical-case] textarea, [data-clinical-case] input[type="radio"]');
+                      if (ta instanceof HTMLElement) ta.focus();
+                    }, 40);
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  <span className="hidden sm:inline">Répondre à nouveau</span>
+                </Button>
+                <Button onClick={onNext} size="sm" className="flex items-center gap-1">
+                  <span className="hidden sm:inline">Suivant</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div id={`clinical-case-notes-${clinicalCase.caseNumber}`} className="space-y-6">
+              {showNotesArea && <QuestionNotes questionId={`clinical-case-${clinicalCase.caseNumber}`} />}
+              <QuestionComments questionId={`clinical-case-${clinicalCase.caseNumber}`} />
+            </div>
           </div>
         </CardContent>
       </Card>
 
-  {/* Single aggregated notes & comments for entire clinical case (treat as one question) */}
-  {answeredQuestions === clinicalCase.totalQuestions && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 flex-wrap">
-            <div className="flex gap-2 flex-wrap justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowNotesArea(p=>!p);
-                  if (!showNotesArea) setTimeout(()=>{ document.getElementById(`clinical-case-notes-${clinicalCase.caseNumber}`)?.scrollIntoView({behavior:'smooth', block:'start'}); },30);
-                }}
-                className="flex items-center gap-1"
-              >
-                <StickyNote className="h-4 w-4" />
-                <span className="hidden sm:inline">{showNotesArea ? 'Fermer les notes' : 'Prendre une note'}</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  // fully reset case to allow re-answer (clear answers & results)
-                  setAnswers({});
-                  setQuestionResults({});
-                  setIsCaseComplete(false);
-                  setShowResults(false);
-                  setShowNotesArea(false);
-                  // focus first textarea or option after a tick
-                  setTimeout(()=>{
-                    const ta = document.querySelector('[data-clinical-case] textarea, [data-clinical-case] input[type="radio"]');
-                    if (ta instanceof HTMLElement) ta.focus();
-                  },40);
-                }}
-                className="flex items-center gap-1"
-              >
-                <RotateCcw className="h-4 w-4" />
-                <span className="hidden sm:inline">Répondre à nouveau</span>
-              </Button>
-              <Button onClick={onNext} size="sm" className="flex items-center gap-1">
-                <span className="hidden sm:inline">Suivant</span>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div id={`clinical-case-notes-${clinicalCase.caseNumber}`} className="space-y-6">
-            {showNotesArea && <QuestionNotes questionId={`clinical-case-${clinicalCase.caseNumber}`} />}
-            <QuestionComments questionId={`clinical-case-${clinicalCase.caseNumber}`} />
-          </div>
-        </div>
-      )}
-
-      {/* Case Complete Actions */}
       <div className="flex justify-between items-center">
         <div className="text-sm text-muted-foreground">
-          {answeredQuestions === clinicalCase.totalQuestions 
-            ? "Toutes les questions ont été répondues" 
-            : `${clinicalCase.totalQuestions - answeredQuestions} question(s) restante(s)`}
+          {answeredQuestions === clinicalCase.totalQuestions ? 'Toutes les questions ont été répondues' : `${clinicalCase.totalQuestions - answeredQuestions} question(s) restante(s)`}
         </div>
         <div className="flex gap-2">
           {answeredQuestions === clinicalCase.totalQuestions && !isCaseComplete && (
-            <Button onClick={handleCompleteCase} className="bg-green-600 hover:bg-green-700">
-              Terminer le cas clinique
-            </Button>
+            <Button onClick={handleCompleteCase} className="bg-green-600 hover:bg-green-700">Terminer le cas clinique</Button>
           )}
           {isCaseComplete && !showResults && (
             <Button onClick={handleShowResults} className="bg-blue-600 hover:bg-blue-700">
-              <Eye className="h-4 w-4 mr-2" />
-              Voir les résultats
+              <Eye className="h-4 w-4 mr-2" />Voir les résultats
             </Button>
           )}
         </div>
       </div>
 
-      {/* Floating Action Button for Case Text */}
       <Dialog open={showCaseDialog} onOpenChange={setShowCaseDialog}>
         <DialogTrigger asChild>
-          <Button
-            variant="default"
-            size="sm"
-            className="fixed bottom-6 left-6 h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-50 bg-blue-600 hover:bg-blue-700"
-            aria-label="Voir le texte du cas clinique"
-          >
+          <Button variant="default" size="sm" className="fixed bottom-6 left-6 h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-50 bg-blue-600 hover:bg-blue-700" aria-label="Voir le texte du cas clinique">
             <FileText className="h-5 w-5" />
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Cas Clinique #{clinicalCase.caseNumber}
+              <FileText className="h-5 w-5" />Cas Clinique #{clinicalCase.caseNumber}
             </DialogTitle>
           </DialogHeader>
-          <div className="mt-4">
-            <div className="prose max-w-none text-sm leading-relaxed">
-              <div className="whitespace-pre-wrap text-foreground">
-                <HighlightableCaseText lectureId={lectureId} text={clinicalCase.caseText} />
-              </div>
-            </div>
+          <div className="mt-4 prose max-w-none text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+            <HighlightableCaseText lectureId={lectureId} text={clinicalCase.caseText} />
           </div>
         </DialogContent>
       </Dialog>
       {openCaseEdit && (
-        <ClinicalCaseEditDialog
-          caseNumber={clinicalCase.caseNumber}
-          questions={clinicalCase.questions}
-          isOpen={openCaseEdit}
-          onOpenChange={setOpenCaseEdit}
-          onSaved={() => { try { window.location.reload(); } catch {} }}
+        <ClinicalCaseEditDialog caseNumber={clinicalCase.caseNumber} questions={clinicalCase.questions} isOpen={openCaseEdit} onOpenChange={setOpenCaseEdit} onSaved={() => { try { window.location.reload(); } catch {} }} />
+      )}
+      {reportTargetQuestion && (
+        <ReportQuestionDialog
+          question={reportTargetQuestion}
+          lectureId={lectureId}
+          isOpen={isReportDialogOpen}
+          onOpenChange={(open) => setIsReportDialogOpen(open)}
         />
       )}
     </motion.div>
   );
-} 
+}

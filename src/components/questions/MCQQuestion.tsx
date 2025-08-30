@@ -40,6 +40,7 @@ interface MCQQuestionProps {
   hideNotes?: boolean;
   hideComments?: boolean;
   highlightConfirm?: boolean;
+  hideMeta?: boolean;
 }
 
 export function MCQQuestion({ 
@@ -57,7 +58,8 @@ export function MCQQuestion({
   hideActions,
   hideNotes,
   hideComments,
-  highlightConfirm
+  highlightConfirm,
+  hideMeta
 }: MCQQuestionProps) {
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
@@ -196,6 +198,8 @@ export function MCQQuestion({
     hasSubmittedRef.current = false;
     setHasSubmitted(false);
     setIsSubmitting(false);
+  // Close notes area when moving to a different question to avoid leaking state
+  setShowNotesArea(false);
   }, [question.id]);
 
   // Handle userAnswer changes separately to avoid reinitialization loops
@@ -465,57 +469,80 @@ export function MCQQuestion({
     } catch {}
   };
 
-  // Keyboard shortcuts (numbers 1-9, letters A-I, Enter/Space submit-next, Backspace clears)
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target) {
-        const tag = target.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || (target as any).isContentEditable) return; // don't intercept typing contexts
-        if (['BUTTON','A','SELECT','LABEL'].includes(tag)) return; // skip UI controls focus
+  // Keyboard shortcuts (robust): digits/numpad 1-9 or letters A-I to toggle, Backspace clear, Enter/Space submit/next, R re-answer, N next (after submit)
+  const shortcutHandler = useCallback((event: KeyboardEvent) => {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const target = event.target as HTMLElement | null;
+    if (target) {
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (target as any).isContentEditable) return;
+    }
+    const opts = normalizedOptions; // use normalized list with guaranteed ids
+    if (!opts.length) return;
+    const key = event.key;
+    // Digit (supports AZERTY & numpad via event.code)
+    if (!submitted) {
+      let digit: number | null = null;
+      if (/^[1-9]$/.test(key)) {
+        digit = parseInt(key, 10);
+      } else if (/^Digit[1-9]$/.test(event.code)) {
+        digit = parseInt(event.code.replace('Digit',''), 10);
+      } else if (/^Numpad[1-9]$/.test(event.code)) {
+        digit = parseInt(event.code.replace('Numpad',''), 10);
       }
-
-      // Ignore if no options
-      const opts = question.options || [];
-      if (!opts.length) return;
-
-      // Select by number (1-based) if not submitted
-      if (!submitted && /^[1-9]$/.test(event.key)) {
-        const idx = parseInt(event.key, 10) - 1;
+      if (digit !== null) {
+        const idx = digit - 1;
         if (idx >= 0 && idx < opts.length) {
           handleOptionSelect(opts[idx].id);
           event.preventDefault();
           return;
         }
       }
-      // Select by letter A-I
-      if (!submitted && /^[a-i]$/i.test(event.key)) {
-        const idx = event.key.toUpperCase().charCodeAt(0) - 65; // A=0
-        if (idx >= 0 && idx < opts.length) {
-          handleOptionSelect(opts[idx].id);
-          event.preventDefault();
-          return;
-        }
-      }
-      // Backspace clears all before submit
-      if (!submitted && event.key === 'Backspace' && selectedOptionIds.length > 0) {
-        setSelectedOptionIds([]);
+    }
+    // Letter A-I mapping
+    if (!submitted && /^[a-i]$/i.test(key)) {
+      const idx = key.toUpperCase().charCodeAt(0) - 65;
+      if (idx >= 0 && idx < opts.length) {
+        handleOptionSelect(opts[idx].id);
         event.preventDefault();
         return;
       }
-      // Enter or Space: submit or next
-      if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
-        if (event.key !== 'Enter') event.preventDefault(); // prevent scroll on space
-        if (!submitted) {
-          if (selectedOptionIds.length > 0) handleSubmit();
-        } else {
-          onNext();
-        }
+    }
+    // Backspace clear
+    if (!submitted && key === 'Backspace' && selectedOptionIds.length) {
+      setSelectedOptionIds([]);
+      event.preventDefault();
+      return;
+    }
+    // Submit / Next
+    if (key === 'Enter' || key === ' ' || key === 'Spacebar') {
+      if (key !== 'Enter') event.preventDefault();
+      if (!submitted) {
+        if (selectedOptionIds.length > 0) handleSubmit();
+      } else {
+        onNext();
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [question.options, submitted, selectedOptionIds, onNext, handleSubmit]);
+      return;
+    }
+    // Re-answer after submission: R
+    if (submitted && key.toLowerCase() === 'r') {
+      handleReAnswer();
+      event.preventDefault();
+      return;
+    }
+    // Next after submission: N
+    if (submitted && key.toLowerCase() === 'n') {
+      onNext();
+      event.preventDefault();
+      return;
+    }
+  }, [normalizedOptions, submitted, selectedOptionIds, onNext, handleSubmit, handleReAnswer]);
+
+  useEffect(() => {
+    // Use capture to ensure we get the event early
+    window.addEventListener('keydown', shortcutHandler, { capture: true });
+    return () => window.removeEventListener('keydown', shortcutHandler, { capture: true } as any);
+  }, [shortcutHandler]);
 
   return (
     <motion.div
@@ -537,6 +564,7 @@ export function MCQQuestion({
             specialtyName={specialtyName}
             questionId={question.id}
             highlightConfirm={highlightConfirm}
+            hideMeta={hideMeta}
           />
           {/* Inline media attached to the question (not the reminder) */}
           {(() => {

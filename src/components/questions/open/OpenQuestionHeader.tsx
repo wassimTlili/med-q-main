@@ -10,9 +10,10 @@ interface OpenQuestionHeaderProps {
   specialtyName?: string;
   questionId?: string;
   highlightConfirm?: boolean;
+  hideMeta?: boolean;
 }
 
-export function OpenQuestionHeader({ questionText, questionNumber, session, lectureTitle, specialtyName, questionId, highlightConfirm }: OpenQuestionHeaderProps) {
+export function OpenQuestionHeader({ questionText, questionNumber, session, lectureTitle, specialtyName, questionId, highlightConfirm, hideMeta }: OpenQuestionHeaderProps) {
   const { t } = useTranslation();
   const typeLabel = t('questions.openQuestion');
   const sessionLabel = (() => {
@@ -28,15 +29,19 @@ export function OpenQuestionHeader({ questionText, questionNumber, session, lect
   
   return (
     <div className="space-y-2">
-      <div className="text-sm sm:text-base font-semibold text-foreground dark:text-gray-100">
-        {firstLine}
-      </div>
-      {(specialtyName || lectureTitle) && (
-        <div className="text-xs sm:text-sm text-muted-foreground">
-          {[specialtyName, lectureTitle].filter(Boolean).join(' • ')}
-        </div>
+      {!hideMeta && (
+        <>
+          <div className="text-sm sm:text-base font-semibold text-foreground dark:text-gray-100">
+            {firstLine}
+          </div>
+          {(specialtyName || lectureTitle) && (
+            <div className="text-xs sm:text-sm text-muted-foreground">
+              {[specialtyName, lectureTitle].filter(Boolean).join(' • ')}
+            </div>
+          )}
+        </>
       )}
-  {questionId ? (
+      {questionId ? (
         <div data-question-text={questionId}>
           <HighlightableQuestionText
             questionId={questionId}

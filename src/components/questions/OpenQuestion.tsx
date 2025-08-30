@@ -46,6 +46,7 @@ interface OpenQuestionProps {
   resetSignal?: number; // external trigger to reset state (for grouped QROC re-answer)
   keepInputAfterSubmit?: boolean; // keep textarea mounted (grouped subquestions)
   suppressReminder?: boolean; // hide reminder section (grouped QROC shows one shared)
+  hideMeta?: boolean;
 }
 
 export function OpenQuestion({ 
@@ -69,6 +70,7 @@ export function OpenQuestion({
   resetSignal,
   keepInputAfterSubmit,
   suppressReminder,
+  hideMeta,
 }: OpenQuestionProps) {
   const [answer, setAnswer] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -218,6 +220,8 @@ export function OpenQuestion({
   useEffect(() => {
     hasSubmittedRef.current = false;
     setHasSubmitted(false);
+  // Close notes area when navigating to another question
+  setShowNotesArea(false);
   }, [question.id]);
 
   // Handle userAnswer changes separately to avoid reinitialization loops
@@ -500,6 +504,7 @@ export function OpenQuestion({
             specialtyName={specialtyName}
             questionId={question.id}
             highlightConfirm={highlightConfirm}
+            hideMeta={hideMeta}
           />
           {/* Inline media attached to the question (not the reminder) */}
           {(() => {

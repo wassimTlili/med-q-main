@@ -257,6 +257,18 @@ export function QuestionControlPanel({
       groupedQuestions['qroc'].sort((a,b)=> (a.number||0)-(b.number||0));
     }
 
+    // Normalize ordering per type: sort by existing number then original index, then assign displayNumber sequentially
+    Object.keys(groupedQuestions).forEach(type => {
+      const arr = groupedQuestions[type];
+      arr.sort((a: any, b: any) => {
+        const an = a.number ?? 0;
+        const bn = b.number ?? 0;
+        if (an !== bn) return an - bn;
+        return (a.originalIndex ?? 0) - (b.originalIndex ?? 0);
+      });
+      arr.forEach((q: any, idx: number) => { q.displayNumber = idx + 1; });
+    });
+
     console.log('QuestionControlPanel - Questions grouped:', {
       totalQuestions: questions.length,
       regularQuestions: regularQuestions.length,
@@ -338,15 +350,18 @@ export function QuestionControlPanel({
                       <div className="absolute -inset-px rounded-xl ring-1 ring-blue-400/40 dark:ring-blue-500/30" />
                     </motion.div>
                   )}
-                  <div className="flex items-center w-full relative">
+                  <div className="flex items-start w-full relative">
                     <div className="flex flex-col items-start mr-3 flex-1 min-w-0">
                       {question.session && (
-                        <span className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+                        <span
+                          className="text-left text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 truncate w-full"
+                          title={question.session}
+                        >
                           {question.session}
                         </span>
                       )}
-                      <span className="text-xs text-gray-600 dark:text-gray-400 truncate flex items-center gap-1">
-                        {`${getTypeLabel(question.type)} ${question.number ?? (question.originalIndex + 1)}`}
+                      <span className="text-left text-xs text-gray-600 dark:text-gray-400 truncate flex items-center gap-1 w-full">
+                        {`${getTypeLabel(question.type)} ${(question as any).displayNumber ?? question.number ?? (question.originalIndex + 1)}`}
                         {groupMeta?.multiQroc && (
                           <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded-md bg-medblue-100 text-medblue-700 dark:bg-medblue-900/40 dark:text-medblue-300 font-medium">
                             {groupMeta.total}x

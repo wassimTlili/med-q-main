@@ -133,7 +133,19 @@ export function ClinicalCaseEditDialog({ caseNumber, questions, isOpen, onOpenCh
                 </div>
               )}
               {s.type==='clinic_croq' && (
-                <div className="space-y-3"><div className="space-y-2"><Label>Réponse de référence *</Label><Input value={s.answer} onChange={e=> updateSub(s.id,{ answer: e.target.value })} /></div></div>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Réponse de référence *</Label>
+                    <Textarea
+                      rows={4}
+                      value={s.answer}
+                      onChange={e=> updateSub(s.id,{ answer: e.target.value })}
+                      placeholder="Texte attendu (vous pouvez utiliser plusieurs lignes)"
+                      className="resize-y"
+                    />
+                    <p className="text-[11px] text-muted-foreground">Les retours à la ligne seront conservés.</p>
+                  </div>
+                </div>
               )}
               <div className="space-y-2"><Label>Explication (optionnel)</Label><Textarea rows={3} value={s.explanation} onChange={e=> updateSub(s.id,{ explanation: e.target.value })} /></div>
             </div>

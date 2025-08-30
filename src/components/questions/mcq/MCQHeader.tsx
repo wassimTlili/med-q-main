@@ -11,9 +11,10 @@ interface MCQHeaderProps {
   specialtyName?: string;
   questionId?: string;
   highlightConfirm?: boolean;
+  hideMeta?: boolean; // when true, suppress first meta line and specialty/course line
 }
 
-export function MCQHeader({ questionText, isSubmitted, questionNumber, session, lectureTitle, specialtyName, questionId, highlightConfirm }: MCQHeaderProps) {
+export function MCQHeader({ questionText, isSubmitted, questionNumber, session, lectureTitle, specialtyName, questionId, highlightConfirm, hideMeta }: MCQHeaderProps) {
   const { t } = useTranslation();
   const sessionLabel = (() => {
     if (!session) return '';
@@ -28,17 +29,19 @@ export function MCQHeader({ questionText, isSubmitted, questionNumber, session, 
   
   return (
     <div className="space-y-2">
-      {/* Top meta row: QCM / Question N / Session XXXX */}
-      <div className="text-sm sm:text-base font-semibold text-foreground dark:text-gray-100">
-        {firstLine}
-      </div>
-      {/* Second line: Specialty • Course */}
-      {(specialtyName || lectureTitle) && (
-        <div className="text-xs sm:text-sm text-muted-foreground">
-          {[specialtyName, lectureTitle].filter(Boolean).join(' • ')}
-        </div>
+      {!hideMeta && (
+        <>
+          <div className="text-sm sm:text-base font-semibold text-foreground dark:text-gray-100">
+            {firstLine}
+          </div>
+          {(specialtyName || lectureTitle) && (
+            <div className="text-xs sm:text-sm text-muted-foreground">
+              {[specialtyName, lectureTitle].filter(Boolean).join(' • ')}
+            </div>
+          )}
+        </>
       )}
-  {questionId ? (
+      {questionId ? (
         <div data-question-text={questionId}>
           <HighlightableQuestionText
             questionId={questionId}
@@ -50,7 +53,6 @@ export function MCQHeader({ questionText, isSubmitted, questionNumber, session, 
       ) : (
         <h3 className="mt-3 text-lg sm:text-xl font-semibold text-foreground dark:text-gray-200 break-words whitespace-pre-wrap">{questionText}</h3>
       )}
-  {/* Removed review guidance text per request */}
     </div>
   );
 }

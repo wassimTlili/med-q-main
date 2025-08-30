@@ -480,7 +480,31 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
 
   // ===== Builder Submit =====
   const handleBuilderSubmit = async () => {
-    if (caseNumber === undefined || isNaN(caseNumber)) {
+    // Allow user to only fill the top "N°" field (formData.number) and auto-use it as caseNumber
+    let effectiveCaseNumber = caseNumber;
+    if ((effectiveCaseNumber === undefined || isNaN(effectiveCaseNumber)) && formData.number !== undefined && !isNaN(formData.number as any)) {
+      effectiveCaseNumber = formData.number as number;
+      setCaseNumber(formData.number); // sync UI for subsequent edits
+    }
+    // If still missing, try auto-assign next available (like grouped QROC logic)
+    if (effectiveCaseNumber === undefined || isNaN(effectiveCaseNumber)) {
+      try {
+        const resp = await fetch(`/api/questions?lectureId=${lecture.id}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          const maxExisting = (data as any[])
+            .filter(q => (q.type === 'clinic_mcq' || q.type === 'clinic_croq') && q.caseNumber)
+            .reduce((m, q) => Math.max(m, q.caseNumber || 0), 0);
+          if (maxExisting >= 0) {
+            effectiveCaseNumber = maxExisting + 1;
+            setCaseNumber(effectiveCaseNumber);
+          }
+        }
+      } catch {
+        // swallow – fallback to validation below
+      }
+    }
+    if (effectiveCaseNumber === undefined || isNaN(effectiveCaseNumber)) {
       toast({ title: 'Erreur de validation', description: 'Numéro de cas requis.', variant: 'destructive' });
       return;
     }
@@ -519,7 +543,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
       let created = 0;
       for (let i = 0; i < subQuestions.length; i++) {
         const sq = subQuestions[i];
-        const body = {
+  const body = {
           lectureId: lecture.id,
           text: sq.text.trim(),
             // Force clinical types
@@ -532,7 +556,7 @@ export function CreateQuestionDialog({ lecture, isOpen, onOpenChange, onQuestion
           mediaType: null,
           courseReminderMediaUrl: formData.reminderMediaUrl || null,
           courseReminderMediaType: formData.reminderMediaType || null,
-          caseNumber: caseNumber,
+          caseNumber: effectiveCaseNumber,
           caseText: caseText.trim(),
           caseQuestionNumber: i + 1,
           options: sq.type === 'clinic_mcq'

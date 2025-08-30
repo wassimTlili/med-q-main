@@ -60,6 +60,14 @@ export default function LecturePageRoute() {
     handleQuestionUpdate,
   } = useLecture(lectureId, mode);
 
+  // Optional: keep simple top anchor scroll without animations
+  const contentTopRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (contentTopRef.current) {
+      try { contentTopRef.current.scrollIntoView({ behavior: 'instant', block: 'start' } as any); } catch {}
+    }
+  }, [currentQuestionIndex]);
+
   if (!lectureId) {
     return <div>Lecture ID not found</div>
   }
@@ -298,6 +306,9 @@ export default function LecturePageRoute() {
     }
   };
 
+
+  // Removed animated variants (restored static rendering)
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-white to-blue-50/50 dark:from-blue-950/20 dark:via-gray-900 dark:to-blue-950/20">
@@ -343,12 +354,9 @@ export default function LecturePageRoute() {
                 </div>
               </div>
 
-              {currentQuestion && (
-                <div className="space-y-4 sm:space-y-6">
-                  {renderCurrentQuestion()}
-                  {/* Reminder and comments are handled inside question components after submission */}
-                </div>
-              )}
+              <div ref={contentTopRef} className="space-y-4 sm:space-y-6">
+                {currentQuestion && renderCurrentQuestion()}
+              </div>
             </div>
 
             <div className="hidden lg:block lg:w-80 lg:flex-shrink-0">

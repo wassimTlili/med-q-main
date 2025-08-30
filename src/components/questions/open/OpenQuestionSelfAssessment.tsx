@@ -28,15 +28,7 @@ export function OpenQuestionSelfAssessment({ onAssessment, userAnswerText }: Ope
           {t('questions.rateYourAnswer')}{":"}
         </h4>
 
-        {userAnswerText && (
-          <div className="mb-4 grid gap-3 text-sm">
-            {userAnswerText && (
-              <div className="rounded-md border border-blue-200/60 dark:border-blue-800/60 bg-white/70 dark:bg-blue-900/30 p-3">
-                <div className="whitespace-pre-wrap leading-relaxed">{userAnswerText}</div>
-              </div>
-            )}
-          </div>
-        )}
+  {/* Removed duplicate user answer display per request */}
 
         <div className="flex flex-col sm:flex-row gap-2">
           <Button
