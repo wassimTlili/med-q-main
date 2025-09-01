@@ -226,7 +226,19 @@ export default function SpecialtySessionsPage() {
                           const sessionGradient = getSessionGradient(session.id);
 
                           return (
-                            <div key={session.id} className="group rounded-2xl border border-border/50 bg-white/60 dark:bg-muted/40 backdrop-blur-sm overflow-hidden hover:shadow-2xl hover:shadow-blue-500/25 hover:-translate-y-2 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 shadow-lg">
+                            <div
+                              key={session.id}
+                              className="relative group rounded-2xl border border-border/50 bg-white/60 dark:bg-muted/40 backdrop-blur-sm overflow-hidden hover:shadow-2xl hover:shadow-blue-500/25 hover:-translate-y-2 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 shadow-lg focus-within:ring-2 focus-within:ring-blue-500/60"
+                            >
+                              {/* Full-card clickable overlay (only if PDF available) */}
+                              {session.pdfUrl && (
+                                <Link
+                                  href={`/session/${specialty.id}/${session.id}/viewer`}
+                                  className="absolute inset-0 z-10"
+                                  aria-label={`Ouvrir la session ${session.name}`}
+                                  tabIndex={0}
+                                />
+                              )}
                               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/40 via-blue-600/10 to-blue-400/40" />
                               
                               {/* Header with gradient icon */}
@@ -273,12 +285,14 @@ export default function SpecialtySessionsPage() {
                                 {/* Actions */}
                                 <div className="mt-auto flex flex-col gap-2">
                                   {session.pdfUrl && (
-                                    <Link href={`/session/${specialty.id}/${session.id}/viewer`} className="w-full">
-                                      <Button size="sm" className="w-full justify-center text-xs bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 group">
-                                        <Eye className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" /> 
-                                        Voir l'examen
-                                      </Button>
-                                    </Link>
+                                    <Button
+                                      size="sm"
+                                      onClick={(e) => { e.stopPropagation(); router.push(`/session/${specialty.id}/${session.id}/viewer`); }}
+                                      className="relative z-20 w-full justify-center text-xs bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 group"
+                                    >
+                                      <Eye className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
+                                      Voir l'examen
+                                    </Button>
                                   )}
                                   {!session.pdfUrl && (
                                     <div className="text-center py-4">

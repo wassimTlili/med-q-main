@@ -93,6 +93,25 @@ export default function SessionsPage() {
                     {filtered.map((specialty) => {
                       const iconData = specialty.icon ? getMedicalIcon(specialty.icon) : getIconBySpecialtyName(specialty.name);
                       const IconComp = iconData.icon;
+                      // Deterministic multi-color gradient like exercises
+                      const getIconGradient = (name: string) => {
+                        let hash = 0;
+                        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                        const gradients = [
+                          'from-blue-400 to-blue-600',
+                          'from-emerald-400 to-emerald-600',
+                          'from-medblue-400 to-medblue-600',
+                          'from-orange-400 to-orange-600',
+                          'from-rose-400 to-rose-600',
+                          'from-cyan-400 to-cyan-600',
+                          'from-lime-400 to-lime-600',
+                          'from-fuchsia-400 to-fuchsia-600',
+                          'from-indigo-400 to-indigo-600',
+                          'from-teal-400 to-teal-600'
+                        ];
+                        return gradients[Math.abs(hash) % gradients.length];
+                      };
+                      const iconGradient = getIconGradient(specialty.name);
                       return (
                         <Link
                           key={specialty.id}
@@ -106,7 +125,7 @@ export default function SessionsPage() {
                             {/* Header section with gradient */}
                             <div className="bg-gradient-to-r from-blue-50/40 to-blue-100/30 dark:from-blue-900/30 dark:to-blue-800/20 border-b border-blue-100/50 dark:border-blue-800/50 p-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 shadow-lg border-2 border-white/20 group-hover:scale-110 transition-transform">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br ${iconGradient} shadow-lg border-2 border-white/20 group-hover:scale-110 transition-transform`}>
                                   <IconComp className="w-6 h-6 text-white" />
                                 </div>
                                 <div className="flex-1 min-w-0">
