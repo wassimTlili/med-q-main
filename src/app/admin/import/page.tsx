@@ -413,7 +413,22 @@ export default function ImportPage() {
                 if (rowData[expKey]) optionExplanations.push(rowData[expKey]);
               }
               previewItem.options = options;
-              previewItem.correctAnswers = rowData['reponse'] ? [rowData['reponse']] : [];
+              // Support multiple correct answers separated by commas / semicolons / spaces (e.g. "A, C", "A C", "A;C;E")
+              if (rowData['reponse']) {
+                const raw = rowData['reponse'].toString().toUpperCase();
+                const parts = raw.split(/[;,\s]+/).filter(p => p.trim());
+                const mapped: string[] = [];
+                parts.forEach(letter => {
+                  const idx = letter.charCodeAt(0) - 65; // A=>0
+                  if (idx >= 0 && idx < options.length) {
+                    mapped.push(idx.toString());
+                  }
+                });
+                // Fallback: if nothing mapped but we had a single raw value, keep original for visibility
+                previewItem.correctAnswers = mapped.length ? mapped : [rowData['reponse']];
+              } else {
+                previewItem.correctAnswers = [];
+              }
               if (optionExplanations.length) previewItem.optionExplanations = optionExplanations;
             }
             previewData.push(previewItem);

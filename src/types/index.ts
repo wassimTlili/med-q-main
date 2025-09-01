@@ -175,3 +175,43 @@ export type UserProgress = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+// Structured session correction data and submission types
+export type SessionCorrectionData = {
+  tables: {
+    id: string;
+    title?: string;
+    headers: string[];
+    rows: string[][];
+    compareMode?: 'exact' | 'case-insensitive' | 'set';
+  }[];
+  texts: {
+    id: string;
+    title?: string;
+    reference: string;
+    keywords?: string[];
+    scoring?: { full: number; partial?: number };
+  }[];
+};
+
+export type SessionCorrection = {
+  id: string;
+  sessionId: string;
+  data: SessionCorrectionData;
+  createdBy: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
+
+export type SessionCorrectionSubmission = {
+  id: string;
+  sessionId: string;
+  userId: string;
+  answers: {
+    tables: { id: string; rows: string[][] }[];
+    texts: { id: string; answer: string }[];
+  };
+  score?: number;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
