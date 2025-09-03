@@ -8,7 +8,6 @@ import { I18nProvider } from '@/i18n/I18nProvider'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as Sonner } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { PDFInitializer } from '@/components/PDFInitializer'
 import { Suspense } from 'react'
 
 const queryClient = new QueryClient()
@@ -28,7 +27,6 @@ function LoadingFallback() {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <PDFInitializer />
       <Suspense fallback={<LoadingFallback />}>
         <AuthProvider>
           <SubscriptionProvider>

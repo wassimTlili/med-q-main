@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
-import Script from 'next/script'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -26,12 +25,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <Script 
-          src="/pdf-worker-init.js" 
-          strategy="beforeInteractive"
-        />
-      </head>
+  <head></head>
       <body className={`${inter.className} overflow-x-hidden`}>
         <Providers>
           {children}
