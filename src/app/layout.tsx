@@ -25,7 +25,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-  <head></head>
+      <head>
+        {/* Preload / hint the pdf worker for faster first render */}
+        <link rel="preload" as="script" href="/pdf.worker.min.mjs" />
+      </head>
       <body className={`${inter.className} overflow-x-hidden`}>
         <Providers>
           {children}
