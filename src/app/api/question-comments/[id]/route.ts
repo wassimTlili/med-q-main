@@ -8,7 +8,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-  const { content, isAnonymous } = await request.json();
+    const { content, isAnonymous, imageUrls } = await request.json();
     if (!content) return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     // Auth check
     const auth = await authenticateRequest(request);
@@ -29,18 +29,49 @@ export async function PUT(
     try {
       // @ts-ignore - model available after prisma generate
       // @ts-ignore - prisma delegate is generated
-      const updated = await prisma.questionComment.update({
-        where: { id },
-        data: { content: String(content).trim(), isAnonymous: typeof isAnonymous === 'boolean' ? isAnonymous : undefined, updatedAt: new Date() },
-        select: {
-          id: true,
-          content: true,
-          isAnonymous: true,
-          createdAt: true,
-          updatedAt: true,
-          user: { select: { id: true, name: true, email: true, role: true } },
-        },
-      });
+      // Attempt to update including imageUrls; if column missing, catch below
+      let updated: any;
+      try {
+        // @ts-ignore dynamic optional field
+        updated = await (prisma as any).questionComment.update({
+          where: { id },
+          data: {
+            content: String(content).trim(),
+            isAnonymous: typeof isAnonymous === 'boolean' ? isAnonymous : undefined,
+            // limit to 6 images
+            imageUrls: Array.isArray(imageUrls) ? imageUrls.slice(0,6) : undefined,
+            updatedAt: new Date()
+          },
+          select: {
+            id: true,
+            content: true,
+            isAnonymous: true,
+            createdAt: true,
+            updatedAt: true,
+            imageUrls: true,
+            user: { select: { id: true, name: true, email: true, role: true } },
+          },
+        });
+      } catch (inner) {
+        // Retry without imageUrls if schema not migrated yet
+        updated = await prisma.questionComment.update({
+          where: { id },
+          data: {
+            content: String(content).trim(),
+            isAnonymous: typeof isAnonymous === 'boolean' ? isAnonymous : undefined,
+            updatedAt: new Date()
+          },
+          select: {
+            id: true,
+            content: true,
+            isAnonymous: true,
+            createdAt: true,
+            updatedAt: true,
+            user: { select: { id: true, name: true, email: true, role: true } },
+          },
+        });
+        (updated as any).imageUrls = [];
+      }
       return NextResponse.json(updated);
     } catch (e: any) {
       if (e?.code === 'P2022') {
@@ -63,6 +94,7 @@ export async function PUT(
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           isAnonymous: false,
+          imageUrls: [],
           user: userInfo,
         });
       }

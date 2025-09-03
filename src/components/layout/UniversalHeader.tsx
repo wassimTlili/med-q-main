@@ -35,6 +35,7 @@ interface UniversalHeaderProps {
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
   actions?: React.ReactNode;
+  leftActions?: React.ReactNode; // new: elements placed left of the title (e.g., back button)
   hideSeparator?: boolean;
 }
 
@@ -45,6 +46,7 @@ export function UniversalHeader({
   onSearchChange,
   searchPlaceholder = 'Search...',
   actions,
+  leftActions,
   hideSeparator = false
 }: UniversalHeaderProps) {
   const { user, logout } = useAuth();
@@ -80,8 +82,8 @@ export function UniversalHeader({
     <div className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-40 pt-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Left Section: Mobile Menu Button, Title and Search */}
-          <div className="flex items-center space-x-4 flex-1">
+          {/* Left Section: Mobile Menu Button, optional left actions, Title and Search */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             {/* Mobile Sidebar Toggle Button - Only visible on mobile */}
             <Button
               variant="ghost"
@@ -92,6 +94,12 @@ export function UniversalHeader({
             >
               <Menu className="h-5 w-5" />
             </Button>
+
+            {leftActions && (
+              <div className="flex items-center gap-2 shrink-0">
+                {leftActions}
+              </div>
+            )}
 
             {/* Title Section */}
             {title && (
