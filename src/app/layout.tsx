@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
+import CrispChat from '@/components/CrispChat'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -25,12 +26,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        {/* Preload / hint the pdf worker for faster first render */}
-        <link rel="preload" as="script" href="/pdf.worker.min.mjs" />
-      </head>
       <body className={`${inter.className} overflow-x-hidden`}>
         <Providers>
+          {/* Crisp live chat widget (needs AuthProvider) */}
+          <CrispChat />
           {children}
         </Providers>
       </body>

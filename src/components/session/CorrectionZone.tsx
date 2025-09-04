@@ -25,10 +25,6 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false); // still used to persist user answers, no scoring
   const [showReference, setShowReference] = useState(isEditor);
-  // Preview student view toggle for editors
-  const [previewStudent, setPreviewStudent] = useState(false);
-  const previousRefSetting = useState<{val:boolean|null}>({ val: null })[0];
-  const effectiveIsEditor = isEditor && !previewStudent; // when previewing act as student
   const [data, setData] = useState<SessionCorrectionData>(emptyData);
   const [userAnswers, setUserAnswers] = useState<SessionCorrectionSubmission['answers']>({ tables: [], texts: [] });
   // Scoring removed – we only persist answers now
@@ -61,19 +57,6 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
   }, [sessionId]);
 
   const markDirty = () => setDirty(true);
-
-  const togglePreview = () => {
-    setPreviewStudent(p => {
-      if (!p) { // entering preview
-        if (previousRefSetting.val === null) previousRefSetting.val = showReference;
-        // student default: don't show reference initially
-        setShowReference(false);
-      } else { // leaving preview
-        if (previousRefSetting.val !== null) setShowReference(previousRefSetting.val);
-      }
-      return !p;
-    });
-  };
 
   const addTable = () => {
     setData(d => ({ ...d, tables: [...d.tables, { id: crypto.randomUUID(), title: 'QCM', headers: ['Question', 'Réponse'], rows: [['','']], compareMode: 'exact' }] }));
@@ -175,7 +158,7 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
 
   // Debounced auto-save for editors
   useEffect(() => {
-    if (!effectiveIsEditor) return;
+    if (!isEditor) return;
     if (!dirty) return;
     const handle = setTimeout(async () => {
       try {
@@ -192,7 +175,7 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
       }
     }, 1500);
     return () => clearTimeout(handle);
-  }, [dirty, data, effectiveIsEditor, sessionId]);
+  }, [dirty, data, isEditor, sessionId]);
 
   const submitAnswers = async () => {
     try {
@@ -223,15 +206,12 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
             <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
             <span>Zone de Correction</span>
-            {effectiveIsEditor && <span className="text-xs font-normal text-muted-foreground bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded-md hidden sm:inline">(éditeur)</span>}
-            {isEditor && previewStudent && (
-              <span className="text-[10px] font-medium bg-amber-200/70 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-md">Vue étudiant</span>
-            )}
+            {isEditor && <span className="text-xs font-normal text-muted-foreground bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded-md hidden sm:inline">(éditeur)</span>}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0 space-y-4">
           <div className="flex gap-2 flex-wrap items-center justify-center sm:justify-start">
-            {isEditor && !previewStudent && (
+            {isEditor && (
               <>
                 <Button size="sm" variant="outline" onClick={addTable} className="gap-2 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 min-w-[100px]">
                   <ClipboardList className="h-4 w-4" /> 
@@ -255,16 +235,10 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
                 </div>
               </>
             )}
-            {!effectiveIsEditor && data && (
+            {!isEditor && data && (
               <Button size="sm" variant="outline" onClick={() => setShowReference(r=>!r)} className="gap-2 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 min-w-[100px]">
                 {showReference ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 {showReference ? 'Masquer' : 'Voir'}
-              </Button>
-            )}
-            {isEditor && (
-              <Button size="sm" variant="outline" onClick={togglePreview} className="gap-2 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 min-w-[120px]">
-                {previewStudent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                {previewStudent ? 'Quitter vue étudiant' : 'Vue étudiant'}
               </Button>
             )}
           </div>
@@ -275,7 +249,7 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
 
       {/* Tables */}
       {data.tables.map(table => {
-    const userTable = userAnswers.tables.find(t => t.id === table.id);
+        const userTable = userAnswers.tables.find(t => t.id === table.id);
         return (
           <Card key={table.id} className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg border-dashed border-blue-200 dark:border-blue-800">
             <CardHeader className="pb-3 space-y-3 px-4 sm:px-6">
@@ -284,13 +258,13 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
                   <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                   <Input
                     value={table.title || ''}
-          disabled={!effectiveIsEditor}
+                    disabled={!isEditor}
                     onChange={e => setData(d => ({ ...d, tables: d.tables.map(t => t.id === table.id ? { ...t, title: e.target.value } : t) }))}
                     placeholder="Titre du QCM"
                     className="h-8 min-w-0 flex-1 max-w-sm bg-white/70 dark:bg-muted/40 border-blue-200 dark:border-blue-800 focus:ring-blue-500"
                   />
                 </CardTitle>
-        {effectiveIsEditor && (
+                {isEditor && (
                   <div className="flex gap-2 flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => addTableColumn(table.id)} className="gap-1 text-xs bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800">
                       <Plus className="h-3 w-3" />
@@ -314,7 +288,7 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
                   <table className="table-auto text-sm border-collapse">
                     <thead>
                       <tr>
-                        {effectiveIsEditor && <th className="border border-blue-200 dark:border-blue-800 w-8 bg-blue-50 dark:bg-blue-900/30"></th>}
+                        {isEditor && <th className="border border-blue-200 dark:border-blue-800 w-8 bg-blue-50 dark:bg-blue-900/30"></th>}
                         {table.headers.map((h,i) => (
                           <th key={i} className="border border-blue-200 dark:border-blue-800 px-2 py-2 bg-blue-50 dark:bg-blue-900/30 min-w-[80px] max-w-[150px] w-auto relative">
                             {isEditor ? (
@@ -347,7 +321,7 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
                     <tbody>
                       {table.rows.map((row, ri) => (
                         <tr key={ri}>
-                          {effectiveIsEditor && (
+                          {isEditor && (
                             <td className="border border-blue-200 dark:border-blue-800 w-8 bg-gray-50 dark:bg-gray-800/30 text-center">
                               <Button
                                 size="sm"
@@ -364,9 +338,9 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
                             const headerLabel = table.headers[ci] || '';
                             const isQuestionCol = ci === 0 || /question/i.test(headerLabel);
                             const userVal = userTable?.rows?.[ri]?.[ci] || '';
-                            const showRef = showReference || effectiveIsEditor;
+                            const showRef = showReference || isEditor;
                             // For students: Question column always shows reference (cell) and is locked.
-                            if (!effectiveIsEditor && isQuestionCol) {
+                            if (!isEditor && isQuestionCol) {
                               return (
                                 <td key={ci} className="border border-blue-200 dark:border-blue-800 px-1 py-1 align-top bg-white/60 dark:bg-muted/20 min-w-[140px] max-w-[240px] w-auto">
                                   <div className="text-[11px] sm:text-xs text-blue-900 dark:text-blue-100 whitespace-pre-wrap">
@@ -375,28 +349,14 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
                                 </td>
                               );
                             }
-                            const isEditable = effectiveIsEditor || !showRef; // unchanged logic for other columns
+                            const isEditable = isEditor || !showRef; // unchanged logic for other columns
                             const displayVal = showRef ? cell : userVal;
-                            // Highlight correctness in student (or preview) mode only for non-question columns
-                            let highlightClass = '';
-                            // Show correctness colors only after user clicks "Voir" (showReference true)
-                            if (!effectiveIsEditor && !isQuestionCol && showReference) {
-                              const refVal = cell?.trim();
-                              const studVal = (userVal || '').trim();
-                              if (studVal) {
-                                if (refVal && studVal.toLowerCase() === refVal.toLowerCase()) {
-                                  highlightClass = 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700';
-                                } else if (refVal) {
-                                  highlightClass = 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700';
-                                }
-                              }
-                            }
                             return (
-                              <td key={ci} className={cn('border px-1 py-1 align-top bg-white/60 dark:bg-muted/20 min-w-[80px] max-w-[150px] w-auto border-blue-200 dark:border-blue-800', highlightClass)}>
+                              <td key={ci} className="border border-blue-200 dark:border-blue-800 px-1 py-1 align-top bg-white/60 dark:bg-muted/20 min-w-[80px] max-w-[150px] w-auto">
                                 <Input
                                   value={isEditable ? (showRef ? (isEditor ? cell : userVal) : userVal) : displayVal}
                                   readOnly={!isEditable}
-                                  onChange={e => updateTableCell(table.id, ri, ci, e.target.value, showRef && effectiveIsEditor)}
+                                  onChange={e => updateTableCell(table.id, ri, ci, e.target.value, showRef && isEditor)}
                                   className="h-7 text-xs bg-white/80 dark:bg-muted/40 border-0 focus:ring-1 focus:ring-blue-500 w-full min-w-0"
                                   placeholder={isEditor ? (isQuestionCol ? 'Question' : 'Valeur') : 'Votre réponse'}
                                 />
@@ -425,13 +385,13 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
                   <PenLine className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                   <Input
                     value={txt.title || ''}
-                    disabled={!effectiveIsEditor}
+                    disabled={!isEditor}
                     onChange={e => setData(d => ({ ...d, texts: d.texts.map(t => t.id === txt.id ? { ...t, title: e.target.value } : t) }))}
                     placeholder="Titre de la zone"
                     className="h-8 min-w-0 flex-1 max-w-sm bg-white/70 dark:bg-muted/40 border-blue-200 dark:border-blue-800 focus:ring-blue-500"
                   />
                 </CardTitle>
-                {effectiveIsEditor && (
+                {isEditor && (
                   <Button
                     size="sm"
                     variant="destructive"
@@ -445,13 +405,13 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-3 px-4 sm:px-6">
-      {showReference || effectiveIsEditor ? (
+              {showReference || isEditor ? (
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-blue-700 dark:text-blue-300">Réponse de référence</label>
                   <Textarea
                     value={txt.reference}
-        onChange={e => updateTextReference(txt.id, e.target.value)}
-        readOnly={!effectiveIsEditor}
+                    onChange={e => updateTextReference(txt.id, e.target.value)}
+                    readOnly={!isEditor}
                     placeholder="Réponse officielle"
                     rows={4}
                     className="bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 focus:ring-blue-500"
@@ -469,7 +429,7 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
                   />
                 </div>
               )}
-      {!effectiveIsEditor && showReference && (
+              {!isEditor && showReference && (
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-gray-700 dark:text-gray-300">Votre réponse</label>
                   <Textarea
@@ -486,7 +446,7 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
         );
       })}
 
-  {!effectiveIsEditor && (data.tables.length > 0 || data.texts.length > 0) && (
+      {!isEditor && (data.tables.length > 0 || data.texts.length > 0) && (
         <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg">
           <CardContent className="pt-4 pb-4 px-4 sm:px-6">
             <div className="flex justify-center">
@@ -507,9 +467,9 @@ export function CorrectionZone({ sessionId, mode }: CorrectionZoneProps) {
               <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 dark:text-blue-400" />
             </div>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-              {effectiveIsEditor ? 'Aucune correction créée. Ajoutez des QCM ou des zones de texte.' : 'Aucune correction disponible pour cette session.'}
+              {isEditor ? 'Aucune correction créée. Ajoutez des QCM ou des zones de texte.' : 'Aucune correction disponible pour cette session.'}
             </p>
-            {effectiveIsEditor && (
+            {isEditor && (
               <div className="flex gap-2 justify-center flex-wrap">
                 <Button size="sm" variant="outline" onClick={addTable} className="gap-2 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 min-w-[120px]">
                   <ClipboardList className="h-4 w-4" /> Ajouter QCM

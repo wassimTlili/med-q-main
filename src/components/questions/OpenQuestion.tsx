@@ -364,15 +364,6 @@ export function OpenQuestion({
     const expected = expectedFromArray || (question as any).course_reminder || (question as any).courseReminder || question.explanation || (question as any).correctAnswer || '';
     return expected || '';
   }, [question]);
-  // Detect if the reference answer is just a single image URL / data URI so we can render it nicely
-  const referenceIsImage = useMemo(() => {
-    const ref = (expectedReference || '').trim();
-    if (!ref) return false;
-    // Must be a single token (no spaces/newlines) OR a data URL
-    if (ref.startsWith('data:image/')) return true;
-    if (/^https?:\/\/[^\s]+$/i.test(ref) && /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(ref)) return true;
-    return false;
-  }, [expectedReference]);
 
   // Admin function to toggle question visibility
   const handleToggleVisibility = async () => {
@@ -515,29 +506,20 @@ export function OpenQuestion({
             highlightConfirm={highlightConfirm}
             hideMeta={hideMeta}
           />
-          {/* Inline media attached to the question (tolerant logic like MCQ) */}
+          {/* Inline media attached to the question (not the reminder) */}
           {(() => {
-            let mediaUrl: string | undefined = (question as any).media_url || (question as any).mediaUrl;
-            const mediaType: string | undefined = (question as any).media_type || (question as any).mediaType;
+            const mediaUrl = (question as any).media_url || (question as any).mediaUrl;
+            const mediaType = (question as any).media_type || (question as any).mediaType;
             if (!mediaUrl) return null;
-            // Normalize if relative without leading slash
-            if (!/^https?:\/\//i.test(mediaUrl) && !mediaUrl.startsWith('/')) {
-              mediaUrl = '/' + mediaUrl;
-            }
-            // Treat explicit video types or video extensions as non-image
-            const lowerType = (mediaType || '').toLowerCase();
-            const isVideoLike = lowerType.startsWith('video') || /\.(mp4|webm|ogg)(\?.*)?$/i.test(mediaUrl);
-            if (isVideoLike) return null; // (future: add video player)
-            // Consider it an image if type starts with image or extension matches
             const isImageByExt = /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(mediaUrl);
-            const isImage = lowerType.startsWith('image') || isImageByExt || !lowerType; // default to image
+            const isImage = mediaType === 'image' || (!mediaType && isImageByExt);
             if (!isImage) return null;
             return (
               <div className="mt-3">
                 <ZoomableImage
                   src={mediaUrl}
                   alt="Illustration de la question"
-                  thumbnailClassName="max-h-64 w-auto sm:max-h-80 max-w-full rounded-md border object-contain shadow-sm bg-background"
+                  thumbnailClassName="max-h-64 w-auto sm:max-h-80 max-w-full rounded-md border object-contain shadow-sm"
                 />
               </div>
             );
@@ -641,17 +623,7 @@ export function OpenQuestion({
       <div className="mt-4 space-y-4">
         <div className="rounded-md border border-emerald-200 dark:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/60 p-5 shadow-sm">
           <div className="text-xs md:text-sm uppercase tracking-wide font-extrabold text-emerald-700 dark:text-emerald-100 mb-2">RÉPONSE DE RÉFÉRENCE</div>
-          {referenceIsImage ? (
-            <div className="space-y-2">
-              <ZoomableImage
-                src={expectedReference.trim()}
-                alt="Réponse de référence (image)"
-                thumbnailClassName="max-h-72 w-auto max-w-full rounded-md border object-contain bg-background"
-              />
-            </div>
-          ) : (
-            <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-medium text-emerald-800 dark:text-emerald-50">{expectedReference}</div>
-          )}
+          <div className="whitespace-pre-wrap leading-relaxed text-sm md:text-base font-medium text-emerald-800 dark:text-emerald-50">{expectedReference}</div>
         </div>
         <div className="rounded-md border border-blue-200 dark:border-blue-600 bg-blue-50 dark:bg-blue-950/40 p-4 shadow-sm">
           <div className="text-[11px] uppercase tracking-wide font-semibold text-blue-700 dark:text-blue-300 mb-1">Votre réponse</div>

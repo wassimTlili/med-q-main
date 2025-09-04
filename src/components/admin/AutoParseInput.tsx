@@ -104,15 +104,15 @@ export function AutoParseInput({ onParsedContent, questionType }: AutoParseInput
   };
 
   return (
-    <div className="space-y-3 p-4 border rounded-md bg-slate-50">
-      <h3 className="text-sm font-medium">Auto-Parse ({questionType})</h3>
+    <div className="space-y-3 p-4 border rounded-md bg-slate-50 dark:bg-muted/30 dark:border-muted/60 backdrop-blur-sm transition-colors">
+      <h3 className="text-sm font-medium text-foreground">Auto-Parse ({questionType})</h3>
       <Textarea
         placeholder={questionType==='mcq' || questionType==='clinic_mcq'
           ? 'Collez: énoncé puis A. ..., B) ...\nLigne(s) après une option = explication (Explication:/Justification:/Pourquoi: facultatif).'
           : 'Collez la question puis Réponse: ... ou utilisez la dernière ligne comme réponse courte'}
         value={rawText}
         onChange={(e) => setRawText(e.target.value)}
-        className="min-h-32 font-mono text-sm"
+        className="min-h-32 font-mono text-sm bg-white dark:bg-background/60 border border-border focus-visible:ring-2 focus-visible:ring-ring"
       />
       { (questionType==='mcq' || questionType==='clinic_mcq') && (
         <p className="text-[10px] text-muted-foreground leading-snug">

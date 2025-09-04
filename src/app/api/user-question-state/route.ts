@@ -1,96 +1,165 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Simple sanitization: accept data:image/*, http(s) URLs, or root-relative; max 6
-function sanitizeImages(list: unknown): string[] {
-	if (!Array.isArray(list)) return [];
-	return (list as any[])
-		.filter(u => typeof u === 'string')
-		.map(u => (u.startsWith('blob:') ? '' : u))
-		.filter(Boolean)
-		.filter(u => u.startsWith('data:image/') || /^https?:\/\//i.test(u) || u.startsWith('/'))
-		.slice(0, 6);
-}
-
-// GET: straight prisma fetch
+// GET /api/user-question-state?userId=&questionId=
 export async function GET(req: Request) {
-	const { searchParams } = new URL(req.url);
-	const userId = searchParams.get('userId');
-	const questionId = searchParams.get('questionId');
-	if (!userId || !questionId) return NextResponse.json({ error: 'userId and questionId are required' }, { status: 400 });
+	try {
+		const { searchParams } = new URL(req.url);
+		const userId = searchParams.get('userId') as string | null;
+		const questionId = searchParams.get('questionId') as string | null;
+		if (!userId || !questionId) {
+			return NextResponse.json({ error: 'userId and questionId are required' }, { status: 400 });
+		}
+
+		// Always use raw SQL for maximum compatibility
 		try {
-			const row: any = await prisma.questionUserData.findUnique({
-				where: { userId_questionId: { userId, questionId } },
-				// select without notesImageUrls then fetch via raw to avoid prisma type mismatch if schema not migrated
-				select: { userId: true, questionId: true, notes: true, highlights: true, attempts: true, lastScore: true }
-			});
-			if (!row) return NextResponse.json(null);
-			// Raw fetch images
-			let images: string[] = [];
-			try {
-				const rs: any[] = await prisma.$queryRaw`SELECT notes_image_urls FROM question_user_data WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid LIMIT 1`;
-				if (rs[0]?.notes_image_urls) images = sanitizeImages(rs[0].notes_image_urls as any[]);
-				console.log(`[GET] User ${userId} Question ${questionId} - Found ${images.length} images in DB`);
-			} catch (e) {
-				console.log(`[GET] User ${userId} Question ${questionId} - Error fetching images:`, (e as any)?.message);
-			}
-			return NextResponse.json({ ...row, notesImageUrls: images });
+			const rows = await prisma.$queryRaw<Array<any>>`
+				SELECT 
+					user_id::text AS "userId", 
+					question_id::text AS "questionId", 
+					notes, 
+					highlights, 
+					attempts, 
+					last_score AS "lastScore",
+					CASE 
+						WHEN EXISTS (
+							SELECT 1 FROM information_schema.columns 
+							WHERE table_name='question_user_data' AND column_name='notes_image_urls'
+						) THEN notes_image_urls
+						ELSE ARRAY[]::text[]
+					END AS "notesImageUrls"
+				FROM question_user_data 
+				WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid 
+				LIMIT 1
+			`;
+			return NextResponse.json(rows[0] ?? null);
+		} catch (sqlErr: any) {
+			console.warn('Raw SQL fallback failed, using minimal query:', sqlErr?.message);
+			// Even more basic fallback
+			const basic = await prisma.$queryRaw<Array<any>>`
+				SELECT 
+					user_id::text AS "userId", 
+					question_id::text AS "questionId", 
+					notes, 
+					highlights, 
+					attempts, 
+					last_score AS "lastScore"
+				FROM question_user_data 
+				WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid 
+				LIMIT 1
+			`;
+			const result = basic[0] ?? null;
+			if (result) result.notesImageUrls = [];
+			return NextResponse.json(result);
+		}
 	} catch (e) {
-		console.error('GET user-question-state error', (e as any)?.message);
-		return NextResponse.json(null);
+		console.error('GET user-question-state error', e);
+		return NextResponse.json({ error: 'Internal error' }, { status: 500 });
 	}
 }
 
-// POST: simple upsert
+// POST /api/user-question-state { userId, questionId, notes?, highlights?, attempts?, lastScore? }
 export async function POST(req: Request) {
-	const body = await req.json().catch(() => ({}));
-	const { userId, questionId, notes, highlights, attempts, lastScore, incrementAttempts, notesImageUrls } = body || {};
-	if (!userId || !questionId) return NextResponse.json({ error: 'userId and questionId are required' }, { status: 400 });
-	const sanitized = sanitizeImages(notesImageUrls);
-	console.log(`[POST] User ${userId} Question ${questionId} - Incoming ${Array.isArray(notesImageUrls) ? notesImageUrls.length : 'n/a'} images, sanitized to ${sanitized.length}`);
-	let nextAttempts = attempts ?? 0;
-	if (incrementAttempts) {
-		try {
-			const existing = await prisma.questionUserData.findUnique({ where: { userId_questionId: { userId, questionId } }, select: { attempts: true } });
-			nextAttempts = (existing?.attempts ?? 0) + 1;
-		} catch {
-			nextAttempts = (attempts ?? 0) + 1;
+	try {
+		const body = await req.json();
+		const { userId, questionId, notes, highlights, attempts, lastScore, incrementAttempts, notesImageUrls } = body || {};
+		if (!userId || !questionId) {
+			return NextResponse.json({ error: 'userId and questionId are required' }, { status: 400 });
 		}
-	}
+
+		let nextAttempts = attempts;
+		if (incrementAttempts) {
+			try {
+				// Try to get existing attempts
+				const existing = await prisma.$queryRaw<Array<any>>`SELECT attempts FROM question_user_data WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid LIMIT 1`;
+				nextAttempts = (existing[0]?.attempts ?? 0) + 1;
+			} catch {
+				// If that fails, just increment from 0
+				nextAttempts = 1;
+			}
+		}
+
+		// Sanitize images
+		const sanitizedImages = Array.isArray(notesImageUrls)
+			? (notesImageUrls as any[])
+				.filter(u => typeof u === 'string')
+				.filter(u => {
+					if (u.startsWith('data:image/')) return u.length < 200000; // ~200KB encoded
+					return /^https?:\/\//i.test(u) || u.startsWith('/');
+				})
+				.slice(0,6)
+			: [];
+
+		// Always use raw SQL for maximum compatibility
 		try {
-			// Upsert without images first (schema type mismatch guard)
-			const base = await prisma.questionUserData.upsert({
-				where: { userId_questionId: { userId, questionId } },
-				create: { userId, questionId, notes: notes ?? null, highlights: highlights ?? null, attempts: nextAttempts, lastScore: lastScore ?? null },
-				update: { notes, highlights, attempts: nextAttempts, lastScore },
-				select: { userId: true, questionId: true, notes: true, highlights: true, attempts: true, lastScore: true }
-			});
-			// Persist images via raw
-			try {
-				await prisma.$executeRaw`UPDATE question_user_data SET notes_image_urls = ${sanitized} WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid`;
-				console.log(`[POST] User ${userId} Question ${questionId} - Successfully updated ${sanitized.length} images`);
-			} catch (e) {
-				console.log(`[POST] User ${userId} Question ${questionId} - Update failed, trying column create:`, (e as any)?.message);
-				// attempt column create then retry
-				try {
-					await prisma.$executeRawUnsafe('ALTER TABLE question_user_data ADD COLUMN IF NOT EXISTS notes_image_urls text[] NOT NULL DEFAULT \'{}\'');
-					await prisma.$executeRaw`UPDATE question_user_data SET notes_image_urls = ${sanitized} WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid`;
-					console.log(`[POST] User ${userId} Question ${questionId} - Successfully updated ${sanitized.length} images after column create`);
-				} catch (e2) {
-					console.log(`[POST] User ${userId} Question ${questionId} - Final update failed:`, (e2 as any)?.message);
+			const result = await prisma.$transaction(async (tx) => {
+				const existing = await tx.$queryRaw<Array<any>>`SELECT id FROM question_user_data WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid LIMIT 1`;
+				
+				if (existing.length === 0) {
+					// Check if notes_image_urls column exists before including it
+					const hasImagesCol = await tx.$queryRaw<Array<any>>`SELECT 1 FROM information_schema.columns WHERE table_name='question_user_data' AND column_name='notes_image_urls' LIMIT 1`;
+					
+					if (hasImagesCol.length > 0) {
+						await tx.$executeRaw`
+							INSERT INTO question_user_data (user_id, question_id, notes, highlights, attempts, last_score, notes_image_urls) 
+							VALUES (${userId}::uuid, ${questionId}::uuid, ${notes ?? null}, ${highlights ?? null}, ${(nextAttempts ?? 0)}, ${lastScore ?? null}, ${sanitizedImages}::text[])
+						`;
+					} else {
+						await tx.$executeRaw`
+							INSERT INTO question_user_data (user_id, question_id, notes, highlights, attempts, last_score) 
+							VALUES (${userId}::uuid, ${questionId}::uuid, ${notes ?? null}, ${highlights ?? null}, ${(nextAttempts ?? 0)}, ${lastScore ?? null})
+						`;
+					}
+				} else {
+					// Update existing
+					const hasImagesCol = await tx.$queryRaw<Array<any>>`SELECT 1 FROM information_schema.columns WHERE table_name='question_user_data' AND column_name='notes_image_urls' LIMIT 1`;
+					
+					if (hasImagesCol.length > 0) {
+						await tx.$executeRaw`
+							UPDATE question_user_data 
+							SET notes = ${notes ?? null}, highlights = ${highlights ?? null}, attempts = ${(nextAttempts ?? attempts ?? 0)}, last_score = ${lastScore ?? null}, notes_image_urls = ${sanitizedImages}::text[], updated_at = NOW() 
+							WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid
+						`;
+					} else {
+						await tx.$executeRaw`
+							UPDATE question_user_data 
+							SET notes = ${notes ?? null}, highlights = ${highlights ?? null}, attempts = ${(nextAttempts ?? attempts ?? 0)}, last_score = ${lastScore ?? null}, updated_at = NOW() 
+							WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid
+						`;
+					}
 				}
-			}
-			let images: string[] = sanitized;
-			try {
-				const rs: any[] = await prisma.$queryRaw`SELECT notes_image_urls FROM question_user_data WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid LIMIT 1`;
-				if (rs[0]?.notes_image_urls) images = sanitizeImages(rs[0].notes_image_urls as any[]);
-				console.log(`[POST] User ${userId} Question ${questionId} - Verification: DB now has ${images.length} images`);
-			} catch (e) {
-				console.log(`[POST] User ${userId} Question ${questionId} - Verification failed:`, (e as any)?.message);
-			}
-			return NextResponse.json({ ...base, notesImageUrls: images });
+				
+				// Return the updated/created row
+				const hasImagesCol = await tx.$queryRaw<Array<any>>`SELECT 1 FROM information_schema.columns WHERE table_name='question_user_data' AND column_name='notes_image_urls' LIMIT 1`;
+				
+				if (hasImagesCol.length > 0) {
+					const row = await tx.$queryRaw<Array<any>>`
+						SELECT user_id::text AS "userId", question_id::text AS "questionId", notes, highlights, attempts, last_score AS "lastScore", notes_image_urls AS "notesImageUrls" 
+						FROM question_user_data 
+						WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid 
+						LIMIT 1
+					`;
+					return row[0];
+				} else {
+					const row = await tx.$queryRaw<Array<any>>`
+						SELECT user_id::text AS "userId", question_id::text AS "questionId", notes, highlights, attempts, last_score AS "lastScore" 
+						FROM question_user_data 
+						WHERE user_id = ${userId}::uuid AND question_id = ${questionId}::uuid 
+						LIMIT 1
+					`;
+					const result = row[0];
+					if (result) result.notesImageUrls = [];
+					return result;
+				}
+			});
+			
+			return NextResponse.json(result);
+		} catch (sqlErr: any) {
+			console.error('POST user-question-state SQL error', sqlErr?.message);
+			return NextResponse.json({ error: 'Database error' }, { status: 500 });
+		}
 	} catch (e) {
-		console.error('POST user-question-state error', (e as any)?.message);
-		return NextResponse.json({ userId, questionId, notes: notes ?? null, highlights: highlights ?? null, attempts: nextAttempts, lastScore: lastScore ?? null, notesImageUrls: sanitized });
+		console.error('POST user-question-state error', e);
+		return NextResponse.json({ error: 'Internal error' }, { status: 500 });
 	}
 }

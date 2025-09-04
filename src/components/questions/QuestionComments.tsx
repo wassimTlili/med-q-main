@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { MessageSquare, Send, Loader2, UserRound, EyeOff, ChevronDown, ChevronRight, ImagePlus } from 'lucide-react';
+import { MessageSquare, Send, Loader2, UserRound, EyeOff } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface QuestionCommentsProps { questionId: string; }
@@ -18,7 +18,6 @@ type QComment = {
   updatedAt: string;
   parentCommentId?: string | null;
   replies?: QComment[];
-  imageUrls?: string[]; // optional images returned by API
   user: { id: string; name?: string | null; email: string; role: string };
 };
 
@@ -37,9 +36,6 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
   const [replyParentId, setReplyParentId] = useState<string | null>(null);
   const [images, setImages] = useState<string[]>([]); // base64 or hosted URLs
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [lightbox, setLightbox] = useState<string | null>(null);
-  const [showImages, setShowImages] = useState(false);
 
   const canPostRoot = !!ownerId && (text.trim().length > 0 || images.length > 0) && !submitting;
   const canPostReply = !!ownerId && replyParentId && !submitting; // handled inside reply editor
@@ -126,86 +122,86 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
       <div className="mt-3 space-y-2">
         <Textarea
           ref={localRef}
-          placeholder="Write a reply..."
-          value={value}
-            onChange={(e)=> setValue(e.target.value)}
-          onKeyDown={(e)=> {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !disabled) {
+          defaultValue={''}
+          onChange={e=> setValue(e.target.value)}
+          onKeyDown={e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && value.trim()) {
               e.preventDefault();
-              add(parentId, value);
-              setValue('');
-            } else if (e.key === 'Enter' && !e.shiftKey) {
-              if (value.trim()) {
-                e.preventDefault();
-                if(!disabled){ add(parentId, value); setValue(''); }
-              }
+              if (!disabled) add(parentId, value);
+            } else if (e.key === 'Enter' && !e.shiftKey && value.trim()) {
+              e.preventDefault();
+              if (!disabled) add(parentId, value);
             }
           }}
+          placeholder="Reply..."
           className="min-h-[60px]"
         />
-        <div className="flex items-center gap-2">
-          <Button size="sm" disabled={disabled} onClick={()=> { add(parentId, value); setValue(''); }}>Post reply</Button>
-          <Button size="sm" variant="ghost" onClick={cancelReply}>Cancel</Button>
+        <div className="flex gap-2 justify-end">
+          <Button size="sm" variant="outline" onClick={cancelReply}>Cancel</Button>
+          <Button size="sm" disabled={disabled} onClick={() => add(parentId, value)}>Post Reply</Button>
         </div>
       </div>
     );
   };
 
   const CommentNode = memo(({ c, depth = 0 }: { c: QComment; depth?: number }) => {
-    const isOwner = c.user.id === ownerId;
-    const canDelete = isOwner || isAdmin;
+    const isOwner = ownerId && ownerId === c.user.id;
     const isEditing = editingId === c.id;
-    const displayName = c.isAnonymous ? 'Anonyme' : (c.user.name || c.user.email.split('@')[0]);
-
+    const displayAsAnonymous = c.isAnonymous && !isAdmin && ownerId !== c.user.id;
+    const displayName = displayAsAnonymous ? 'Anonyme' : (c.user?.name || c.user?.email || 'Utilisateur');
+    const initials = displayName.slice(0,1).toUpperCase();
+    const canDelete = !!(isAdmin || isOwner);
     return (
-      <li className="group rounded-md border bg-background/60 p-3" style={{ marginLeft: depth ? depth * 14 : 0 }}>
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 h-7 w-7 shrink-0 rounded-md bg-primary/10 grid place-items-center text-primary">
-            {c.isAnonymous ? <EyeOff className="h-3.5 w-3.5" /> : <UserRound className="h-3.5 w-3.5" />}
-          </div>
+      <li className={`rounded-lg border bg-background/60 p-3 ${depth>0 ? 'ml-6 mt-2' : ''}`}> 
+        <div className="flex items-start gap-2">
+          <div className="h-8 w-8 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-semibold">{initials}</div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground/90">{displayName}</span>
-              <span className="text-[10px]">{new Date(c.createdAt).toLocaleString()}</span>
-              {c.updatedAt !== c.createdAt && <span className="text-[10px] italic">(modifié)</span>}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+              <span className="truncate max-w-[160px] sm:max-w-[260px] flex items-center gap-1">
+                {displayName}
+                {c.isAnonymous && isAdmin && (
+                  <span className="inline-flex" title="Posté en anonyme" aria-label="Posté en anonyme">
+                    <EyeOff className="h-3.5 w-3.5 text-amber-600" />
+                  </span>
+                )}
+              </span>
+              <span>•</span>
+              <span>{new Date(c.createdAt).toLocaleString()}</span>
+              {c.updatedAt && c.updatedAt !== c.createdAt && (<span className="italic">(edited)</span>)}
             </div>
-            <div className="mt-1 text-sm whitespace-pre-wrap break-words">
-              {isEditing ? (
-                <div className="space-y-2">
-                  <Textarea
-                    value={editText}
-                    onChange={(e)=> setEditText(e.target.value)}
-                    onKeyDown={(e)=> {
-                      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); saveEdit(c.id); }
-                    }}
-                    className="min-h-[70px]"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" onClick={()=> saveEdit(c.id)} disabled={!editText.trim()}>Save</Button>
-                    <Button size="sm" variant="ghost" onClick={cancelEdit}>Cancel</Button>
+            {!isEditing ? (
+              <div className="mt-1 text-sm whitespace-pre-wrap space-y-2">
+                <div>{c.content}</div>
+                {Array.isArray((c as any).imageUrls) && (c as any).imageUrls.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {(c as any).imageUrls.slice(0,6).map((u:string, idx:number)=>{
+                      // Skip broken blob URLs - they can't be displayed after page reload
+                      if (u.startsWith('blob:')) return null;
+                      return (
+                        <a key={idx} href={u} target="_blank" rel="noopener noreferrer" className="block">
+                          <img 
+                            src={u} 
+                            alt="attachment" 
+                            className="h-24 w-24 object-cover rounded-md border"
+                            onError={(e) => {
+                              // Hide broken images
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        </a>
+                      );
+                    })}
                   </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-2">
+                <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="min-h-[80px]" />
+                <div className="mt-2 flex gap-2 justify-end">
+                  <Button variant="ghost" size="sm" onClick={cancelEdit}>Cancel</Button>
+                  <Button size="sm" disabled={!editText.trim()} onClick={() => saveEdit(c.id)}>Save</Button>
                 </div>
-              ) : (
-                <div>{c.content || (c.imageUrls?.length ? <span className="italic text-muted-foreground">(images seulement)</span> : null)}</div>
-              )}
-            </div>
-            {!isEditing && c.imageUrls && c.imageUrls.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {c.imageUrls.map((u,i)=>(
-                  <button
-                    key={i}
-                    type="button"
-                    className="relative group"
-                    onClick={()=> setLightbox(u)}
-                    title="Voir l'image"
-                  >
-                    <img
-                      src={u}
-                      alt="Image du commentaire"
-                      className="h-24 w-24 object-cover rounded-md border shadow-sm transition-transform group-hover:scale-105"
-                    />
-                  </button>
-                ))}
               </div>
             )}
             <div className="mt-2 flex gap-2">
@@ -220,7 +216,7 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
             {replyParentId === c.id && <ReplyEditor parentId={c.id} />}
             {c.replies && c.replies.length > 0 && (
               <ul className="mt-3 space-y-2">
-                {[...c.replies].sort((a,b)=> new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map(r => (
+        {[...c.replies].sort((a,b)=> new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map(r => (
                   <CommentNode key={r.id} c={r} depth={depth+1} />
                 ))}
               </ul>
@@ -278,70 +274,77 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
                       const files = Array.from(e.target.files || []);
                       if (!files.length) return;
                       const remaining = 6 - images.length;
-                      if (remaining <= 0) { toast({ title: 'Limit reached', description: 'Maximum 6 images allowed', variant: 'destructive' }); return; }
+                      if (remaining <= 0) {
+                        toast({ title: 'Limit reached', description: 'Maximum 6 images allowed', variant: 'destructive' });
+                        return;
+                      }
                       const slice = files.slice(0, remaining);
-                      const toDataUrl = (file: File) => new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onerror = () => reject(r.error); r.onload = () => resolve(r.result as string); r.readAsDataURL(file); });
-                      const results: string[] = []; let skipped = 0;
-                      for (const f of slice) { try { const data = await toDataUrl(f); if (data.startsWith('data:image/')) results.push(data); else skipped++; } catch { skipped++; } }
-                      if (results.length) { setImages(prev => [...prev, ...results].slice(0,6)); toast({ title: 'Images added', description: `${results.length} image(s) added${skipped?`, ${skipped} skipped`:''}` }); }
-                      else if (skipped) { toast({ title: 'No images added', description: `${skipped} image(s) could not be processed`, variant: 'destructive' }); }
-                      e.target.value='';
+                      
+                      const toDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+                        if (file.size > 150 * 1024) { // ~150KB guard to avoid huge DB rows
+                          return reject(new Error('File too large (max 150KB)'));
+                        }
+                        const reader = new FileReader();
+                        reader.onerror = () => reject(reader.error);
+                        reader.onload = () => resolve(reader.result as string);
+                        reader.readAsDataURL(file);
+                      });
+                      
+                      const results: string[] = [];
+                      let skipped = 0;
+                      
+                      for (const f of slice) {
+                        try {
+                          const data = await toDataUrl(f);
+                          if (data.startsWith('data:image/')) {
+                            results.push(data);
+                          } else {
+                            skipped++;
+                          }
+                        } catch (err) {
+                          skipped++;
+                          console.warn('Failed to process image:', f.name, err);
+                        }
+                      }
+                      
+                      if (results.length) {
+                        setImages(prev => [...prev, ...results].slice(0,6));
+                        toast({ 
+                          title: 'Images added', 
+                          description: `${results.length} image(s) processed${skipped ? `, ${skipped} skipped` : ''}` 
+                        });
+                      } else if (skipped) {
+                        toast({ 
+                          title: 'Upload failed', 
+                          description: `${skipped} image(s) were too large or invalid`, 
+                          variant: 'destructive' 
+                        });
+                      }
+                      
+                      e.target.value = '';
                     }}
                   />
-                  <Button type="button" size="sm" variant="outline" className="h-8" onClick={()=> fileInputRef.current?.click()} disabled={submitting}>Images</Button>
+                  <Button type="button" size="sm" variant="outline" className="h-8" onClick={()=> fileInputRef.current?.click()} disabled={submitting}>
+                    Images
+                  </Button>
                   <Button size="sm" disabled={!canPostRoot} onClick={() => add()}>
                     {submitting ? (<><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Posting</>) : (<><Send className="h-3.5 w-3.5 mr-1" /> Post</>)}
                   </Button>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={()=> setShowImages(o=> !o)}
-                className="mt-3 w-full flex items-center justify-between text-left text-[11px] font-medium text-muted-foreground hover:text-foreground transition"
-              >
-                <span className="inline-flex items-center gap-1">
-                  {showImages ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                  Images (max 6)
-                  {images.length > 0 && <span className="ml-1 text-[9px] rounded bg-primary/10 px-1 py-0.5 text-primary">{images.length}</span>}
-                </span>
-                <span className="inline-flex items-center gap-1 text-[10px]">{showImages ? 'Masquer' : 'Afficher'}</span>
-              </button>
-              {showImages && (
-                <div
-                  onDragOver={(e)=>{ e.preventDefault(); if(!dragActive) setDragActive(true); }}
-                  onDragLeave={(e)=> { if((e.target as HTMLElement)===e.currentTarget) setDragActive(false); }}
-                  onDrop={async (e)=> { e.preventDefault(); setDragActive(false); const files = Array.from(e.dataTransfer.files||[]); if(files.length){ const remaining = 6 - images.length; if(remaining<=0){ toast({ title: 'Limit reached', description: 'Maximum 6 images allowed', variant: 'destructive' }); return;} const slice=files.slice(0,remaining); const toDataUrl=(file:File)=> new Promise<string>((resolve,reject)=>{const r=new FileReader(); r.onerror=()=>reject(r.error); r.onload=()=>resolve(r.result as string); r.readAsDataURL(file);}); const results:string[]=[]; let skipped=0; for(const f of slice){ try{ const data=await toDataUrl(f); if(data.startsWith('data:image/')) results.push(data); else skipped++; } catch{ skipped++; } } if(results.length){ setImages(prev=>[...prev,...results].slice(0,6)); toast({ title:'Images added', description: `${results.length} image(s) added${skipped?`, ${skipped} skipped`:''}`}); } else if(skipped){ toast({ title:'No images added', description: `${skipped} image(s) could not be processed`, variant:'destructive'}); } } }}
-                  className={`mt-2 rounded-md border border-dashed p-3 transition text-xs ${dragActive? 'border-primary bg-primary/5':'border-muted-foreground/30 bg-background/50'}`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-[11px] font-medium text-muted-foreground inline-flex items-center gap-1"><ImagePlus className="h-3 w-3" /> Ajouter</div>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={images.length >= 6}
-                      className="text-[10px] px-2 py-1 rounded-md border bg-background hover:bg-muted disabled:opacity-50"
-                    >Parcourir</button>
-                  </div>
-                  {images.length === 0 && (
-                    <div className="text-[11px] text-muted-foreground">Glissez-déposez des images ici ou cliquez sur Parcourir.</div>
-                  )}
-                  {images.length > 0 && (
-                    <div className="flex flex-wrap gap-3">
-                      {images.map((url, i) => (
-                        <div key={i} className="relative group">
-                          <button type="button" onClick={()=> setLightbox(url)} className="block">
-                            <img src={url} alt="preview" className="h-24 w-24 object-cover rounded-md border transition-transform group-hover:scale-105" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setImages(imgs => imgs.filter((_, idx) => idx !== i))}
-                            className="absolute -top-2 -right-2 bg-black/70 text-white rounded-full w-6 h-6 text-[11px] grid place-items-center opacity-0 group-hover:opacity-100 transition"
-                            aria-label="Remove image"
-                          >×</button>
-                        </div>
-                      ))}
+              {images.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {images.map((url, i) => (
+                    <div key={i} className="relative group">
+                      <img src={url} alt="preview" className="h-20 w-20 object-cover rounded-md border" />
+                      <button
+                        type="button"
+                        onClick={() => setImages(imgs => imgs.filter((_, idx) => idx !== i))}
+                        className="absolute -top-2 -right-2 bg-destructive text-white rounded-full px-1.5 py-0.5 text-[10px] opacity-0 group-hover:opacity-100 transition"
+                        aria-label="Remove image"
+                      >x</button>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
@@ -363,25 +366,6 @@ export function QuestionComments({ questionId }: QuestionCommentsProps) {
           <ul className="space-y-3">{comments.map(c => <CommentNode key={c.id} c={c} />)}</ul>
         </div>
       </div>
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <div className="max-w-5xl max-h-[90vh] relative" onClick={(e)=> e.stopPropagation()}>
-            <button
-              onClick={() => setLightbox(null)}
-              className="absolute -top-3 -right-3 bg-black/80 text-white rounded-full w-8 h-8 grid place-items-center text-sm"
-              aria-label="Fermer"
-            >✕</button>
-            <img
-              src={lightbox}
-              alt="Agrandissement image commentaire"
-              className="rounded-lg max-h-[90vh] w-auto object-contain shadow-lg"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

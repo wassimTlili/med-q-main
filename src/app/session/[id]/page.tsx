@@ -107,16 +107,12 @@ export default function SpecialtySessionsPage() {
           <SidebarInset className="flex-1 flex flex-col">
             <UniversalHeader
               hideSeparator
-              leftActions={(
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push('/session')}
-                  className="gap-2 px-3 h-9 rounded-md border border-transparent hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-200 transition-colors"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline font-medium">Retour</span>
-                </Button>
+              actions={(
+                <div className="flex items-center gap-3">
+                  <Button variant="outline" size="sm" onClick={() => router.push('/session')} className="gap-1">
+                    <ArrowLeft className="h-4 w-4" /> Retour
+                  </Button>
+                </div>
               )}
             />
             <div className="flex-1 bg-gray-50 dark:bg-gray-900">
@@ -154,24 +150,23 @@ export default function SpecialtySessionsPage() {
                       const iconData = specialty.icon ? getMedicalIcon(specialty.icon) : getIconBySpecialtyName(specialty.name);
                       const IconComp = iconData.icon;
                       return (
-                        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-white/70 dark:bg-muted/40 backdrop-blur-xl shadow-lg hover:shadow-2xl transition-all duration-300 ring-1 ring-blue-500/10">
+                        <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-white/60 dark:bg-muted/40 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
                           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/40 via-blue-600/10 to-blue-400/40" />
                           
                           {/* Header section with gradient */}
-                          <div className="bg-gradient-to-r from-blue-50/70 via-blue-100/50 to-indigo-100/40 dark:from-blue-950/40 dark:via-blue-900/40 dark:to-indigo-900/30 border-b border-blue-100/60 dark:border-blue-800/60 p-6 relative">
-                            <div className="absolute inset-0 pointer-events-none opacity-30 bg-[radial-gradient(circle_at_40%_40%,rgba(59,130,246,0.25),transparent_60%)]" />
+                          <div className="bg-gradient-to-r from-blue-50/50 to-blue-100/40 dark:from-blue-900/40 dark:to-blue-800/30 border-b border-blue-100/50 dark:border-blue-800/50 p-6">
                             <div className="flex items-center gap-4">
                               <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 shadow-lg border-2 border-white/20">
                                 <IconComp className="w-8 h-8 text-white" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 dark:from-blue-300 dark:via-blue-200 dark:to-indigo-300 mb-2 drop-shadow-sm">{specialty.name}</h1>
+                                <h1 className="text-2xl font-bold text-blue-900 dark:text-blue-100 mb-2">{specialty.name}</h1>
                                 <div className="flex flex-wrap gap-2 items-center">
                                   <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-medium bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/50 dark:to-blue-800/40 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700">
                                     {specialty.sessions.length} session{specialty.sessions.length > 1 ? 's' : ''}
                                   </Badge>
                                   {specialty.semester && (
-                                    <div className="flex items-center gap-1 text-xs text-blue-700 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-900/40 px-3 py-1 rounded-full border border-blue-200/60 dark:border-blue-800/60 backdrop-blur-sm shadow-sm">
+                                    <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-900/30 px-3 py-1 rounded-full border border-blue-200/50 dark:border-blue-800/50">
                                       <Users className="h-3 w-3" /> Semestre {specialty.semester.order}
                                     </div>
                                   )}
@@ -182,8 +177,8 @@ export default function SpecialtySessionsPage() {
 
                           {/* Content section */}
                           {specialty.description && (
-                            <div className="p-6 pt-4">
-                              <p className="text-sm text-blue-700 dark:text-blue-300 leading-relaxed max-w-3xl">{specialty.description}</p>
+                            <div className="p-6">
+                              <p className="text-sm text-blue-600 dark:text-blue-400 leading-relaxed">{specialty.description}</p>
                             </div>
                           )}
                         </div>
@@ -204,7 +199,7 @@ export default function SpecialtySessionsPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                         {filtered.map(session => {
                           const created = new Date(session.createdAt);
                           // Generate different gradient colors for each session based on ID hash
@@ -233,7 +228,7 @@ export default function SpecialtySessionsPage() {
                           return (
                             <div
                               key={session.id}
-                              className="relative group rounded-2xl border border-border/50 bg-white/70 dark:bg-muted/40 backdrop-blur-xl overflow-hidden hover:shadow-blue-600/30 hover:shadow-2xl hover:-translate-y-2 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 shadow-lg focus-within:ring-2 focus-within:ring-blue-500/60 ring-1 ring-blue-500/5"
+                              className="relative group rounded-2xl border border-border/50 bg-white/60 dark:bg-muted/40 backdrop-blur-sm overflow-hidden hover:shadow-2xl hover:shadow-blue-500/25 hover:-translate-y-2 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 shadow-lg focus-within:ring-2 focus-within:ring-blue-500/60"
                             >
                               {/* Full-card clickable overlay (only if PDF available) */}
                               {session.pdfUrl && (
@@ -247,17 +242,16 @@ export default function SpecialtySessionsPage() {
                               <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/40 via-blue-600/10 to-blue-400/40" />
                               
                               {/* Header with gradient icon */}
-                              <div className="p-5 border-b border-blue-100/60 dark:border-blue-800/60 bg-gradient-to-r from-blue-50/40 via-indigo-50/30 to-blue-100/30 dark:from-blue-900/30 dark:via-indigo-900/20 dark:to-blue-800/20 relative">
-                                <div className="absolute inset-0 pointer-events-none opacity-25 bg-[radial-gradient(circle_at_70%_30%,rgba(99,102,241,0.35),transparent_70%)]" />
+                              <div className="p-5 border-b border-blue-100/50 dark:border-blue-800/50 bg-gradient-to-r from-blue-50/30 to-blue-100/20 dark:from-blue-900/20 dark:to-blue-800/10">
                                 <div className="flex items-center justify-between gap-3 mb-3">
                                   <div className="flex items-center gap-3 min-w-0 flex-1">
                                     {/* Session Icon with Gradient */}
-                                    <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${sessionGradient} shadow-lg border border-white/30 ring-2 ring-white/10 backdrop-blur-sm`}>
+                                    <div className={`flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${sessionGradient} shadow-lg border-2 border-white/20`}>
                                       <Calendar className="w-6 h-6 text-white" />
                                     </div>
                                     
                                     <div className="space-y-1 min-w-0 flex-1">
-                                      <h3 className="font-semibold text-[13px] leading-snug line-clamp-2 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors text-blue-900 dark:text-blue-100 tracking-wide">
+                                      <h3 className="font-bold text-sm line-clamp-2 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors text-blue-900 dark:text-blue-100">
                                         {session.name}
                                       </h3>
                                       <p className="text-[11px] text-blue-600 dark:text-blue-400 uppercase tracking-wide font-medium">
@@ -266,7 +260,7 @@ export default function SpecialtySessionsPage() {
                                     </div>
                                   </div>
                                   
-                                  <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-900/40 backdrop-blur-sm">
+                                  <Badge variant="outline" className="text-[10px] rounded-full px-2 py-0.5 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/30">
                                     {session.semester ? `S${session.semester.order}` : 'Exam'}
                                   </Badge>
                                 </div>
@@ -275,15 +269,15 @@ export default function SpecialtySessionsPage() {
                               {/* Content and Actions */}
                               <div className="p-5 flex flex-col h-full">
                                 {/* Session Stats */}
-                                <div className="flex items-center justify-between text-[11px] text-blue-600 dark:text-blue-400 mb-4">
+                                <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400 mb-4">
                                   <div className="flex items-center gap-1">
-                                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-sm"></div>
-                                    <span className="font-medium">Session d'examen</span>
+                                    <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                                    <span>Session d'examen</span>
                                   </div>
                                   {session.pdfUrl && (
-                                    <div className="flex items-center gap-1 font-medium">
-                                      <Eye className="h-3 w-3 opacity-80" />
-                                      <span>PDF</span>
+                                    <div className="flex items-center gap-1">
+                                      <Eye className="h-3 w-3" />
+                                      <span>PDF disponible</span>
                                     </div>
                                   )}
                                 </div>
@@ -294,10 +288,10 @@ export default function SpecialtySessionsPage() {
                                     <Button
                                       size="sm"
                                       onClick={(e) => { e.stopPropagation(); router.push(`/session/${specialty.id}/${session.id}/viewer`); }}
-                                      className="relative z-20 w-full justify-center text-[11px] font-medium bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 hover:from-blue-700 hover:via-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-xl transition-all duration-200 group rounded-lg"
+                                      className="relative z-20 w-full justify-center text-xs bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 group"
                                     >
-                                      <Eye className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform drop-shadow" />
-                                      Ouvrir l'examen
+                                      <Eye className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
+                                      Voir l'examen
                                     </Button>
                                   )}
                                   {!session.pdfUrl && (

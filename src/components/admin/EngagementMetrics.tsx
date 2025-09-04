@@ -1,42 +1,48 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { 
-  TrendingUp, 
-  Users, 
-  Target, 
-  Activity,
-  Clock,
-  CheckCircle,
-  AlertCircle
-} from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { TrendingUp, Users, Target, Activity, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface EngagementMetricsProps {
-  totalProgressEntries: number;
-  recentProgressEntries: number;
-  averageCompletionRate: number;
-  usersThisWeek: number;
-  questionsThisWeek: number;
-  lecturesThisWeek: number;
-  reportsThisWeek: number;
+  totalProgressEntries?: number;
+  recentProgressEntries?: number;
+  averageCompletionRate?: number;
+  usersThisWeek?: number;
+  questionsThisWeek?: number;
+  lecturesThisWeek?: number;
+  reportsThisWeek?: number;
 }
 
-export function EngagementMetrics({
-  totalProgressEntries,
-  recentProgressEntries,
-  averageCompletionRate,
-  usersThisWeek,
-  questionsThisWeek,
-  lecturesThisWeek,
-  reportsThisWeek
-}: EngagementMetricsProps) {
-  const { t } = useTranslation();
+const t = (key: string) => {
+  const map: Record<string,string> = {
+    'admin.completionRate': 'Taux de complétion',
+    'admin.completionRateDesc': 'Pourcentage moyen des questions complétées',
+    'admin.totalProgress': 'Entrées de progression',
+    'admin.totalProgressDesc': 'Total des enregistrements de progression',
+    'admin.recentActivity': 'Activité récente',
+    'admin.recentActivityDesc': 'Entrées de progression sur 7 jours',
+    'admin.complete': 'complété',
+    'admin.weeklyActivity': 'Activité hebdomadaire',
+    'admin.weeklyActivityDesc': 'Nouveaux éléments ajoutés cette semaine',
+    'admin.newUsers': 'Nouveaux utilisateurs',
+    'admin.newQuestions': 'Nouvelles questions',
+    'admin.newLectures': 'Nouveaux cours',
+    'admin.newReports': 'Nouveaux signalements'
+  }; return map[key] || key;
+};
+
+export function EngagementMetrics(props: EngagementMetricsProps) {
+  const totalProgressEntries = props.totalProgressEntries ?? 0;
+  const recentProgressEntries = props.recentProgressEntries ?? 0;
+  const averageCompletionRate = props.averageCompletionRate ?? 0;
+  const usersThisWeek = props.usersThisWeek ?? 0;
+  const questionsThisWeek = props.questionsThisWeek ?? 0;
+  const lecturesThisWeek = props.lecturesThisWeek ?? 0;
+  const reportsThisWeek = props.reportsThisWeek ?? 0;
 
   const metrics = [
     {
       title: t('admin.completionRate'),
-      value: `${averageCompletionRate}%`,
+      value: `${averageCompletionRate.toFixed(2)}%`,
       description: t('admin.completionRateDesc'),
       icon: Target,
       color: 'text-green-500',
@@ -64,34 +70,10 @@ export function EngagementMetrics({
   ];
 
   const weeklyStats = [
-    {
-      label: t('admin.newUsers'),
-      value: usersThisWeek,
-      icon: Users,
-      color: 'text-blue-500',
-      bgColor: 'from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20'
-    },
-    {
-      label: t('admin.newQuestions'),
-      value: questionsThisWeek,
-      icon: CheckCircle,
-      color: 'text-green-500',
-      bgColor: 'from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-800/20'
-    },
-    {
-      label: t('admin.newLectures'),
-      value: lecturesThisWeek,
-      icon: Clock,
-      color: 'text-blue-500',
-      bgColor: 'from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20'
-    },
-    {
-      label: t('admin.newReports'),
-      value: reportsThisWeek,
-      icon: AlertCircle,
-      color: 'text-orange-500',
-      bgColor: 'from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20'
-    }
+    { label: t('admin.newUsers'), value: usersThisWeek, icon: Users, color: 'text-blue-500', bgColor: 'from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20' },
+    { label: t('admin.newQuestions'), value: questionsThisWeek, icon: CheckCircle, color: 'text-green-500', bgColor: 'from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-800/20' },
+    { label: t('admin.newLectures'), value: lecturesThisWeek, icon: Clock, color: 'text-blue-500', bgColor: 'from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20' },
+    { label: t('admin.newReports'), value: reportsThisWeek, icon: AlertCircle, color: 'text-orange-500', bgColor: 'from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20' }
   ];
 
   return (
@@ -115,7 +97,7 @@ export function EngagementMetrics({
                 <div className="mt-4">
                   <Progress value={metric.progress} className="h-2" />
                   <p className="text-xs text-muted-foreground mt-2">
-                    {metric.progress}% {t('admin.complete')}
+                    {metric.progress.toFixed(2)}% {t('admin.complete')}
                   </p>
                 </div>
               )}

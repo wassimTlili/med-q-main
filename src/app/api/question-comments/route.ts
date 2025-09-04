@@ -2,19 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { questionCommentsSupportsAnonymous } from '@/lib/db-features';
 
-// Unified sanitizer (larger cap now ~7MB encoded) similar to user-question-state
-function sanitizeImages(list: unknown, max = 7_000_000) { // encoded length cap; adjust if needed
-  if (!Array.isArray(list)) return [] as string[];
-  return (list as any[])
-    .filter(u => typeof u === 'string')
-    .filter(u => {
-      if (u.startsWith('blob:')) return false; // never persist blob temp urls
-      if (u.startsWith('data:image/')) return u.length <= max; // allow larger inline images
-      return /^https?:\/\//i.test(u) || u.startsWith('/');
-    })
-    .slice(0,6);
-}
-
 // Shared select for full-feature schema (with isAnonymous & imageUrls)
 const fullSelect = {
   id: true,
@@ -90,9 +77,18 @@ export async function GET(request: NextRequest) {
 // POST /api/question-comments
 export async function POST(request: NextRequest) {
   try {
-  const { questionId, userId, content, isAnonymous, parentCommentId, imageUrls } = await request.json();
+    const { questionId, userId, content, isAnonymous, parentCommentId, imageUrls } = await request.json();
     if (!questionId || !userId) return NextResponse.json({ error: 'questionId and userId are required' }, { status: 400 });
-  const sanitizedImages = sanitizeImages(imageUrls);
+    const sanitizedImages = Array.isArray(imageUrls)
+      ? imageUrls
+          .filter((u: any) => typeof u === 'string')
+          .filter((u: string) => {
+            // Allow either hosted URL (http/https) or small inline data URL (< ~150KB)
+            if (u.startsWith('data:image/')) return u.length < 200000; // rough cap
+            return /^https?:\/\//i.test(u) || u.startsWith('/');
+          })
+          .slice(0,6)
+      : [];
     const textContent = typeof content === 'string' ? content : '';
     if (!textContent.trim() && sanitizedImages.length === 0) {
       return NextResponse.json({ error: 'Empty comment' }, { status: 400 });

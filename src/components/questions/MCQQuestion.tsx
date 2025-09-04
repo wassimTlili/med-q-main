@@ -566,26 +566,20 @@ export function MCQQuestion({
             highlightConfirm={highlightConfirm}
             hideMeta={hideMeta}
           />
-          {/* Inline media attached to the question (tolerant logic) */}
+          {/* Inline media attached to the question (not the reminder) */}
           {(() => {
-            let mediaUrl: string | undefined = (question as any).media_url || (question as any).mediaUrl;
-            const mediaType: string | undefined = (question as any).media_type || (question as any).mediaType;
+            const mediaUrl = (question as any).media_url || (question as any).mediaUrl;
+            const mediaType = (question as any).media_type || (question as any).mediaType;
             if (!mediaUrl) return null;
-            // Normalize relative paths missing leading slash
-            if (!/^https?:\/\//i.test(mediaUrl) && !mediaUrl.startsWith('/')) {
-              mediaUrl = '/' + mediaUrl; // ensure root-relative so Next serves from public
-            }
-            // If it's explicitly a video, skip here (videos handled elsewhere if needed)
-            if (mediaType && mediaType.toLowerCase() === 'video') return null;
-            // Heuristic: treat anything as image unless clearly a video extension
-            const isVideoLike = /\.(mp4|webm|ogg)(\?.*)?$/i.test(mediaUrl);
-            if (isVideoLike) return null;
+            const isImageByExt = /\.(png|jpe?g|gif|webp|svg|avif)(\?.*)?$/i.test(mediaUrl);
+            const isImage = mediaType === 'image' || (!mediaType && isImageByExt);
+            if (!isImage) return null;
             return (
               <div className="mt-3">
                 <ZoomableImage
                   src={mediaUrl}
                   alt="Illustration de la question"
-                  thumbnailClassName="max-h-64 w-auto sm:max-h-80 max-w-full rounded-md border object-contain shadow-sm bg-background"
+                  thumbnailClassName="max-h-64 w-auto sm:max-h-80 max-w-full rounded-md border object-contain shadow-sm"
                 />
               </div>
             );

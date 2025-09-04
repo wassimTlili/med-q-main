@@ -11,10 +11,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
+  // Public marketing/legal pages accessible without auth
+  const publicRoutes = ['/', '/privacy', '/guide', '/terms', '/faq'];
+  if (publicRoutes.includes(pathname)) {
+    return NextResponse.next();
+  }
+
   // Get token from cookie
   const token = request.cookies.get('auth-token')?.value;
-  
-  // Check if user is authenticated
   const isAuthenticated = token ? verifyToken(token) : false;
   
   // Define protected routes - all routes that require authentication
@@ -34,7 +38,9 @@ export function middleware(request: NextRequest) {
   
   // If user is not authenticated and trying to access protected routes
   if (!isAuthenticated && isProtectedRoute) {
-    return NextResponse.redirect(new URL('/auth', request.url));
+    const url = new URL('/auth', request.url);
+    url.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(url);
   }
   
   // If user is authenticated and trying to access auth page

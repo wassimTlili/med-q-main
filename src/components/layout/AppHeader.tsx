@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, Settings, User, Heart, Stethoscope, Menu, Search, Bell, Moon, Sun, X } from 'lucide-react';
+import { LogOut, Settings, User, Heart, Stethoscope, Menu, Bell, Moon, Sun, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import { useSidebar } from '@/components/ui/sidebar';
@@ -71,18 +71,8 @@ export function AppHeader() {
           </Button>
         </div>
 
-        {/* Center Section: Search (desktop) */}
-        {user && (
-          <div className="hidden md:flex flex-1 items-center">
-            <div className="relative w-full max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={t('common.searchPlaceholder') || 'Search...'}
-                className="pl-10 rounded-xl bg-white/50 dark:bg-muted/30 border-border/50 focus:border-blue-300 dark:focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 backdrop-blur-sm"
-              />
-            </div>
-          </div>
-        )}
+  {/* Center Section: (search removed) preserve flex spacing */}
+  {user && <div className="hidden md:flex flex-1 items-center" />}
 
         {/* Right Section: Actions */}
         <div className="ml-auto flex items-center gap-1 sm:gap-2">

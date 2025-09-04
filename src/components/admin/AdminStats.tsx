@@ -1,87 +1,36 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, FileText, Users, HelpCircle, AlertTriangle } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+// i18n removed for admin pages – static French labels
 import { toast } from '@/hooks/use-toast';
 import { RecentActivity } from './RecentActivity';
 import { QuickActions } from './QuickActions';
 import { EngagementMetrics } from './EngagementMetrics';
 
+// Legacy interface was larger; new stats endpoint returns compact shape (see /api/admin/stats)
+// Provide optional recent* arrays for compatibility with <RecentActivity/>
 interface AdminStatsData {
-  // Basic counts
-  specialties: number;
-  lectures: number;
+  specialties?: number;
+  lectures?: number;
   questions: number;
   users: number;
-  pendingReports: number;
-  
-  // Recent activity
-  recentUsers: Array<{
-    id: string;
-    email: string;
-    name?: string;
-    createdAt: string;
-    role: string;
-  }>;
-  recentQuestions: Array<{
-    id: string;
-    text: string;
-    type: string;
-    createdAt: string;
-    lecture: {
-      id: string;
-      title: string;
-      specialty: {
-        id: string;
-        name: string;
-      };
-    };
-  }>;
-  recentLectures: Array<{
-    id: string;
-    title: string;
-    createdAt: string;
-    specialty: {
-      id: string;
-      name: string;
-    };
-    _count: {
-      questions: number;
-    };
-  }>;
-  recentReports: Array<{
-    id: string;
-    message: string;
-    status: string;
-    createdAt: string;
-    question: {
-      id: string;
-      text: string;
-    };
-    lecture: {
-      id: string;
-      title: string;
-    };
-    user: {
-      id: string;
-      email: string;
-    };
-  }>;
-  
-  // Engagement metrics
-  totalProgressEntries: number;
-  recentProgressEntries: number;
-  averageCompletionRate: number;
-  
-  // Time-based metrics
-  usersThisWeek: number;
-  questionsThisWeek: number;
-  lecturesThisWeek: number;
-  reportsThisWeek: number;
+  pendingReports?: number;
+  // activity feed (optional)
+  recentUsers?: Array<{ id: string; email: string; name?: string; createdAt: string; role: string; }>;
+  recentQuestions?: Array<{ id: string; text: string; type: string; createdAt: string; lecture: { id: string; title: string; specialty: { id: string; name: string; }; }; }>;
+  recentLectures?: Array<{ id: string; title: string; createdAt: string; specialty: { id: string; name: string; }; _count: { questions: number }; }>;
+  recentReports?: Array<{ id: string; message: string; status: string; createdAt: string; question: { id: string; text: string }; lecture: { id: string; title: string }; user: { id: string; email: string }; }>;
+  // engagement metrics (optional or computed elsewhere)
+  totalProgressEntries?: number;
+  recentProgressEntries?: number;
+  averageCompletionRate?: number;
+  usersThisWeek?: number;
+  questionsThisWeek?: number;
+  lecturesThisWeek?: number;
+  reportsThisWeek?: number;
 }
 
 export function AdminStats() {
-  const { t } = useTranslation();
   const [stats, setStats] = useState<AdminStatsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -99,18 +48,14 @@ export function AdminStats() {
         }
       } catch (error) {
         console.error('Error fetching admin stats:', error);
-        toast({
-          title: t('common.error'),
-          description: t('common.tryAgain'),
-          variant: "destructive",
-        });
+    toast({ title: 'Erreur', description: 'Veuillez réessayer.', variant: 'destructive' });
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchStats();
-  }, [t]);
+  }, []);
   
   if (isLoading) {
     return (
@@ -151,8 +96,8 @@ export function AdminStats() {
           <div className="w-16 h-16 bg-gradient-to-br from-red-100 to-red-50 dark:from-red-900/20 dark:to-red-800/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-red-500" />
           </div>
-          <h3 className="text-xl font-bold text-foreground mb-2">Unable to Load Data</h3>
-          <p className="text-muted-foreground">{t('common.error')}</p>
+          <h3 className="text-xl font-bold text-foreground mb-2">Impossible de charger les données</h3>
+          <p className="text-muted-foreground">Erreur inattendue.</p>
         </div>
       </div>
     );
@@ -168,7 +113,7 @@ export function AdminStats() {
               <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-              {t('admin.totalSpecialties')}
+              Spécialités
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
@@ -182,7 +127,7 @@ export function AdminStats() {
               <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-              {t('admin.totalLectures')}
+              Cours
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
@@ -196,7 +141,7 @@ export function AdminStats() {
               <HelpCircle className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-              {t('admin.totalQuestions')}
+              Questions
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
@@ -210,7 +155,7 @@ export function AdminStats() {
               <Users className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-              {t('admin.registeredUsers')}
+              Utilisateurs
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
@@ -224,7 +169,7 @@ export function AdminStats() {
               <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-orange-500" />
             </div>
             <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-              {t('admin.pendingReports')}
+              Signalements en attente
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center">
@@ -234,15 +179,17 @@ export function AdminStats() {
       </div>
 
       {/* Engagement Metrics */}
-      <EngagementMetrics
-        totalProgressEntries={stats.totalProgressEntries}
-        recentProgressEntries={stats.recentProgressEntries}
-        averageCompletionRate={stats.averageCompletionRate}
-        usersThisWeek={stats.usersThisWeek}
-        questionsThisWeek={stats.questionsThisWeek}
-        lecturesThisWeek={stats.lecturesThisWeek}
-        reportsThisWeek={stats.reportsThisWeek}
-      />
+      {stats.totalProgressEntries !== undefined && (
+        <EngagementMetrics
+          totalProgressEntries={stats.totalProgressEntries}
+          recentProgressEntries={stats.recentProgressEntries}
+          averageCompletionRate={stats.averageCompletionRate}
+          usersThisWeek={stats.usersThisWeek}
+          questionsThisWeek={stats.questionsThisWeek}
+          lecturesThisWeek={stats.lecturesThisWeek}
+          reportsThisWeek={stats.reportsThisWeek}
+        />
+      )}
 
       {/* Quick Actions */}
       <QuickActions />

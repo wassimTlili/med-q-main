@@ -16,6 +16,10 @@ import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getMedicalIcon } from '@/lib/medical-icons';
 
+// DEPRECATED: Replaced by dedicated route pages under
+// /admin/management, /admin/management/[specialtyId], and
+// /admin/management/[specialtyId]/courses/[lectureId].
+// Keep temporarily for reference until all legacy modal code is removed.
 export function ManagementTab({ initialSpecialtyId }: { initialSpecialtyId?: string } = {}) {
   // Specialties state
   const [specialties, setSpecialties] = useState<Specialty[]>([]);

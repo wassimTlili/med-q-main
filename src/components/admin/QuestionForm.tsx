@@ -61,65 +61,55 @@ export function QuestionForm({ lectureId, editQuestionId, onComplete }: Question
       <CardContent>
         <form onSubmit={async (e) => {
           e.preventDefault();
-          
+
           if (!questionText.trim()) {
-            toast({
-              title: "Validation Error",
-              description: "Question text is required",
-              variant: "destructive",
-            });
+            toast({ title: 'Validation Error', description: 'Question text is required', variant: 'destructive' });
             return;
           }
-          
+
+          const isEdit = !!editQuestionId;
           setIsLoading(true);
-          
           try {
-            const questionData = {
+            const payload: any = {
               type: questionType,
               text: questionText,
               courseReminder,
-              questionNumber,
+              number: questionNumber,
               session,
-              options: (questionType === 'mcq' || questionType === 'clinic_mcq') ? options : undefined,
-              correctAnswers: (questionType === 'mcq' || questionType === 'clinic_mcq') ? correctAnswers : undefined,
               mediaUrl,
-              mediaType
+              mediaType,
             };
-            
-            const response = await fetch('/api/questions', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify({
-                ...questionData,
-                lectureId: lectureId
-              }),
-            });
-            
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.error || 'Failed to create question');
+            if (questionType === 'mcq' || questionType === 'clinic_mcq') {
+              payload.options = options;
+              payload.correctAnswers = correctAnswers;
             }
-            
-            toast({
-              title: "Success",
-              description: "Question created successfully",
-            });
-            
+
+            let response: Response;
+            if (isEdit) {
+              // Use dedicated question PUT endpoint
+              response = await fetch(`/api/questions/${editQuestionId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload)
+              });
+            } else {
+              response = await fetch('/api/questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ ...payload, lectureId })
+              });
+            }
+
+            if (!response.ok) {
+              const data = await response.json().catch(()=>({}));
+              throw new Error(data.error || (isEdit ? 'Failed to update question' : 'Failed to create question'));
+            }
+            toast({ title: 'Success', description: isEdit ? 'Question updated' : 'Question created successfully' });
             onComplete?.();
-            
-                    } catch (error: unknown) {
-            console.error('Error creating question:', error);
-            const errorMessage = error instanceof Error && error.message 
-              ? error.message 
-              : "Failed to create question";
-            toast({
-              title: "Error",
-              description: errorMessage,
-              variant: "destructive",
-            });
+          } catch (err: any) {
+            toast({ title: 'Error', description: err?.message || 'Operation failed', variant: 'destructive' });
           } finally {
             setIsLoading(false);
           }

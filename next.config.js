@@ -3,7 +3,7 @@ const path = require('path');
 
 const nextConfig = {
   images: {
-    domains: ['localhost', 'utfs.io', 'uploadthing.com', 'k5kuw9ehqm.ufs.sh', 'ufs.sh'],
+    domains: ['localhost', 'utfs.io', 'uploadthing.com', 'k5kuw9ehqm.ufs.sh', 'ufs.sh', 'r5p6ptp1nn.ufs.sh', 'hbc9duawsb.ufs.sh'],
   },
   typescript: {
     ignoreBuildErrors: false,

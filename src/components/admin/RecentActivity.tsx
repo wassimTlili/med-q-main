@@ -15,18 +15,17 @@ import {
   Flag,
   Eye
 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { useRouter } from 'next/navigation';
 
 interface RecentActivityProps {
-  recentUsers: Array<{
+  recentUsers?: Array<{
     id: string;
     email: string;
     name?: string;
     createdAt: string;
     role: string;
   }>;
-  recentQuestions: Array<{
+  recentQuestions?: Array<{
     id: string;
     text: string;
     type: string;
@@ -40,7 +39,7 @@ interface RecentActivityProps {
       };
     };
   }>;
-  recentLectures: Array<{
+  recentLectures?: Array<{
     id: string;
     title: string;
     createdAt: string;
@@ -52,7 +51,7 @@ interface RecentActivityProps {
       questions: number;
     };
   }>;
-  recentReports: Array<{
+  recentReports?: Array<{
     id: string;
     message: string;
     status: string;
@@ -73,12 +72,11 @@ interface RecentActivityProps {
 }
 
 export function RecentActivity({ 
-  recentUsers, 
-  recentQuestions, 
-  recentLectures, 
-  recentReports 
+  recentUsers = [], 
+  recentQuestions = [], 
+  recentLectures = [], 
+  recentReports = [] 
 }: RecentActivityProps) {
-  const { t } = useTranslation();
   const router = useRouter();
 
   const formatDate = (dateString: string) => {
@@ -86,9 +84,9 @@ export function RecentActivity({
     const now = new Date();
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
     
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    if (diffInHours < 48) return 'Yesterday';
+  if (diffInHours < 1) return "À l'instant";
+  if (diffInHours < 24) return `${diffInHours}h`;
+  if (diffInHours < 48) return 'Hier';
     return date.toLocaleDateString();
   };
 
@@ -110,7 +108,7 @@ export function RecentActivity({
             <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-xl flex items-center justify-center">
               <Users className="w-5 h-5 text-blue-500" />
             </div>
-            {t('admin.recentUsers')}
+      Utilisateurs récents
           </CardTitle>
           <Button 
             variant="ghost" 
@@ -118,18 +116,18 @@ export function RecentActivity({
             onClick={() => router.push('/admin?tab=users')}
             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
           >
-            View all
+      Voir tout
             <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[250px]">
-            {recentUsers.length === 0 ? (
+      {recentUsers.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800/30 dark:to-gray-700/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Users className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <p className="text-muted-foreground">{t('admin.noRecentUsers')}</p>
+        <p className="text-muted-foreground">Aucun nouvel utilisateur</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -170,7 +168,7 @@ export function RecentActivity({
             <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-xl flex items-center justify-center">
               <HelpCircle className="w-5 h-5 text-blue-500" />
             </div>
-            {t('admin.recentQuestions')}
+      Questions récentes
           </CardTitle>
           <Button 
             variant="ghost" 
@@ -178,7 +176,7 @@ export function RecentActivity({
             onClick={() => router.push('/admin?tab=questions')}
             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
           >
-            View all
+      Voir tout
             <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
         </CardHeader>
@@ -189,7 +187,7 @@ export function RecentActivity({
                 <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800/30 dark:to-gray-700/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <HelpCircle className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <p className="text-muted-foreground">{t('admin.noRecentQuestions')}</p>
+        <p className="text-muted-foreground">Aucune nouvelle question</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -217,7 +215,7 @@ export function RecentActivity({
                         className="h-8 px-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                       >
                         <Eye className="w-3 h-3 mr-1" />
-                        View
+                        Voir
                       </Button>
                     </div>
                   </div>
@@ -235,7 +233,7 @@ export function RecentActivity({
             <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-800/20 rounded-xl flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-green-500" />
             </div>
-            {t('admin.recentLectures')}
+      Cours récents
           </CardTitle>
           <Button 
             variant="ghost" 
@@ -243,7 +241,7 @@ export function RecentActivity({
             onClick={() => router.push('/admin?tab=lectures')}
             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
           >
-            View all
+      Voir tout
             <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
         </CardHeader>
@@ -254,7 +252,7 @@ export function RecentActivity({
                 <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800/30 dark:to-gray-700/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <GraduationCap className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <p className="text-muted-foreground">{t('admin.noRecentLectures')}</p>
+        <p className="text-muted-foreground">Aucun nouveau cours</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -282,7 +280,7 @@ export function RecentActivity({
                         className="h-8 px-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                       >
                         <Eye className="w-3 h-3 mr-1" />
-                        View
+                        Voir
                       </Button>
                     </div>
                   </div>
@@ -300,7 +298,7 @@ export function RecentActivity({
             <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/30 dark:to-orange-800/20 rounded-xl flex items-center justify-center">
               <Flag className="w-5 h-5 text-orange-500" />
             </div>
-            {t('admin.recentReports')}
+      Signalements récents
           </CardTitle>
           <Button 
             variant="ghost" 
@@ -308,7 +306,7 @@ export function RecentActivity({
             onClick={() => router.push('/admin?tab=reports')}
             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
           >
-            View all
+      Voir tout
             <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
         </CardHeader>
@@ -319,7 +317,7 @@ export function RecentActivity({
                 <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800/30 dark:to-gray-700/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Flag className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <p className="text-muted-foreground">{t('admin.noRecentReports')}</p>
+        <p className="text-muted-foreground">Aucun signalement récent</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -347,7 +345,7 @@ export function RecentActivity({
                         className="h-8 px-3 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                       >
                         <Eye className="w-3 h-3 mr-1" />
-                        View
+                        Voir
                       </Button>
                     </div>
                   </div>

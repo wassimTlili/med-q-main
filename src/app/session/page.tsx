@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import { FileText } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Users, FileText, Calendar } from 'lucide-react';
+import Link from 'next/link';
 import { UniversalHeader } from '@/components/layout/UniversalHeader';
 import { AppSidebar, AppSidebarProvider } from '@/components/layout/AppSidebar';
 import { SidebarInset } from '@/components/ui/sidebar';
@@ -16,7 +19,7 @@ type Specialty = {
   _count?: { sessions: number };
 };
 
-import { SessionSpecialtyCard } from '@/components/session/SessionSpecialtyCard';
+import { getMedicalIcon, getIconBySpecialtyName } from '@/lib/medical-icons';
 
 export default function SessionsPage() {
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
@@ -87,12 +90,96 @@ export default function SessionsPage() {
                   </div>
                 ) : (
                   <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                    {(() => {
-                      const maxSessions = Math.max(0, ...filtered.map(f => f._count?.sessions || 0));
-                      return filtered.map(s => (
-                        <SessionSpecialtyCard key={s.id} specialty={s as any} maxSessions={maxSessions} />
-                      ));
-                    })()}
+                    {filtered.map((specialty) => {
+                      const iconData = specialty.icon ? getMedicalIcon(specialty.icon) : getIconBySpecialtyName(specialty.name);
+                      const IconComp = iconData.icon;
+                      // Deterministic multi-color gradient like exercises
+                      const getIconGradient = (name: string) => {
+                        let hash = 0;
+                        for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                        const gradients = [
+                          'from-blue-400 to-blue-600',
+                          'from-emerald-400 to-emerald-600',
+                          'from-medblue-400 to-medblue-600',
+                          'from-orange-400 to-orange-600',
+                          'from-rose-400 to-rose-600',
+                          'from-cyan-400 to-cyan-600',
+                          'from-lime-400 to-lime-600',
+                          'from-fuchsia-400 to-fuchsia-600',
+                          'from-indigo-400 to-indigo-600',
+                          'from-teal-400 to-teal-600'
+                        ];
+                        return gradients[Math.abs(hash) % gradients.length];
+                      };
+                      const iconGradient = getIconGradient(specialty.name);
+                      return (
+                        <Link
+                          key={specialty.id}
+                          href={`/session/${specialty.id}?name=${encodeURIComponent(specialty.name)}`}
+                          className="group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 rounded-2xl transition"
+                        >
+                          <div className="relative h-full rounded-2xl border border-border/50 bg-white/60 dark:bg-muted/40 backdrop-blur-sm overflow-hidden shadow-lg hover:shadow-2xl hover:shadow-blue-500/25 hover:-translate-y-1 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300">
+                            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/40 via-blue-600/10 to-blue-400/40" />
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-br from-blue-50/50 via-blue-100/30 to-indigo-50/40 dark:from-blue-900/30 dark:via-blue-800/20 dark:to-blue-900/30" />
+                            
+                            {/* Header section with gradient */}
+                            <div className="bg-gradient-to-r from-blue-50/40 to-blue-100/30 dark:from-blue-900/30 dark:to-blue-800/20 border-b border-blue-100/50 dark:border-blue-800/50 p-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br ${iconGradient} shadow-lg border-2 border-white/20 group-hover:scale-110 transition-transform`}>
+                                  <IconComp className="w-6 h-6 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="text-sm font-bold line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors text-blue-900 dark:text-blue-100">{specialty.name}</h3>
+                                  {specialty.semester && (
+                                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-blue-600 dark:text-blue-400 font-medium mt-0.5">
+                                      <Users className="h-3 w-3" /> Semestre {specialty.semester.order}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Content section */}
+                            <div className="p-4 flex flex-col h-full relative z-10">
+                              {specialty.description && (
+                                <p className="text-xs text-blue-600 dark:text-blue-400 line-clamp-3 mb-4 leading-relaxed">{specialty.description}</p>
+                              )}
+                              
+                              {/* Session stats */}
+                              <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400 mb-4">
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                                  <span>Sessions disponibles</span>
+                                </div>
+                                {specialty._count?.sessions && (
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>{specialty._count.sessions} session{specialty._count.sessions > 1 ? 's' : ''}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="mt-auto">
+                                {specialty._count?.sessions ? (
+                                  <div className="flex items-center justify-between">
+                                    <Badge variant="secondary" className="text-[10px] font-medium rounded-full px-3 py-1 bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/30 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-700">
+                                      {specialty._count.sessions} session{specialty._count.sessions > 1 ? 's' : ''}
+                                    </Badge>
+                                    <div className="text-xs text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors font-medium">
+                                      Voir tout →
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Badge variant="outline" className="text-[10px] rounded-full px-3 py-1 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20">
+                                    Aucune session
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>
