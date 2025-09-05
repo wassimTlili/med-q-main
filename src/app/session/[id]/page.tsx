@@ -107,12 +107,16 @@ export default function SpecialtySessionsPage() {
           <SidebarInset className="flex-1 flex flex-col">
             <UniversalHeader
               hideSeparator
-              actions={(
-                <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm" onClick={() => router.push('/session')} className="gap-1">
-                    <ArrowLeft className="h-4 w-4" /> Retour
-                  </Button>
-                </div>
+              leftActions={(
+                <Button 
+                  variant="outline" 
+                  size="default" 
+                  onClick={() => router.push('/session')} 
+                  className="group gap-2 bg-card/80 border-border hover:bg-accent hover:border-accent-foreground/20 transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm"
+                >
+                  <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform duration-200" />
+                  <span className="font-medium">Retour</span>
+                </Button>
               )}
             />
             <div className="flex-1 bg-gray-50 dark:bg-gray-900">
@@ -133,11 +137,21 @@ export default function SpecialtySessionsPage() {
                       <h2 className="text-xl font-semibold text-blue-800 dark:text-blue-200">{error || 'Spécialité non trouvée'}</h2>
                       {specialtyId && <p className="text-xs text-blue-600 dark:text-blue-400 break-all opacity-70">ID: {String(specialtyId)}</p>}
                       <div className="flex gap-2">
-                        <Button onClick={() => router.push('/session')} size="sm" variant="outline" className="bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800">
-                          <ArrowLeft className="h-4 w-4 mr-1" /> Retour
+                        <Button 
+                          onClick={() => router.push('/session')} 
+                          size="default" 
+                          variant="outline" 
+                          className="group gap-2 bg-card/80 border-border hover:bg-accent hover:border-accent-foreground/20 transition-all duration-200 shadow-sm hover:shadow-md"
+                        >
+                          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform duration-200" /> 
+                          <span className="font-medium">Retour</span>
                         </Button>
                         {specialtyId && (
-                          <Button size="sm" onClick={() => fetchSpecialty(specialtyId!)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Button 
+                            size="default" 
+                            onClick={() => fetchSpecialty(specialtyId!)} 
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all duration-200"
+                          >
                             Réessayer
                           </Button>
                         )}

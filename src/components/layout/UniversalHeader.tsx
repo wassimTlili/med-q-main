@@ -31,6 +31,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 interface UniversalHeaderProps {
   title?: string;
   actions?: React.ReactNode;
+  leftActions?: React.ReactNode; // New prop for left-side actions like return button
   hideSeparator?: boolean;
   // Optional search props (used on exercises page). Completely optional so other pages remain unaffected.
   showSearch?: boolean;
@@ -42,6 +43,7 @@ interface UniversalHeaderProps {
 export function UniversalHeader({
   title,
   actions,
+  leftActions,
   hideSeparator = false,
   showSearch = false,
   searchValue = '',
@@ -78,6 +80,7 @@ export function UniversalHeader({
   };
 
   return (
+    // Rolled back to earlier gray background scheme
     <div className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-40 pt-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -108,7 +111,7 @@ export function UniversalHeader({
                       value={searchValue}
                       onChange={(e) => onSearchChange?.(e.target.value)}
                       placeholder={searchPlaceholder}
-                      className="h-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      className="h-9"
                     />
                   </div>
                 )}
@@ -118,8 +121,6 @@ export function UniversalHeader({
 
           {/* Right Section: Notifications, Profile */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Search button removed */}
-
             {/* Notifications */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -141,24 +142,24 @@ export function UniversalHeader({
                 <DropdownMenuItem>
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium">New question added</p>
-                    <p className="text-xs text-gray-500">Cardiology - 2 minutes ago</p>
+                    <p className="text-xs text-muted-foreground">Cardiology - 2 minutes ago</p>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium">Progress updated</p>
-                    <p className="text-xs text-gray-500">General Surgery - 1 hour ago</p>
+                    <p className="text-xs text-muted-foreground">General Surgery - 1 hour ago</p>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium">New lecture available</p>
-                    <p className="text-xs text-gray-500">Endocrinology - 3 hours ago</p>
+                    <p className="text-xs text-muted-foreground">Endocrinology - 3 hours ago</p>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-center">
-                  <span className="text-blue-600 hover:text-blue-700">View all notifications</span>
+                  <span className="text-primary hover:text-primary/80">View all notifications</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -169,7 +170,7 @@ export function UniversalHeader({
                 <Button variant="ghost" className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full shrink-0">
                   <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
                     <AvatarImage src={user?.image} alt={user?.name || user?.email || 'User'} />
-                    <AvatarFallback className="bg-blue-600 text-white text-xs sm:text-sm">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs sm:text-sm">
                       {user?.name ? getInitials(user.name) : <UserCircle className="h-4 w-4 sm:h-5 sm:w-5" />}
                     </AvatarFallback>
                   </Avatar>
@@ -205,11 +206,22 @@ export function UniversalHeader({
       </div>
       
       {/* Actions Row - Below Header */}
-      {actions && (
+      {(actions || leftActions) && (
         <div className={`bg-gray-50 dark:bg-gray-900 ${hideSeparator ? '' : 'border-t border-gray-200 dark:border-gray-700'}`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
-              {actions}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3">
+              {/* Left actions - typically return/back buttons */}
+              {leftActions && (
+                <div className="flex items-center gap-2">
+                  {leftActions}
+                </div>
+              )}
+              {/* Right actions - typically other action buttons */}
+              {actions && (
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 ml-auto">
+                  {actions}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -222,7 +234,7 @@ export function UniversalHeader({
             value={searchValue}
             onChange={(e) => onSearchChange?.(e.target.value)}
             placeholder={searchPlaceholder}
-            className="h-10 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+            className="h-10"
           />
         </div>
       )}

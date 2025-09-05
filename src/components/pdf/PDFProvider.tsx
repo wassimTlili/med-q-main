@@ -1,94 +1,79 @@
-'use client'
+"use client";
+
+// Client-only lazy pdf.js worker setup to avoid SSR DOMMatrix errors.
+// We DO NOT import 'react-pdf' (and so pdfjs-dist) at module scope.
 
 import { useEffect, useRef } from 'react';
 
-/**
- * Centralized, idempotent pdf.js worker initialization for react-pdf.
- * Production issues observed:
- *  - 404 on worker when middleware rewrites or when multiple dynamic imports race.
- *  - "PDFWorker.create - the worker is being destroyed" when Strict Mode double-invokes effects
- *    and we create/revoke object URLs repeatedly.
- *  - Hydration / timing issues if workerSrc set after first <Document/> mount.
- *
- * Strategy:
- *  - Cache the resolved workerSrc on window.__PDF_WORKER_SRC__ (never revoke during session).
- *  - Try module import (bundled via alias) -> blob indirection (avoids network) -> public fallbacks.
- *  - Guard against concurrent initializations with a promise singleton.
- *  - Fail fast with a single console.error only once.
- */
-interface WorkerCacheWindow extends Window {
-  __PDF_WORKER_SRC__?: string;
-  __PDF_WORKER_INIT__?: Promise<string | null>;
-}
+interface WorkerWindow extends Window { __PDF_WORKER_SET__?: boolean; }
 
-const globalWin: WorkerCacheWindow | undefined =
-  typeof window !== 'undefined' ? (window as WorkerCacheWindow) : undefined;
+async function setupWorker(win: WorkerWindow) {
+  if (win.__PDF_WORKER_SET__) return;
+  try {
+    const { pdfjs } = await import('react-pdf');
 
-async function resolveWorkerOnce(): Promise<string | null> {
-  if (!globalWin) return null;
-  if (globalWin.__PDF_WORKER_SRC__) return globalWin.__PDF_WORKER_SRC__;
-  if (globalWin.__PDF_WORKER_INIT__) return globalWin.__PDF_WORKER_INIT__;
+    // Reduce noisy console logs from pdf.js in production
+    if (process.env.NODE_ENV === 'production') {
+      try { (pdfjs as any).verbosity = 0; } catch {}
+    }
 
-  globalWin.__PDF_WORKER_INIT__ = (async () => {
-    try {
-      const { pdfjs } = await import('react-pdf');
+    const envSrc = process.env.NEXT_PUBLIC_PDF_WORKER_PATH?.trim();
+    const candidates: string[] = [
+      envSrc,
+      '/pdf.worker.min.mjs',
+      '/pdf.worker.mjs',
+      'https://unpkg.com/pdfjs-dist@5.3.93/build/pdf.worker.min.mjs'
+    ].filter(Boolean) as string[];
 
-      // 1. Attempt direct module based blob (tree-shake friendly, no network request)
+    const testCandidate = async (url: string) => {
+      // Skip network test for absolute external CDN (assume OK) to speed first paint
+      if (/^https?:/i.test(url)) return true;
       try {
-        await import('pdfjs-dist/build/pdf.worker.min.mjs');
-        const blobSource = "import 'pdfjs-dist/build/pdf.worker.min.mjs';";
-        const blob = new Blob([blobSource], { type: 'text/javascript' });
-        const url = URL.createObjectURL(blob);
-        pdfjs.GlobalWorkerOptions.workerSrc = url;
-        globalWin.__PDF_WORKER_SRC__ = url;
-        return url;
+        const res = await fetch(url, { method: 'HEAD', cache: 'force-cache' });
+        return res.ok && (res.headers.get('content-type') || '').includes('javascript');
+      } catch {
+        return false;
+      }
+    };
+
+    for (const src of candidates) {
+      const ok = await testCandidate(src);
+      if (!ok) continue;
+      try {
+        pdfjs.GlobalWorkerOptions.workerSrc = src;
+        win.__PDF_WORKER_SET__ = true;
+        console.info('[PDFProvider] worker set ->', src);
+        break;
       } catch (e) {
-        // silent – will try fallbacks
+        console.warn('[PDFProvider] failed assign worker', src, e);
       }
+    }
 
-      // 2. Public fallback copies
-      const fallbacks = ['/pdf.worker.min.mjs', '/pdf.worker.mjs'];
-      for (const fb of fallbacks) {
-        try {
-          const head = await fetch(fb, { method: 'HEAD' });
-          if (head.ok) {
-            pdfjs.GlobalWorkerOptions.workerSrc = fb;
-            globalWin.__PDF_WORKER_SRC__ = fb;
-            return fb;
-          }
-        } catch {
-          /* continue */
-        }
+    // Ultimate fallback: inline blob worker (minimal) if nothing worked
+    if (!win.__PDF_WORKER_SET__) {
+      try {
+        const minimal = "importScripts('https://unpkg.com/pdfjs-dist@5.3.93/build/pdf.worker.min.mjs');";
+        const blob = new Blob([minimal], { type: 'application/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+        pdfjs.GlobalWorkerOptions.workerSrc = blobUrl;
+        win.__PDF_WORKER_SET__ = true;
+        console.info('[PDFProvider] fallback blob worker set');
+      } catch (e) {
+        console.error('[PDFProvider] Failed to configure any pdf.js worker', e);
       }
-      console.error('[PDFProvider] Unable to locate a valid pdf.js worker file.');
-      return null;
-    } catch (err) {
-      console.error('[PDFProvider] Initialization failed', err);
-      return null;
     }
-  })();
-
-  return globalWin.__PDF_WORKER_INIT__;
-}
-
-async function ensurePdfWorker() {
-  const url = await resolveWorkerOnce();
-  if (url) {
-    // Avoid logging repeatedly in dev strict re-renders
-    if (!(globalWin as any).__PDF_WORKER_LOGGED__) {
-      // eslint-disable-next-line no-console
-      console.info('[PDFProvider] pdf.js worker ready:', url);
-      (globalWin as any).__PDF_WORKER_LOGGED__ = true;
-    }
+  } catch (e) {
+    console.error('[PDFProvider] dynamic import failed', e);
   }
 }
 
 export function PDFProvider({ children }: { children: React.ReactNode }) {
-  const ran = useRef(false);
+  const started = useRef(false);
   useEffect(() => {
-    if (!ran.current) {
-      void ensurePdfWorker();
-      ran.current = true;
+    if (typeof window === 'undefined') return;
+    if (!started.current) {
+      started.current = true;
+      void setupWorker(window as WorkerWindow);
     }
   }, []);
   return <>{children}</>;

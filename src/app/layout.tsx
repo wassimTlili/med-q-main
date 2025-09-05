@@ -25,8 +25,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+  <html lang="en">
       <body className={`${inter.className} overflow-x-hidden`}>
+    {/* Preload PDF worker to avoid race conditions in production */}
+    <link rel="preload" as="script" href="/pdf.worker.min.mjs" />
+    <link rel="prefetch" href="/pdf.worker.min.mjs" />
         <Providers>
           {/* Crisp live chat widget (needs AuthProvider) */}
           <CrispChat />

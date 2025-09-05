@@ -1,29 +1,28 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowLeft, 
-  Download, 
-  Eye, 
-  EyeOff, 
-  FileText, 
-  Loader2, 
-  ZoomIn, 
+import {
+  ArrowLeft,
+  FileText,
+  Loader2,
+  ZoomIn,
   ZoomOut,
   RotateCw,
   Maximize2,
   Minimize2,
   FileCheck2,
-  X,
   PanelRightOpen,
   PanelRightClose,
   CheckCircle
 } from 'lucide-react';
-import { Document, Page } from '@/components/pdf/ClientPDF';
+// Lazy client-only react-pdf imports to avoid SSR DOMMatrix errors
+import dynamic from 'next/dynamic';
+const PDFDoc = dynamic(() => import('react-pdf').then(m => m.Document), { ssr: false });
+const PDFPage = dynamic(() => import('react-pdf').then(m => m.Page), { ssr: false });
 import { useAuth } from '@/contexts/AuthContext';
 import { PDFProvider } from '@/components/pdf/PDFProvider';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -31,7 +30,6 @@ import { UniversalHeader } from '@/components/layout/UniversalHeader';
 import { AppSidebar, AppSidebarProvider } from '@/components/layout/AppSidebar';
 import { SidebarInset, useSidebar } from '@/components/ui/sidebar';
 import { CorrectionZone } from '@/components/session/CorrectionZone';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 // Import CSS for react-pdf
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -72,34 +70,7 @@ function getValidPdfLink(dbLink?: string | null): string | undefined {
   return dbLink; // fallback unchanged
 }
 
-// Component that uses sidebar state for responsive positioning
-function ResponsiveCorrectionButton({ 
-  canShowCorrection, 
-  correctionUrl, 
-  onClick 
-}: { 
-  canShowCorrection: boolean;
-  correctionUrl: string | undefined;
-  onClick: () => void;
-}) {
-  const { open } = useSidebar();
-  
-  if (!canShowCorrection || !correctionUrl) return null;
-  
-  return (
-    <Button
-      onClick={onClick}
-      variant="default"
-      className={`fixed bottom-6 shadow-xl rounded-full px-6 py-6 flex items-center gap-2 z-40 bg-blue-600 hover:bg-blue-700 text-white border-2 border-blue-200 dark:border-blue-800 transition-all duration-300 ${
-        open ? 'left-[calc(16rem+1.5rem)]' : 'left-12'
-      }`}
-      title="Ouvrir le PDF de correction dans une fenêtre modale"
-    >
-      <FileCheck2 className="h-5 w-5" />
-      <span className="hidden sm:inline text-sm font-medium">Correction PDF</span>
-    </Button>
-  );
-}
+// Removed floating correction button / modal; correction now displayed inline beside exam.
 
 export default function SessionViewerPage() {
   const params = useParams();
@@ -112,14 +83,48 @@ export default function SessionViewerPage() {
   const [error, setError] = useState<string | null>(null);
   const [loadingPdf, setLoadingPdf] = useState(true);
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.2);
-  const [showCorrection, setShowCorrection] = useState(false); // legacy toggle – main area shows exam now
-  const [correctionModalOpen, setCorrectionModalOpen] = useState(false);
+  // Exam PDF state
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [pdfError, setPdfError] = useState<string | null>(null);
+
+  // Removed page/scroll toggle: always scrolling all pages
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [showCorrectionPdf, setShowCorrectionPdf] = useState(false); // replaces zone when true
+
+  // Correction PDF state (separate page/zoom/rotation)
+  const [correctionNumPages, setCorrectionNumPages] = useState<number | null>(null);
+  const [correctionScale, setCorrectionScale] = useState(1.0);
+  const [correctionRotation, setCorrectionRotation] = useState(0);
+  const [correctionLoading, setCorrectionLoading] = useState(true);
+  const [correctionError, setCorrectionError] = useState<string | null>(null);
+  // Refs for auto-fit sizing
+  const examViewerRef = useRef<HTMLDivElement | null>(null);
+  const correctionViewerRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-fit helpers (approx A4 size at 72dpi: 595x842)
+  const fitExamPage = useCallback(() => {
+    const el = examViewerRef.current;
+    if (!el) return;
+    const baseW = (rotation % 180 === 90) ? 842 : 595;
+    const availW = el.clientWidth - 32; // padding margin allowance
+    if (availW <= 0) return;
+    const scaleW = availW / baseW;
+    const newScale = Math.max(0.4, Math.min(3, scaleW));
+    setScale(newScale);
+  }, [rotation]);
+
+  const fitCorrectionPage = useCallback(() => {
+    const el = correctionViewerRef.current;
+    if (!el) return;
+    const baseW = (correctionRotation % 180 === 90) ? 842 : 595;
+    const availW = el.clientWidth - 32;
+    if (availW <= 0) return;
+    const scaleW = availW / baseW;
+    const newScale = Math.max(0.4, Math.min(3, scaleW));
+    setCorrectionScale(newScale);
+  }, [correctionRotation]);
 
   const viewType = searchParams.get('type') || 'exam';
   // Allow all authenticated roles (including students) to view correction PDF
@@ -137,13 +142,8 @@ export default function SessionViewerPage() {
   const correctionUrl = correctionUrlRaw ? (/drive\.google\.com/.test(correctionUrlRaw) ? `/api/proxy-pdf?url=${encodeURIComponent(correctionUrlRaw)}` : correctionUrlRaw) : undefined;
   const currentPdfUrl = examUrl; // always exam in main view
   const canShowCorrection = !!(session && canViewCorrection && correctionUrlRaw);
-
-  // Auto open correction modal if ?type=correction
-  useEffect(() => {
-    if (viewType === 'correction' && canShowCorrection) {
-      setCorrectionModalOpen(true);
-    }
-  }, [viewType, canShowCorrection]);
+  // auto open PDF view (in-panel) if ?type=correction
+  useEffect(() => { if (viewType === 'correction' && canShowCorrection) { setPanelCollapsed(false); setShowCorrectionPdf(true); } }, [viewType, canShowCorrection]);
 
   // Fetch session data
   useEffect(() => {
@@ -169,7 +169,6 @@ export default function SessionViewerPage() {
           const data = await res.json();
           if (!cancelled) {
             setSession(data);
-            if (viewType === 'correction') setShowCorrection(true);
           }
         }
       } catch (e) {
@@ -204,13 +203,6 @@ export default function SessionViewerPage() {
       setPdfError('Erreur lors du chargement du PDF.');
     }
   }, []);
-
-  const changePage = (delta: number) => {
-    setPageNumber(prev => {
-      const n = prev + delta;
-      return Math.max(1, Math.min(n, numPages || 1));
-    });
-  };
 
   const changeScale = (delta: number) => {
     setScale(prev => Math.max(0.5, Math.min(prev + delta, 3)));
@@ -262,22 +254,42 @@ export default function SessionViewerPage() {
     return () => { cancelled = true; controller.abort(); };
   }, [currentPdfUrl]);
 
+  // Re-fit on window resize / layout changes
+  useEffect(() => {
+    const handle = () => { fitExamPage(); fitCorrectionPage(); };
+    window.addEventListener('resize', handle);
+    return () => window.removeEventListener('resize', handle);
+  }, [fitExamPage, fitCorrectionPage]);
+
+  // Re-fit when page count or panel collapse changes
+  useEffect(() => { fitExamPage(); }, [numPages, panelCollapsed, rotation, fitExamPage]);
+  useEffect(() => { if (showCorrectionPdf) fitCorrectionPage(); }, [showCorrectionPdf, correctionNumPages, correctionRotation, panelCollapsed, fitCorrectionPage]);
+
   return (
     <ProtectedRoute>
       <AppSidebarProvider>
-        <PDFProvider>
-          <div className="flex min-h-screen w-full">
+        <SidebarOpenConsumer>
+          {(sidebarOpen) => (
+            <PDFProvider>
+              <div className="flex min-h-screen w-full">
             <AppSidebar />
             <SidebarInset className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900">
               <UniversalHeader
                 title={session ? session.name : loading ? 'Chargement…' : (error || 'Session')}
                 hideSeparator
+                leftActions={(
+                  <Button 
+                    variant="outline" 
+                    size="default" 
+                    onClick={() => router.push(specialtyId ? `/session/${specialtyId}` : '/session')} 
+                    className="group gap-2 bg-card/80 border-border hover:bg-accent hover:border-accent-foreground/20 transition-all duration-200 shadow-sm hover:shadow-md backdrop-blur-sm"
+                  >
+                    <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform duration-200" /> 
+                    <span className="font-medium">Retour</span>
+                  </Button>
+                )}
                 actions={(
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Button variant="outline" size="sm" onClick={() => router.push(specialtyId ? `/session/${specialtyId}` : '/session')} className="gap-1 flex-shrink-0">
-                      <ArrowLeft className="h-4 w-4" /> 
-                      <span className="hidden sm:inline">Retour</span>
-                    </Button>
                     <div className="hidden md:flex items-center gap-2">
                       {session && session.semester && <Badge variant="outline" className="text-xs">S{session.semester.order}</Badge>}
                     </div>
@@ -294,11 +306,16 @@ export default function SessionViewerPage() {
                     <FileText className="h-12 w-12 text-muted-foreground" />
                     <h2 className="text-xl font-semibold">{error || 'Session non trouvée'}</h2>
                     <div className="flex gap-2">
-                      <Button onClick={() => router.push(specialtyId ? `/session/${specialtyId}` : '/session')} size="sm">
-                        <ArrowLeft className="h-4 w-4 mr-2" /> Retour
+                      <Button 
+                        onClick={() => router.push(specialtyId ? `/session/${specialtyId}` : '/session')} 
+                        size="default"
+                        className="group gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all duration-200"
+                      >
+                        <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform duration-200" /> 
+                        <span className="font-medium">Retour</span>
                       </Button>
                       {sessionId && (
-                        <Button variant="outline" size="sm" onClick={() => router.refresh()}>
+                        <Button variant="outline" size="default" onClick={() => router.refresh()} className="bg-card/80 border-border hover:bg-accent hover:border-accent-foreground/20 transition-all duration-200">
                           Réessayer
                         </Button>
                       )}
@@ -308,41 +325,38 @@ export default function SessionViewerPage() {
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
                       <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-medium mb-2">{showCorrection ? 'Correction non disponible' : 'Document non disponible'}</h3>
+                      <h3 className="text-lg font-medium mb-2">Document non disponible</h3>
                       <p className="text-muted-foreground text-center mb-4">
-                        {showCorrection
-                          ? "La correction de cet examen n'est pas encore disponible."
-                          : "Le document de cet examen n'est pas disponible."}
+                        {"Le document de cet examen n'est pas disponible."}
                       </p>
-                      {canShowCorrection && !showCorrection && session.correctionUrl && (
-                        <Button onClick={() => setShowCorrection(true)}>Voir la correction</Button>
-                      )}
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="flex flex-col xl:flex-row gap-4 lg:gap-6">
-                    {/* PDF Zone */}
-                    <div className={`space-y-3 lg:space-y-4 min-w-0 transition-all duration-300 ${
-                      panelCollapsed ? 'xl:flex-1' : 'xl:flex-[2]'
-                    } max-w-none`}>
+                  <div className="w-full mx-auto max-w-[1600px] grid gap-6 xl:grid-cols-12 items-start">
+                    {/* Exam PDF Viewer (responsive to sidebar) */}
+                    <div
+                      className={`min-w-0 space-y-4 transition-all duration-300 xl:col-span-12
+                        ${!panelCollapsed ? 'xl:col-span-6 2xl:col-span-7' : 'xl:col-span-12'}
+                      `}
+                    >
                       <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg">
                         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/40 via-blue-600/10 to-blue-400/40" />
                         <CardContent className="p-3 sm:p-4">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
-                            <div className="flex items-center gap-2 order-2 sm:order-1">
-                              <Button variant="outline" size="sm" onClick={() => changePage(-1)} disabled={pageNumber <= 1} 
-                                className="bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-xs">
-                                <span className="hidden sm:inline">Précédent</span>
-                                <span className="sm:hidden">Préc</span>
-                              </Button>
-                              <span className="text-sm text-blue-800 dark:text-blue-200 font-medium whitespace-nowrap">Page {pageNumber} / {numPages || 1}</span>
-                              <Button variant="outline" size="sm" onClick={() => changePage(1)} disabled={pageNumber >= (numPages || 1)}
-                                className="bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-xs">
-                                <span className="hidden sm:inline">Suivant</span>
-                                <span className="sm:hidden">Suiv</span>
-                              </Button>
+                          <div className="flex flex-col gap-3 text-xs sm:text-sm">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="default" className="bg-blue-600 text-white text-xs">Examen</Badge>
+                              {numPages && <span className="text-sm text-blue-800 dark:text-blue-200 font-medium whitespace-nowrap">{numPages} pages</span>}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setPanelCollapsed(c => !c)}
+                                  className="ml-auto bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 gap-1"
+                                >
+                                  {panelCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
+                                  <span className="hidden sm:inline">{panelCollapsed ? 'Afficher correction' : 'Masquer correction'}</span>
+                                </Button>
                             </div>
-                            <div className="flex items-center gap-1 sm:gap-2 order-1 sm:order-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <Button variant="outline" size="sm" onClick={() => changeScale(-0.2)} disabled={scale <= 0.5}
                                 className="bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 p-2">
                                 <ZoomOut className="h-4 w-4" />
@@ -352,38 +366,24 @@ export default function SessionViewerPage() {
                                 className="bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 p-2">
                                 <ZoomIn className="h-4 w-4" />
                               </Button>
+                              <Button variant="outline" size="sm" onClick={fitExamPage}
+                                className="bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 px-2 text-[11px]">Ajuster</Button>
                               <Button variant="outline" size="sm" onClick={() => setRotation(prev => (prev + 90) % 360)}
                                 className="bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 p-2">
                                 <RotateCw className="h-4 w-4" />
                               </Button>
                               <Button variant="outline" size="sm" onClick={toggleFullscreen}
-                                className="bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 p-2 hidden sm:flex">
+                                className="hidden sm:flex bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 p-2">
                                 {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                               </Button>
-                            </div>
-                            <div className="flex items-center gap-2 order-3 flex-wrap">
-                              {session.pdfUrl && (<Badge variant="default" className="bg-blue-600 text-white text-xs">Examen</Badge>)}
-                              {session && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => setPanelCollapsed(c=>!c)} 
-                                  className="bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800 gap-2"
-                                >
-                                  {panelCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
-                                  <span className="hidden sm:inline text-xs">
-                                    {panelCollapsed ? 'Afficher Correction' : 'Masquer Correction'}
-                                  </span>
-                                </Button>
-                              )}
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                      <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg">
+            <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg overflow-hidden">
                         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/40 via-blue-600/10 to-blue-400/40" />
                         <CardContent className="p-0">
-                          <div className="flex justify-center bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/40 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 min-h-[600px] relative rounded-md overflow-hidden">
+                          <div className="flex justify-center bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/40 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 h-[calc(100vh-60px)] max-h-[calc(100vh-60px)] relative rounded-md overflow-hidden">
                             {pdfError ? (
                               <div className="flex flex-col items-center justify-center text-center p-8 gap-3 max-w-md">
                                 <div className="w-16 h-16 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-2">
@@ -411,175 +411,155 @@ export default function SessionViewerPage() {
                                     </div>
                                   </div>
                                 )}
-                                <Document
-                                  file={currentPdfUrl}
-                                  onLoadSuccess={onDocumentLoadSuccess}
-                                  onLoadError={onDocumentLoadError}
-                                  loading=""
-                                  className="flex justify-center"
-                                >
-                                  <Page
-                                    pageNumber={pageNumber}
-                                    scale={scale}
-                                    rotate={rotation}
-                                    className="shadow-xl bg-white rounded-lg border-2 border-blue-100 dark:border-blue-800"
-                                    renderTextLayer={false}
-                                    renderAnnotationLayer={false}
-                                  />
-                                </Document>
+                                <div ref={examViewerRef} className="w-full h-full overflow-auto px-4 py-6 custom-scroll-thin">
+                                  <PDFDoc
+                                    file={currentPdfUrl}
+                                    onLoadSuccess={onDocumentLoadSuccess}
+                                    onLoadError={onDocumentLoadError}
+                                    loading=""
+                                    className="flex flex-col items-center"
+                                  >
+                                    {numPages ? Array.from({ length: numPages }, (_, i) => (
+                                      <div key={i} className="mb-6 last:mb-0">
+                                        <PDFPage
+                                          pageNumber={i + 1}
+                                          scale={scale}
+                                          rotate={rotation}
+                                          className="shadow-xl bg-white rounded-lg border-2 border-blue-100 dark:border-blue-800"
+                                          renderTextLayer={false}
+                                          renderAnnotationLayer={false}
+                                        />
+                                      </div>
+                                    )) : (
+                                      <PDFPage
+                                        pageNumber={1}
+                                        scale={scale}
+                                        rotate={rotation}
+                                        className="shadow-xl bg-white rounded-lg border-2 border-blue-100 dark:border-blue-800"
+                                        renderTextLayer={false}
+                                        renderAnnotationLayer={false}
+                                      />
+                                    )}
+                                  </PDFDoc>
+                                </div>
                               </>
-                            )}
-                            {canShowCorrection && correctionUrl && (
-                              <Button
-                                size="sm"
-                                className="lg:hidden absolute bottom-4 left-1/2 -translate-x-1/2 shadow-lg bg-blue-600 hover:bg-blue-700 text-white"
-                                onClick={() => setCorrectionModalOpen(true)}
-                                variant="default"
-                              >
-                                <FileCheck2 className="h-4 w-4 mr-2" /> Correction
-                              </Button>
                             )}
                           </div>
                         </CardContent>
                       </Card>
                     </div>
-                    
-                    {/* Correction Zone - Aligned Header */}
+                    {/* Correction Panel (collapsible) shows only editable zone */}
                     {session && !panelCollapsed && (
-                      <div className="w-full xl:flex-1 xl:min-w-[400px] xl:max-w-[500px] flex-shrink-0 transition-all duration-300">
-                        <div className="space-y-3 lg:space-y-4">
-                          {/* Correction Zone Header - Aligned with PDF Controls */}
-                          <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg">
-                            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/40 via-blue-600/10 to-blue-400/40" />
-                            <CardContent className="p-3 sm:p-4">
-                              <div className="flex items-center gap-2 text-xs sm:text-sm">
-                                <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">Zone de Correction</span>
-                                <Badge variant="secondary" className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200">(éditeur)</Badge>
+                      <div
+                        className={`min-w-0 space-y-4 transition-all duration-300 xl:col-span-6 2xl:col-span-5`}
+                      >
+                        <Card className="border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-lg">
+                          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/40 via-blue-600/10 to-blue-400/40" />
+                          <CardContent className="p-3 sm:p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              <span className="text-sm font-medium text-blue-800 dark:text-blue-200">Zone de Correction</span>
+                              {/* Removed open PDF button; use floating button instead */}
+                              {canShowCorrection && showCorrectionPdf && (
+                                <Button size="sm" variant="outline" onClick={() => setShowCorrectionPdf(false)} className="ml-auto gap-2 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800">
+                                  Fermer PDF
+                                </Button>
+                              )}
+                            </div>
+                            {!showCorrectionPdf && (
+                              <div className="max-h-[calc(100vh-70px)] overflow-y-auto pr-1 custom-scroll-thin">
+                                <CorrectionZone sessionId={session.id} mode={mode} />
                               </div>
-                            </CardContent>
-                          </Card>
-                          
-                          {/* Correction Zone Content */}
-                          <div className="sticky top-4 max-h-[calc(100vh-8rem)] overflow-y-auto pr-1">
-                            <CorrectionZone sessionId={session.id} mode={mode} />
-                          </div>
-                        </div>
+                            )}
+                            {showCorrectionPdf && canShowCorrection && correctionUrl && (
+                              <div className="flex flex-col border border-blue-100 dark:border-blue-800 rounded-lg overflow-hidden bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/40 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+                                <div className="flex items-center gap-2 px-3 py-2 border-b border-blue-200 dark:border-blue-800 bg-white/70 dark:bg-muted/40 text-xs flex-wrap">
+                                  {correctionNumPages && <span className="text-blue-800 dark:text-blue-200 font-medium text-[11px]">{correctionNumPages} pages</span>}
+                                  <Button variant="outline" size="sm" onClick={() => setCorrectionScale(s => Math.max(0.5, s - 0.2))} disabled={correctionScale <= 0.5}
+                                    className="p-2 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800"><ZoomOut className="h-3 w-3" /></Button>
+                                  <span className="text-[11px] w-10 text-center text-blue-800 dark:text-blue-200 font-medium">{Math.round(correctionScale * 100)}%</span>
+                                  <Button variant="outline" size="sm" onClick={() => setCorrectionScale(s => Math.min(3, s + 0.2))} disabled={correctionScale >= 3}
+                                    className="p-2 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800"><ZoomIn className="h-3 w-3" /></Button>
+                                  <Button variant="outline" size="sm" onClick={() => setCorrectionRotation(r => (r + 90) % 360)}
+                                    className="p-2 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800"><RotateCw className="h-3 w-3" /></Button>
+                                  <Button variant="outline" size="sm" onClick={fitCorrectionPage}
+                                    className="px-2 text-[11px] bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800">Ajuster</Button>
+                                </div>
+                                <div ref={correctionViewerRef} className="w-full h-full max-h-[calc(100vh-80px)] overflow-auto px-4 py-4 custom-scroll-thin">
+                                  <PDFDoc
+                                    file={correctionUrl}
+                                    onLoadSuccess={({ numPages }) => { setCorrectionNumPages(numPages); setCorrectionLoading(false); setCorrectionError(null); }}
+                                    onLoadError={(err) => { console.error(err); setCorrectionLoading(false); setCorrectionError('Erreur PDF.'); }}
+                                    loading=""
+                                    className="flex flex-col items-center"
+                                  >
+                                    {correctionLoading && (
+                                      <div className="flex items-center gap-2 py-4">
+                                        <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                                        <span className="text-blue-800 dark:text-blue-200 text-sm">Chargement...</span>
+                                      </div>
+                                    )}
+                                    {correctionError && (
+                                      <div className="text-sm text-blue-700 dark:text-blue-300 py-6">{correctionError}</div>
+                                    )}
+                                    {!correctionError && (correctionNumPages ? Array.from({ length: correctionNumPages }, (_, i) => (
+                                      <div key={i} className="mb-6 last:mb-0">
+                                        <PDFPage
+                                          pageNumber={i + 1}
+                                          scale={correctionScale}
+                                          rotate={correctionRotation}
+                                          className="shadow-xl bg-white rounded-lg border-2 border-blue-100 dark:border-blue-800"
+                                          renderTextLayer={false}
+                                          renderAnnotationLayer={false}
+                                        />
+                                      </div>
+                                    )) : (
+                                      <PDFPage
+                                        pageNumber={1}
+                                        scale={correctionScale}
+                                        rotate={correctionRotation}
+                                        className="shadow-xl bg-white rounded-lg border-2 border-blue-100 dark:border-blue-800"
+                                        renderTextLayer={false}
+                                        renderAnnotationLayer={false}
+                                      />
+                                    ))}
+                                  </PDFDoc>
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
                       </div>
                     )}
                   </div>
                 )}
-
-                <Dialog open={correctionModalOpen} onOpenChange={setCorrectionModalOpen}>
-                  <DialogContent className="max-w-[85vw] w-[85vw] h-[85vh] p-3 flex flex-col border-border/50 bg-white/50 dark:bg-muted/30 backdrop-blur-sm shadow-xl">
-                    <DialogTitle className="sr-only">Correction PDF</DialogTitle>
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-400/40 via-blue-600/10 to-blue-400/40" />
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50/50 to-blue-100/30 dark:from-blue-900/30 dark:to-blue-800/20 rounded-t-lg">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Badge variant="secondary" className="hidden sm:inline-flex bg-blue-600 text-white">Correction</Badge>
-                        <span className="font-medium truncate max-w-[40vw] text-blue-800 dark:text-blue-200">{session?.name}</span>
-                      </div>
-                    </div>
-                    <div className="flex-1 overflow-hidden relative bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/40 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 rounded-md mt-2 flex items-center justify-center border border-blue-100 dark:border-blue-800">
-                      {canShowCorrection && correctionUrl ? (
-                        <ModalCorrectionPdf url={correctionUrl} />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-sm text-blue-600 dark:text-blue-400 font-medium">Aucune correction disponible.</div>
-                      )}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                <ResponsiveCorrectionButton
-                  canShowCorrection={canShowCorrection}
-                  correctionUrl={correctionUrl}
-                  onClick={() => setCorrectionModalOpen(true)}
-                />
+                {canShowCorrection && correctionUrl && !showCorrectionPdf && <FloatingCorrectionButton onClick={() => { setPanelCollapsed(false); setShowCorrectionPdf(true); }} />}
               </div>
             </SidebarInset>
           </div>
-        </PDFProvider>
+            </PDFProvider>
+          )}
+        </SidebarOpenConsumer>
       </AppSidebarProvider>
     </ProtectedRoute>
   );
 }
 
-function ModalCorrectionPdf({ url }: { url: string }) {
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
-  const [scale, setScale] = useState(0.75);
-  const [rotation, setRotation] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+function SidebarOpenConsumer({ children }: { children: (open: boolean) => React.ReactNode }) {
+  const { open } = useSidebar();
+  return <>{children(open)}</>;
+}
 
-  const onLoadSuccess = ({ numPages }: { numPages: number }) => { setNumPages(numPages); setLoading(false); setError(null); };
-  const onLoadError = (err: Error) => { console.error(err); setLoading(false); setError('Erreur de chargement du PDF.'); };
-
+function FloatingCorrectionButton({ onClick }: { onClick: () => void }) {
+  const { open } = useSidebar();
   return (
-    <div className="w-full h-full flex flex-col">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-blue-200 dark:border-blue-800 bg-white/70 dark:bg-muted/40 text-xs">
-        <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-          className="h-8 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800">
-          Prev
-        </Button>
-        <span className="text-xs text-blue-800 dark:text-blue-200 font-medium min-w-[60px] text-center">{page} / {numPages || 1}</span>
-        <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min((numPages || 1), p + 1))} disabled={page >= (numPages || 1)}
-          className="h-8 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800">
-          Next
-        </Button>
-        <div className="flex items-center gap-1 ml-2">
-          <Button variant="outline" size="icon" className="h-7 w-7 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800" 
-            onClick={() => setScale(s => Math.max(0.5, s - 0.1))}>
-            <ZoomOut className="h-3 w-3" />
-          </Button>
-          <span className="text-xs w-12 text-center text-blue-800 dark:text-blue-200 font-medium">{Math.round(scale * 100)}%</span>
-          <Button variant="outline" size="icon" className="h-7 w-7 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800" 
-            onClick={() => setScale(s => Math.min(3, s + 0.1))}>
-            <ZoomIn className="h-3 w-3" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-7 w-7 bg-white/70 dark:bg-muted/40 hover:bg-blue-50 dark:hover:bg-blue-900/30 border-blue-200 dark:border-blue-800" 
-            onClick={() => setRotation(r => (r + 90) % 360)}>
-            <RotateCw className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-      <div className="flex-1 overflow-auto relative flex justify-center bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/40 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center backdrop-blur-sm bg-white/20 dark:bg-slate-900/20">
-            <div className="flex items-center gap-3 bg-white/80 dark:bg-slate-800/80 px-4 py-3 rounded-xl shadow-lg">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-              <span className="text-blue-800 dark:text-blue-200 font-medium">Chargement...</span>
-            </div>
-          </div>
-        )}
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center px-4">
-            <div className="flex flex-col items-center gap-3 bg-white/80 dark:bg-slate-800/80 px-6 py-4 rounded-xl shadow-lg">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <span className="text-sm text-blue-800 dark:text-blue-200 font-medium text-center">{error}</span>
-            </div>
-          </div>
-        )}
-        <Document
-          file={url}
-          onLoadSuccess={onLoadSuccess}
-          onLoadError={onLoadError}
-          loading=""
-          className="flex justify-center"
-        >
-          <div className="my-4">
-            <Page
-              pageNumber={page}
-              scale={scale}
-              rotate={rotation}
-              className="shadow-xl border-2 border-blue-100 dark:border-blue-800 bg-white aspect-[1/1.4142] mx-auto rounded-lg"
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-            />
-          </div>
-        </Document>
-      </div>
-    </div>
+    <Button
+      onClick={onClick}
+      variant="default"
+      className={`fixed bottom-6 shadow-xl rounded-full px-6 py-6 flex items-center gap-2 z-40 bg-blue-600 hover:bg-blue-700 text-white border-2 border-blue-200 dark:border-blue-800 transition-all duration-300 ${open ? 'left-[calc(16rem+1.5rem)]' : 'left-12'}`}
+    >
+      <FileCheck2 className="h-5 w-5" />
+      <span className="hidden sm:inline text-sm font-medium">Correction PDF</span>
+    </Button>
   );
 }
