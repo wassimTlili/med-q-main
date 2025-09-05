@@ -45,81 +45,98 @@
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    /* Refined dark palette: clearer elevation steps & reduced flat black look */
+    /* Base (page background) */
+    --background: 222 47% 5%;         /* near slate-950 */
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+
+    /* Surfaces / elevations */
+    --card: 222 40% 9%;               /* elevation 1 */
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 222 40% 9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 210 100% 50%;
-    --primary-foreground: 240 10% 3.9%;
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 222 32% 13%;         /* elevation 2 */
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    --muted: 222 28% 15%;             /* subtle container */
+    --muted-foreground: 222 10% 70%;
+    --accent: 222 34% 18%;            /* interactive hover layer */
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+
+    /* Functional */
+    --primary: 210 100% 50%;
+    --primary-foreground: 222 47% 5%;
+    --destructive: 0 62.8% 44%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 222 25% 23%;            /* clearer separators */
+    --input: 222 25% 23%;
     --ring: 210 100% 50%;
-    
-    /* Dark mode sidebar */
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
+
+    /* Sidebar differentiation */
+    --sidebar-background: 222 50% 7%;  /* slightly brighter than page */
+    --sidebar-foreground: 0 0% 96%;
     --sidebar-primary: 210 100% 50%;
-    --sidebar-primary-foreground: 240 5.9% 10%;
-    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-primary-foreground: 222 50% 7%;
+    --sidebar-accent: 222 38% 12%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-border: 222 28% 18%;
     --sidebar-ring: 210 100% 50%;
-    
-    /* Dark mode success colors */
+
+    /* Status colors unchanged for accessibility */
     --success: 142 71% 45%;
-    --success-foreground: 240 10% 3.9%;
+    --success-foreground: 222 47% 5%;
     --warning: 38 92% 50%;
-    --warning-foreground: 240 10% 3.9%;
+    --warning-foreground: 222 47% 5%;
     --info: 210 100% 50%;
-    --info-foreground: 240 10% 3.9%;
+    --info-foreground: 222 47% 5%;
+
+    /* Optional extra elevation tokens (future use) */
+    --surface-0: var(--background);
+    --surface-1: 222 40% 9%;
+    --surface-2: 222 32% 13%;
+    --surface-3: 222 34% 18%;
   }
 
   /* System preference support */
   @media (prefers-color-scheme: dark) {
     :root:not(.light) {
-      --background: 240 10% 3.9%;
+      /* Mirror refined dark tokens for prefers-color-scheme */
+      --background: 222 47% 5%;
       --foreground: 0 0% 98%;
-      --card: 240 10% 3.9%;
+      --card: 222 40% 9%;
       --card-foreground: 0 0% 98%;
-      --popover: 240 10% 3.9%;
+      --popover: 222 40% 9%;
       --popover-foreground: 0 0% 98%;
       --primary: 210 100% 50%;
-      --primary-foreground: 240 10% 3.9%;
-      --secondary: 240 3.7% 15.9%;
+      --primary-foreground: 222 47% 5%;
+      --secondary: 222 32% 13%;
       --secondary-foreground: 0 0% 98%;
-      --muted: 240 3.7% 15.9%;
-      --muted-foreground: 240 5% 64.9%;
-      --accent: 240 3.7% 15.9%;
+      --muted: 222 28% 15%;
+      --muted-foreground: 222 10% 70%;
+      --accent: 222 34% 18%;
       --accent-foreground: 0 0% 98%;
-      --destructive: 0 62.8% 30.6%;
+      --destructive: 0 62.8% 44%;
       --destructive-foreground: 0 0% 98%;
-      --border: 240 3.7% 15.9%;
-      --input: 240 3.7% 15.9%;
+      --border: 222 25% 23%;
+      --input: 222 25% 23%;
       --ring: 210 100% 50%;
-      --sidebar-background: 240 5.9% 10%;
-      --sidebar-foreground: 240 4.8% 95.9%;
+      --sidebar-background: 222 50% 7%;
+      --sidebar-foreground: 0 0% 96%;
       --sidebar-primary: 210 100% 50%;
-      --sidebar-primary-foreground: 240 5.9% 10%;
-      --sidebar-accent: 240 3.7% 15.9%;
+      --sidebar-primary-foreground: 222 50% 7%;
+      --sidebar-accent: 222 38% 12%;
       --sidebar-accent-foreground: 0 0% 98%;
-      --sidebar-border: 240 3.7% 15.9%;
+      --sidebar-border: 222 28% 18%;
       --sidebar-ring: 210 100% 50%;
       --success: 142 71% 45%;
-      --success-foreground: 240 10% 3.9%;
+      --success-foreground: 222 47% 5%;
       --warning: 38 92% 50%;
-      --warning-foreground: 240 10% 3.9%;
+      --warning-foreground: 222 47% 5%;
       --info: 210 100% 50%;
-      --info-foreground: 240 10% 3.9%;
+      --info-foreground: 222 47% 5%;
+      --surface-0: var(--background);
+      --surface-1: 222 40% 9%;
+      --surface-2: 222 32% 13%;
+      --surface-3: 222 34% 18%;
     }
   }
 }

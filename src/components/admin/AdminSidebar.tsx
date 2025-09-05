@@ -61,7 +61,7 @@ export function AdminSidebar() {
   const isMaintainer = user?.role === 'maintainer';
 
   const adminMenuItems = [
-    { label: t('admin.dashboard'), icon: LayoutDashboard, href: '/admin', description: t('admin.manageContent') },
+    { label: t('admin.dashboard'), icon: LayoutDashboard, href: '/admin/dashboard', description: t('admin.manageContent') },
     { label: t('admin.management') || 'Management', icon: BookOpen, href: '/admin/management', description: 'Manage specialties, courses, and questions' },
     { label: 'Sessions', icon: FileText, href: '/admin/sessions', description: 'Manage/import sessions' },
     { label: t('admin.users'), icon: Users, href: '/admin/users', description: 'Manage users' },
@@ -147,8 +147,14 @@ export function AdminSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu className={`space-y-2 ${state === 'expanded' ? 'px-2 sm:px-3' : 'px-0'}`}>
                   {menuItems.slice(0, -1).map((item) => {
-                    // Check if current page matches the item
-                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                    // Active logic: root '/admin' should NOT stay active on all sub-routes
+                    // Other items remain active on their nested paths
+                    let isActive: boolean;
+                    if (item.href === '/admin/dashboard') {
+                      isActive = pathname === '/admin/dashboard';
+                    } else {
+                      isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                    }
                     
                     return (
                       <SidebarMenuItem key={item.href}>
