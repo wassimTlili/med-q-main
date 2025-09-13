@@ -21,6 +21,12 @@ async function validateWorkbook(file: File) {
   const buffer = await file.arrayBuffer();
   const workbook = read(buffer);
 
+  // Early workbook checks and guidance
+  const foundSheets = Object.keys(workbook.Sheets || {});
+  if (!foundSheets.length) {
+    throw new Error('Workbook vide. Ajoutez au moins une feuille nommée: "qcm", "qroc", "cas qcm" ou "cas qroc".');
+  }
+
   const present = new Map<string, string>();
   const normalizeSheet = (name: string) => String(name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
   for (const actual of Object.keys(workbook.Sheets)) present.set(normalizeSheet(actual), actual);
@@ -34,6 +40,7 @@ async function validateWorkbook(file: File) {
   const good: GoodRow[] = [];
   const bad: BadRow[] = [];
 
+  let recognizedAny = false;
   for (const sheet of sheets) {
     let actualName: string | undefined;
     for (const a of aliases[sheet]) {
@@ -41,6 +48,7 @@ async function validateWorkbook(file: File) {
       if (present.has(n)) { actualName = present.get(n)!; break; }
     }
     if (!actualName) continue;
+    recognizedAny = true;
   const ws = workbook.Sheets[actualName];
     const rows = utils.sheet_to_json(ws, { header: 1 });
     if (rows.length < 2) continue;
@@ -120,16 +128,31 @@ async function validateWorkbook(file: File) {
     }
   }
 
+  if (!recognizedAny) {
+    throw new Error(`Aucun onglet reconnu. Renommez vos onglets en: "qcm", "qroc", "cas qcm" ou "cas qroc". Feuilles trouvées: ${foundSheets.join(', ')}`);
+  }
+
+  if (good.length === 0 && bad.length === 0) {
+    throw new Error('Feuilles reconnues mais sans lignes sous l’en-tête. Ajoutez des questions puis réessayez.');
+  }
+
   return { good, bad };
 }
 
 export const POST = requireMaintainerOrAdmin(async (request: AuthenticatedRequest) => {
-  const formData = await request.formData();
-  const file = formData.get('file') as File | null;
-  if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
-  if (!file.name?.toLowerCase().endsWith('.xlsx')) return NextResponse.json({ error: 'Only .xlsx supported' }, { status: 400 });
-  const { good, bad } = await validateWorkbook(file);
-  return NextResponse.json({ goodCount: good.length, badCount: bad.length, good, bad });
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
+    if (!file.name?.toLowerCase().endsWith('.xlsx')) return NextResponse.json({ error: 'Only .xlsx supported' }, { status: 400 });
+
+    const { good, bad } = await validateWorkbook(file);
+    return NextResponse.json({ goodCount: good.length, badCount: bad.length, good, bad });
+  } catch (err: any) {
+    const message = (err && typeof err.message === 'string') ? err.message : 'Validation failed';
+    // Always return JSON on errors so the client can handle gracefully
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 });
 
 export const GET = requireMaintainerOrAdmin(async (request: AuthenticatedRequest) => {

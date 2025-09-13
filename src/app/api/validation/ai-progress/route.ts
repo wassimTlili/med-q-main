@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireMaintainerOrAdmin, AuthenticatedRequest } from '@/lib/auth-middleware';
 import { analyzeMcqInChunks } from '@/lib/services/aiImport';
-import { searchIndex } from '@/lib/services/ragDb';
 import { isAzureConfigured, chatCompletions } from '@/lib/services/azureOpenAI';
 import { canonicalizeHeader } from '@/lib/importUtils';
 import { read, utils, write } from 'xlsx';
@@ -30,6 +29,9 @@ type AiSession = {
   stats: AiStats;
   createdAt: number;
   lastUpdated: number;
+  // Owner and file metadata for background resume
+  userId?: string;
+  fileName?: string;
   resultBuffer?: ArrayBuffer; // XLSX bytes
 };
 
@@ -100,8 +102,17 @@ async function runAiSession(file: File, instructions: string | undefined, aiId: 
     const buffer = await file.arrayBuffer();
     const workbook = read(buffer);
 
+    // Validate workbook has sheets
+    const sheetNames = Object.keys(workbook.Sheets || {});
+    if (!sheetNames.length) {
+      throw new Error(
+        'Workbook vide. Assurez-vous que le fichier contient au moins une feuille nommée: "qcm", "qroc", "cas qcm" ou "cas qroc" (insensible à la casse).'
+      );
+    }
+
     // Gather rows and MCQ items
     const rows: Array<{ sheet: SheetName; row: number; original: Record<string, any> }> = [];
+    let recognizedSheetCount = 0;
     for (const s of Object.keys(workbook.Sheets)) {
       const ws = workbook.Sheets[s];
       const data = utils.sheet_to_json(ws, { header: 1 });
@@ -119,6 +130,7 @@ async function runAiSession(file: File, instructions: string | undefined, aiId: 
           rows.push({ sheet: target, row: i + 1, original: record });
         }
       } else if (canonicalName) {
+        recognizedSheetCount++;
         for (let i = 1; i < data.length; i++) {
           const row = data[i] as any[];
           const record: Record<string, any> = {};
@@ -128,11 +140,26 @@ async function runAiSession(file: File, instructions: string | undefined, aiId: 
       }
     }
 
+    // If nothing parsed, guide user to proper sheet names
+    if (rows.length === 0) {
+      if (recognizedSheetCount === 0) {
+        throw new Error(
+          `Aucune feuille reconnue. Renommez vos onglets en: "qcm", "qroc", "cas qcm" ou "cas qroc" (insensible à la casse). Feuilles trouvées: ${sheetNames.join(', ')}`
+        );
+      } else {
+        throw new Error(
+          'Feuilles reconnues mais sans lignes de données (seulement l’en-tête). Ajoutez des questions sous l’en-tête puis réessayez.'
+        );
+      }
+    }
+
   const mcqRows = rows.filter(r => r.sheet === 'qcm' || r.sheet === 'cas_qcm');
-  // Keep a small quoted sentence from RAG context (first strong snippet) to surface in explanations
+  // RAG disabled by default. Enable only if explicitly requested via env.
+  const ENABLE_RAG = String(process.env.ENABLE_RAG || '').toLowerCase() === 'true';
+  // Keep a small quoted sentence from RAG context (first strong snippet) to surface in explanations (only when RAG is enabled)
   const ragQuoteByIdx = new Map<number, string>();
     // Optional RAG enrichment (supports per (niveau,matiere) via RAG_INDEX_MAP JSON)
-    const ragIndexIdGlobal = process.env.RAG_INDEX_ID || '';
+  const ragIndexIdGlobal = ENABLE_RAG ? (process.env.RAG_INDEX_ID || '') : '';
     let ragIndexMap: Record<string, string> = {};
     try {
       if (process.env.RAG_INDEX_MAP) ragIndexMap = JSON.parse(process.env.RAG_INDEX_MAP);
@@ -166,7 +193,7 @@ async function runAiSession(file: File, instructions: string | undefined, aiId: 
     };
     // Build a normalized view of the mapping
     const ragIndexMapNorm: Record<string, string> = {};
-    if (hasMap) {
+  if (hasMap) {
       for (const [k, v] of Object.entries(ragIndexMap)) {
         const nk = normKeyFromRawKey(k);
         if (nk) ragIndexMapNorm[nk] = v;
@@ -210,7 +237,7 @@ async function runAiSession(file: File, instructions: string | undefined, aiId: 
       return { niveau: niveauVal, matiere: matiereVal };
     }
   const items = await Promise.all(mcqRows.map(async (r, idx) => {
-      const rec = r.original;
+  const rec = r.original;
       const { niveau: niveauFromRec, matiere: matiereFromRec } = extractNiveauMatiere(rec);
       const opts: string[] = [];
       for (let i = 0; i < 5; i++) {
@@ -221,9 +248,9 @@ async function runAiSession(file: File, instructions: string | undefined, aiId: 
       let questionText = String(rec['texte de la question'] || '').trim();
       const niveauVal = niveauFromRec;
       const matiereVal = matiereFromRec;
-      const chosenIndex = pickIndex(niveauVal, matiereVal);
-      // If a RAG index configured, retrieve top context to guide explanations (notebook logic with k=10)
-      if (chosenIndex && questionText) {
+  const chosenIndex = ENABLE_RAG ? pickIndex(niveauVal, matiereVal) : undefined;
+  // If RAG is enabled and an index is available, enrich the question with context; otherwise skip.
+  if (ENABLE_RAG && chosenIndex && questionText) {
         try {
           // Use notebook approach: search for question + each option independently
           const searchQueries = [questionText];
@@ -236,8 +263,9 @@ async function runAiSession(file: File, instructions: string | undefined, aiId: 
           }
           
           // Search with higher k like notebook (k=10)
+          const { searchIndex } = await import('@/lib/services/ragDb');
           const allResults = await Promise.all(
-            searchQueries.map(query => searchIndex(chosenIndex, query, 10))
+            searchQueries.map(query => searchIndex(chosenIndex!, query, 10))
           );
           
           // Combine and deduplicate results
@@ -310,9 +338,11 @@ async function runAiSession(file: File, instructions: string | undefined, aiId: 
 
     const t0 = Date.now();
     let processed = 0;
+    const BATCH_SIZE = Number(process.env.AI_BATCH_SIZE || 100);
+    const CONCURRENCY = Number(process.env.AI_CONCURRENCY || 6);
     const resultMap = await analyzeMcqInChunks(items, {
-      batchSize: 50,
-      concurrency: 4,
+      batchSize: BATCH_SIZE,
+      concurrency: CONCURRENCY,
       systemPrompt: instructions,
       onBatch: ({ index, total }) => {
         processed = index;
@@ -320,7 +350,7 @@ async function runAiSession(file: File, instructions: string | undefined, aiId: 
         updateSession(
           aiId,
           { message: `Traitement lot ${index}/${total}…`, progress: Math.min(85, p), stats: { ...activeAiSessions.get(aiId)!.stats, processedBatches: index, totalBatches: total } },
-          `📦 Lot ${index}/${total} (batch=50, conc=4)`
+          `📦 Lot ${index}/${total} (batch=${BATCH_SIZE}, conc=${CONCURRENCY})`
         );
       }
     });
@@ -335,12 +365,12 @@ async function runAiSession(file: File, instructions: string | undefined, aiId: 
       caseText: String(r.original['texte du cas'] || '').trim() || undefined
     }));
 
-    const qrocSystemPrompt = `Tu aides des étudiants en médecine. Pour chaque question QROC:
+  const qrocSystemPrompt = `Tu aides des étudiants en médecine. Pour chaque question QROC:
 1. Si la réponse est vide: status="error" et error="Réponse manquante" (pas d'explication).
 2. Sinon, génère UNE explication concise (1-3 phrases) style étudiant (pas d'intro/conclusion globales), éventuellement plus longue si un mécanisme doit être clarifié.
 3. Pas de ton professoral; utilise un style naturel.
 4. Si la réponse semble incorrecte ou incohérente, status="error" avec une courte explication dans error au lieu d'une explication normale.
-5. Sortie JSON STRICT uniquement.
+5. Sortie JSON STRICT uniquement (le mot JSON est présent pour contrainte Azure).
 Format:
 {
   "results": [ { "id": "<id>", "status": "ok" | "error", "explanation": "...", "error": "..." } ]
@@ -435,7 +465,7 @@ Format:
           // Add explanations
           const base = String(rec['explication'] || '').trim();
           // If we had a RAG quote for this item, prepend a citation line once
-          const ragQuote = ragQuoteByIdx.get(idx);
+          const ragQuote = ENABLE_RAG ? ragQuoteByIdx.get(idx) : undefined;
           // Build a small markdown block with Question/Options/Réponse(s) if not already present
           const questionMd = `Question:\n${String(rec['texte de la question'] || '').trim()}`;
           const optionsMd = options.length ? ('\n\nOptions:\n' + options.map((opt, j) => `- (${String.fromCharCode(65 + j)}) ${opt}`).join('\n')) : '';
@@ -444,8 +474,7 @@ Format:
           const hasQaMd = /\bOptions:\n- \(A\)/.test(base) || /^Question:/m.test(base);
           if (Array.isArray(ai.optionExplanations) && ai.optionExplanations.length) {
             const header = ai.globalExplanation ? ai.globalExplanation + '\n\n' : '';
-            const quoteBlock = ragQuote ? `Citation du cours: \"${ragQuote}\"\n\n` : '';
-            const merged = (hasQaMd ? '' : qaMdBlock) + quoteBlock + header + 'Explications (IA):\n' + ai.optionExplanations.map((e: string, j: number) => `- (${String.fromCharCode(65 + j)}) ${e}`).join('\n');
+            const merged = (hasQaMd ? '' : qaMdBlock) + header + 'Explications (IA):\n' + ai.optionExplanations.map((e: string, j: number) => `- (${String.fromCharCode(65 + j)}) ${e}`).join('\n');
             const newExp = base ? base + '\n\n' + merged : merged;
             if (newExp !== base) { rec['explication'] = newExp; changed = true; }
             for (let j = 0; j < Math.min(letters.length, ai.optionExplanations.length); j++) {
@@ -629,7 +658,9 @@ async function postHandler(request: AuthenticatedRequest) {
     phase: 'queued',
   stats: { totalRows: 0, mcqRows: 0, processedBatches: 0, totalBatches: 0, logs: [], fixedCount: 0, errorCount: 0, reasonCounts: {} },
     createdAt: now,
-    lastUpdated: now,
+  lastUpdated: now,
+  userId: request.user?.userId,
+  fileName: file.name,
   };
   activeAiSessions.set(aiId, sess);
   // Start background
@@ -641,6 +672,17 @@ async function getHandler(request: AuthenticatedRequest) {
   const { searchParams } = new URL(request.url);
   const aiId = searchParams.get('aiId');
   const action = searchParams.get('action');
+  // List all user jobs for background resume
+  if (action === 'list') {
+    const userId = request.user?.userId;
+    const items = Array.from(activeAiSessions.values())
+      .filter(s => !userId || s.userId === userId)
+      .map(s => ({ id: s.id, phase: s.phase, progress: s.progress, message: s.message, createdAt: s.createdAt, lastUpdated: s.lastUpdated, fileName: s.fileName }))
+      .sort((a,b) => b.createdAt - a.createdAt)
+      .slice(0, 5);
+    return NextResponse.json({ jobs: items });
+  }
+
   if (!aiId) return NextResponse.json({ error: 'aiId required' }, { status: 400 });
   const sess = activeAiSessions.get(aiId);
   if (!sess) return NextResponse.json({ error: 'not found' }, { status: 404 });
@@ -649,16 +691,45 @@ async function getHandler(request: AuthenticatedRequest) {
   if (accept.includes('text/event-stream')) {
     const stream = new ReadableStream({
       start(controller) {
-        const send = (data: unknown) => controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
-        send({ ...sess, resultBuffer: undefined });
-        const it = setInterval(() => {
+        const encoder = new TextEncoder();
+        let closed = false;
+        let timer: ReturnType<typeof setInterval> | null = null;
+
+        const safeSend = (data: unknown) => {
+          if (closed) return;
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          } catch {
+            // Sink likely closed by client; stop sending
+            closed = true;
+            if (timer) { clearInterval(timer); timer = null; }
+            try { controller.close(); } catch {}
+          }
+        };
+
+        // Send initial snapshot
+        safeSend({ ...sess, resultBuffer: undefined });
+
+        // Periodically send updates until complete or client disconnects
+        timer = setInterval(() => {
           const s = activeAiSessions.get(aiId);
-          if (!s) { clearInterval(it); controller.close(); return; }
-          send({ ...s, resultBuffer: undefined });
+          if (!s) {
+            if (timer) { clearInterval(timer); timer = null; }
+            closed = true;
+            try { controller.close(); } catch {}
+            return;
+          }
+          safeSend({ ...s, resultBuffer: undefined });
           if (s.phase === 'complete' || s.phase === 'error') {
-            clearInterval(it); controller.close();
+            if (timer) { clearInterval(timer); timer = null; }
+            closed = true;
+            try { controller.close(); } catch {}
           }
         }, 800);
+      },
+      cancel() {
+        // Client disconnected; ensure interval cleared
+        // No direct access to timer here if we make it outer, so rely on GC if already cleared
       }
     });
     return new NextResponse(stream, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' } });

@@ -48,8 +48,14 @@ export async function chatCompletions(messages: ChatMessage[], cfg?: AzureConfig
   const conf = cfg || getAzureConfigFromEnv();
   if (!conf) throw new Error('Azure OpenAI is not configured');
   const url = `${conf.endpoint}/openai/deployments/${encodeURIComponent(conf.deployment)}/chat/completions?api-version=${encodeURIComponent(conf.apiVersion || '2024-05-01-preview')}`;
+  // Azure requires that messages contain the literal word "json" when using response_format=json_object
+  const msgs: ChatMessage[] = Array.isArray(messages) ? [...messages] : [];
+  const hasJsonWord = msgs.some(m => typeof m?.content === 'string' && /json/i.test(m.content));
+  if (!hasJsonWord) {
+    msgs.unshift({ role: 'system', content: 'Return a strict JSON object only. Reply in json. No prose.' });
+  }
   const body = {
-    messages,
+    messages: msgs,
     response_format: { type: 'json_object' }
   } as any;
   const res = await fetch(url, {

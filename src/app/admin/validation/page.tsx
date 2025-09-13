@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AdminRoute } from '@/components/auth/AdminRoute';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
+import { FileUpload } from '@/components/ui/file-upload';
 
 export default function AdminValidationPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -27,6 +28,7 @@ export default function AdminValidationPage() {
   let aiProgressTimer: number | undefined;
   const [importLogs, setImportLogs] = useState<string[]>([]);
   const [lastImportId, setLastImportId] = useState<string | null>(null);
+  const [activeAiId, setActiveAiId] = useState<string | null>(null);
 
   const onFileChange = (f: File) => { setFile(f); setGood([]); setBad([]); setAiFile(null); setAiPreview(null); };
 
@@ -40,7 +42,15 @@ export default function AdminValidationPage() {
       fd.append('file', file);
   setFilterLogs(prev => [...prev, '⚙️ Validation en cours…']);
       const res = await fetch('/api/validation', { method: 'POST', body: fd });
-      const json = await res.json();
+      // Always attempt to parse JSON, but handle empty/non-JSON responses safely
+      const text = await res.text();
+      let json: any = {};
+      try { json = text ? JSON.parse(text) : {}; } catch { json = {}; }
+      if (!res.ok) {
+        const msg = json?.error || text || `HTTP ${res.status}`;
+        setFilterLogs(prev => [...prev, `❌ Erreur validation: ${msg}`]);
+        return;
+      }
       setGood(json.good || []);
       setBad(json.bad || []);
   setFilterLogs(prev => [...prev, `✅ Terminé: ${json.goodCount ?? (json.good?.length||0)} valides, ${json.badCount ?? (json.bad?.length||0)} erreurs`]);
@@ -146,6 +156,7 @@ export default function AdminValidationPage() {
         return;
       }
       const aiId = startJson.aiId as string;
+  setActiveAiId(aiId);
       const ev = new EventSource(`/api/validation/ai-progress?aiId=${encodeURIComponent(aiId)}`);
       ev.onmessage = async (e) => {
         try {
@@ -183,6 +194,77 @@ export default function AdminValidationPage() {
     } finally { setAiBusy(false); }
   };
 
+  // Resume background AI job if one is running while navigating away and back
+  useEffect(() => {
+    let ev: EventSource | null = null;
+    (async () => {
+      try {
+        const res = await fetch('/api/validation/ai-progress?action=list');
+        const json = await res.json().catch(() => ({}));
+        const jobs = Array.isArray(json?.jobs) ? json.jobs : [];
+        const running = jobs.find((j: any) => j.phase === 'running');
+        if (running && running.id) {
+          setAiBusy(true);
+          setActiveAiId(running.id);
+          setAiLogs(prev => [...prev, `↩️ Reprise de la session IA ${running.id}…`]);
+          ev = new EventSource(`/api/validation/ai-progress?aiId=${encodeURIComponent(running.id)}`);
+          ev.onmessage = async (e) => {
+            try {
+              const data = JSON.parse(e.data);
+              if (typeof data?.progress === 'number') setAiProgress(data.progress);
+              if (Array.isArray(data?.logs)) setAiLogs(data.logs);
+              if (data?.phase === 'complete') {
+                ev?.close();
+                setAiLogs(prev => [...prev, '📥 Téléchargement du fichier IA…']);
+                const dl = await fetch(`/api/validation/ai-progress?aiId=${encodeURIComponent(running.id)}&action=download`);
+                if (dl.ok) {
+                  const blob = await dl.blob();
+                  const f = new File([blob], 'ai_fixed.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                  setAiFile(f);
+                  setAiPreview(null);
+                  setAiProgress(100);
+                  setAiBusy(false);
+                  setAiLogs(prev => [...prev, '✅ IA terminée: fichier prêt']);
+                } else {
+                  setAiBusy(false);
+                  setAiLogs(prev => [...prev, '❌ Échec du téléchargement du fichier IA']);
+                }
+              }
+              if (data?.phase === 'error') {
+                ev?.close();
+                setAiBusy(false);
+                setAiLogs(prev => [...prev, `❌ Erreur IA: ${data?.error || 'inconnue'}`]);
+              }
+            } catch {}
+          };
+        } else if (jobs.length) {
+          // If most recent job already completed while away, fetch its result so the page isn't empty
+          const latest = jobs[0];
+          if (latest.phase === 'complete') {
+            try {
+              setAiLogs(prev => [...prev, `📦 Résultat IA disponible (job ${latest.id}), récupération…`]);
+              const dl = await fetch(`/api/validation/ai-progress?aiId=${encodeURIComponent(latest.id)}&action=download`);
+              if (dl.ok) {
+                const blob = await dl.blob();
+                const f = new File([blob], 'ai_fixed.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                setAiFile(f);
+                setAiPreview(null);
+                setAiProgress(100);
+                setAiBusy(false);
+                setAiLogs(prev => [...prev, '✅ IA terminée: fichier prêt']);
+              } else {
+                setAiLogs(prev => [...prev, '❌ Impossible de récupérer le résultat IA']);
+              }
+            } catch {}
+          } else if (latest.phase === 'error') {
+            setAiLogs(prev => [...prev, `❌ Dernière session IA en erreur (job ${latest.id})`]);
+          }
+        }
+      } catch {}
+    })();
+    return () => { if (ev) ev.close(); };
+  }, []);
+
   const revalidateFixed = async () => {
     if (!aiFile) return;
     const fd = new FormData();
@@ -190,7 +272,13 @@ export default function AdminValidationPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/validation', { method: 'POST', body: fd });
-      const json = await res.json();
+      const text = await res.text();
+      let json: any = {};
+      try { json = text ? JSON.parse(text) : {}; } catch { json = {}; }
+      if (!res.ok) {
+        setFilterLogs(prev => [...prev, `❌ Erreur revalidation IA: ${json?.error || text || `HTTP ${res.status}`}`]);
+        return;
+      }
       setGood(json.good || []);
       setBad(json.bad || []);
     } finally { setLoading(false); }
@@ -290,7 +378,13 @@ export default function AdminValidationPage() {
                 <CardDescription>Règles strictes: MCQ doivent avoir des lettres A–E (pas de '?' ou 'Pas de réponse') et une explication. QROC doivent avoir réponse et explication.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <input type="file" accept=".xlsx" onChange={e => { const f = e.target.files?.[0]; if (f) onFileChange(f); }} />
+                <FileUpload
+                  label="Fichier à valider"
+                  description="Chargez un classeur .xlsx contenant des onglets: qcm, qroc, cas qcm, cas qroc"
+                  accept=".xlsx"
+                  file={file}
+                  onChange={(f) => { if (f) onFileChange(f); else onFileChange as any; onFileChange(null as any); }}
+                />
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={validate} disabled={!file || loading}>{loading ? 'Validation…' : 'Valider'}</Button>
                   <Button variant="outline" onClick={() => download('good')} disabled={!good.length}>Télécharger valides</Button>
@@ -318,7 +412,13 @@ export default function AdminValidationPage() {
               <CardContent className="space-y-3">
                 <div className="space-y-2">
                   <div className="text-sm font-medium">Fichier pour l'IA (indépendant)</div>
-                  <input type="file" accept=".xlsx" onChange={e => { const f = e.target.files?.[0] || null; setAiUploadFile(f); setAiPreview(null); }} />
+                  <FileUpload
+                    label="Classeur pour l'IA"
+                    description="Optionnel: chargez un fichier indépendant à corriger, sinon on utilise la feuille des erreurs"
+                    accept=".xlsx"
+                    file={aiUploadFile}
+                    onChange={(f) => { setAiUploadFile(f); setAiPreview(null); }}
+                  />
                 </div>
                 <Textarea placeholder="Instructions pour l'IA (optionnel)" value={aiInstructions} onChange={e => setAiInstructions(e.target.value)} />
                 {(aiBusy || aiProgress > 0) && (

@@ -79,7 +79,13 @@ export async function analyzeMcqBatch(items: MCQAiItem[], systemPrompt?: string)
     // If not configured, return error results so caller can fallback
     return items.map(i => ({ id: i.id, status: 'error', error: 'Azure OpenAI not configured' }));
   }
-  const sys = systemPrompt || process.env.AI_IMPORT_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
+  // If caller provided extra instructions, append them to the default to preserve JSON constraints
+  const base = process.env.AI_IMPORT_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
+  const sys = systemPrompt ? `${base}
+
+INSTRUCTIONS ADMIN:
+${systemPrompt}
+` : base;
   const user = buildUserPrompt(items);
   console.info(`[AI] analyzeMcqBatch: size=${items.length}${systemPrompt ? ', customPrompt=true' : ''}`);
   const content = await chatCompletions([
